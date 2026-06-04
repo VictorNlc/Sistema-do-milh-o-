@@ -328,10 +328,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       furnitureGroupRef.current = furnitureGroup
 
       // Load Cestão 3D Model
-      console.log("📦 [3D Viewer] Carregando modelo do Cestão de /cestao.glb...")
+      console.log("📦 [3D Viewer] Carregando modelo do Cestão de /models/cestao.glb...")
       const gltfLoader = new GLTFLoader()
       gltfLoader.load(
-        '/cestao.glb',
+        '/models/cestao.glb',
         (gltf) => {
           console.log("✅ [3D Viewer] Modelo do Cestão carregado com sucesso!")
           cestaoModelRef.current = gltf.scene
