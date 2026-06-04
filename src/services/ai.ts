@@ -27,7 +27,7 @@ interface StoreTypeConfig {
 const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   popular: {
     name: 'Farmácia Popular',
-    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'freezer-vertical', 'catalog-21-premium'],
+    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-21-premium'],
     corridorMin: 1.2,
     focus: 'volume de vendas e acessibilidade',
     tips: [
@@ -51,7 +51,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   manipulacao: {
     name: 'Farmácia de Manipulação',
-    priority: ['area-manipulacao', 'catalog-55-premium', 'catalog-51-premium', 'geladeira-medicamentos', 'catalog-21-premium'],
+    priority: ['catalog-55-premium', 'catalog-51-premium', 'catalog-21-premium'],
     corridorMin: 1.2,
     focus: 'área técnica e manipulação',
     tips: [
@@ -63,7 +63,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   completa: {
     name: 'Farmácia Completa',
-    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-92-premium', 'freezer-vertical', 'consultorio'],
+    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-92-premium'],
     corridorMin: 1.3,
     focus: 'mix completo de produtos e serviços',
     tips: [
@@ -228,8 +228,12 @@ function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<Ca
       break
     }
     case 'manipulacao': {
-      items.push(makeItem('area-manipulacao', 'Área de Manipulação', '⚗️', zone.x + 0.1, zone.y + 0.1, zone.w - 0.2, zone.h * 0.65, '#ECFEFF', '#0E7490', { isRoom: true }))
-      items.push(makeItem('geladeira-medicamentos', 'Geladeira Fórmulas', '🧊', zone.x + 0.1, zone.y + zone.h * 0.7, 0.6, 0.6, '#CFFAFE', '#0891B2'))
+      // Bancada de manipulação usando balcão do catálogo
+      items.push(makeItem('catalog-55-premium', 'Bancada Manipulação', '🧪', zone.x + 0.1, zone.y + 0.1, zone.w - 0.2, 0.6, '#CFFAFE', '#0891B2'))
+      // Prateleiras de insumos
+      if (zone.h > 1.2) {
+        items.push(makeItem('catalog-21-premium', 'Expositor Insumos', '💊', zone.x + 0.1, zone.y + zone.h - 0.5, zone.w - 0.2, 0.4, '#ECFEFF', '#0E7490'))
+      }
       break
     }
     case 'higiene': {
