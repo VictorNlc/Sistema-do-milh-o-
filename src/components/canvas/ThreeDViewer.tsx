@@ -191,15 +191,16 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
   // --- Effect 1: Setup (roda 1x na montagem) ---
   useEffect(() => {
+    const container = containerRef.current
     try {
       console.log("🎬 [3D Viewer] Effect 1 (Setup) iniciando...")
-      if (!containerRef.current) {
-        console.warn("⚠️ [3D Viewer] containerRef.current é nulo. Setup abortado.")
+      if (!container) {
+        console.warn("⚠️ [3D Viewer] container é nulo. Setup abortado.")
         return
       }
 
-      let width = containerRef.current.clientWidth
-      let height = containerRef.current.clientHeight
+      let width = container.clientWidth
+      let height = container.clientHeight
       
       if (width < 320 || height < 240) {
         width = window.innerWidth || 800
@@ -224,7 +225,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       renderer.shadowMap.type = THREE.PCFShadowMap
       renderer.domElement.tabIndex = 1
       renderer.domElement.style.outline = 'none'
-      containerRef.current.appendChild(renderer.domElement)
+      container.appendChild(renderer.domElement)
       rendererRef.current = renderer
       canvasRef.current = renderer.domElement
 
@@ -691,13 +692,13 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         document.removeEventListener('keydown', handleKeyDown)
         document.removeEventListener('keyup', handleKeyUp)
         
-        if (canvas) {
+        if (canvas && container) {
           canvas.removeEventListener('keydown', handleKeyDown)
           canvas.removeEventListener('keyup', handleKeyUp)
           canvas.removeEventListener('click', handleCanvasClick)
           try {
-            if (containerRef.current && containerRef.current.contains(canvas)) {
-              containerRef.current.removeChild(canvas)
+            if (container.contains(canvas)) {
+              container.removeChild(canvas)
             }
           } catch (e) {
             console.warn("Erro ao remover canvas:", e)
