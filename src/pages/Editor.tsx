@@ -10,6 +10,7 @@ import { saveLayout } from '../services/storage'
 import { toast } from '../store/toastStore'
 import { exportLayoutToPDF } from '../services/pdfExport'
 import ThreeDViewer from '../components/canvas/ThreeDViewer'
+import BudgetPanel from '../components/canvas/BudgetPanel'
 import './Editor.css'
 
 const STORE_TYPES = { popular: 'Popular', premium: 'Premium', manipulacao: 'Manipulação', completa: 'Completa' }
@@ -52,7 +53,7 @@ export default function Editor() {
 
   const [mobilePanel, setMobilePanel] = useState<'library' | 'ai' | null>(null)
   const [showSettings, setShowSettings] = useState(false)
-  const [desktopPanel, setDesktopPanel] = useState<'library' | 'ai'>('library')
+  const [desktopPanel, setDesktopPanel] = useState<'library' | 'ai' | 'budget'>('library')
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [show3D, setShow3D] = useState(false)
 
@@ -68,6 +69,7 @@ export default function Editor() {
 
   const selectedItem = getSelectedItem()
   const stats = getStats()
+  const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0)
 
   useEffect(() => {
     const t = searchParams.get('type') as StoreType | null
@@ -275,10 +277,13 @@ export default function Editor() {
               onClick={() => setDesktopPanel('library')}>Itens</button>
             <button id="tab-ai" className={`sb-tab ${desktopPanel === 'ai' ? 'active' : ''}`}
               onClick={() => setDesktopPanel('ai')}>IA</button>
+            <button id="tab-budget" className={`sb-tab ${desktopPanel === 'budget' ? 'active' : ''}`}
+              onClick={() => setDesktopPanel('budget')}>Orçamento</button>
           </div>
           <div className="sb-body">
             {desktopPanel === 'library' && <ItemLibrary />}
             {desktopPanel === 'ai' && <AiChat />}
+            {desktopPanel === 'budget' && <BudgetPanel />}
           </div>
         </aside>
 
@@ -369,7 +374,7 @@ export default function Editor() {
           <span>{storeWidth}×{storeHeight}m · {(storeWidth * storeHeight).toFixed(0)}m²</span>
         </div>
         <div className="statusbar-item">
-          <span>{stats.itemCount} itens · {stats.pillars} pilares · {stats.occupancyRate}% ocupado</span>
+          <span>{stats.itemCount} itens (R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) · {stats.pillars} pilares · {stats.occupancyRate}% ocupado</span>
         </div>
         <div className="statusbar-item statusbar-right">
           <span>Scroll = zoom · Arrastar canvas = mover · Del = remover</span>

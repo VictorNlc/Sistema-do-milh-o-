@@ -177,9 +177,10 @@ export function exportLayoutToPDF(
     doc.setFontSize(8)
     doc.setTextColor(...secondaryColor)
     doc.text('Item', margin + 4, y + 5.5)
-    doc.text('Dimensões', margin + 80, y + 5.5)
-    doc.text('Área Unit.', margin + 115, y + 5.5)
-    doc.text('Área Total', margin + 145, y + 5.5)
+    doc.text('Dimensões', margin + 74, y + 5.5)
+    doc.text('Preço Unit.', margin + 106, y + 5.5)
+    doc.text('Qtd.', margin + 138, y + 5.5)
+    doc.text('Preço Total', margin + 152, y + 5.5)
 
     const furniture = items.filter(i => !i.isPillar && !i.isObstacle)
 
@@ -188,17 +189,19 @@ export function exportLayoutToPDF(
       icon: string
       width: number
       height: number
+      price: number
       qty: number
     }
     const itemGroups: Record<string, ItemGroup> = {}
     furniture.forEach(item => {
-      const key = `${item.name}-${item.width}x${item.height}`
+      const key = `${item.name}-${item.width}x${item.height}-${item.price || 0}`
       if (!itemGroups[key]) {
         itemGroups[key] = {
           name: item.name,
           icon: item.icon,
           width: item.width,
           height: item.height,
+          price: item.price || 0,
           qty: 0,
         }
       }
@@ -209,7 +212,7 @@ export function exportLayoutToPDF(
 
     y += 8
     doc.setFont('Helvetica', 'normal')
-    doc.setFontSize(9)
+    doc.setFontSize(8.5)
     doc.setTextColor(...secondaryColor)
 
     if (groupList.length === 0) {
@@ -219,16 +222,39 @@ export function exportLayoutToPDF(
       groupList.forEach(group => {
         doc.setDrawColor(...borderGray)
         doc.line(margin, y, margin + contentW, y)
+        
+        // Print icon + name (clip if too long)
         doc.setFont('Helvetica', 'bold')
-        doc.text(`${group.icon || ''} ${group.name}`, margin + 4, y + 6)
+        const displayName = `${group.icon || ''} ${group.name}`
+        const clippedName = displayName.length > 34 ? displayName.substring(0, 32) + '..' : displayName
+        doc.text(clippedName, margin + 4, y + 6)
+        
         doc.setFont('Helvetica', 'normal')
-        doc.text(`x${group.qty}`, margin + 65, y + 6)
-        doc.text(`${group.width.toFixed(2)}m x ${group.height.toFixed(2)}m`, margin + 80, y + 6)
-        doc.text(`${(group.width * group.height).toFixed(2)} m²`, margin + 115, y + 6)
-        doc.text(`${(group.width * group.height * group.qty).toFixed(2)} m²`, margin + 145, y + 6)
+        doc.text(`${group.width.toFixed(2)}m x ${group.height.toFixed(2)}m`, margin + 74, y + 6)
+        
+        const unitPriceStr = group.price > 0 
+          ? `R$ ${group.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+          : 'R$ 0,00'
+        doc.text(unitPriceStr, margin + 106, y + 6)
+        
+        doc.text(`x${group.qty}`, margin + 138, y + 6)
+        
+        const totalPriceStr = group.price > 0 
+          ? `R$ ${(group.price * group.qty).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+          : 'R$ 0,00'
+        doc.text(totalPriceStr, margin + 152, y + 6)
+        
         y += 9
       })
+      doc.setDrawColor(...borderGray)
       doc.line(margin, y, margin + contentW, y)
+      
+      const totalBudget = furniture.reduce((sum, item) => sum + (item.price || 0), 0)
+      y += 8
+      doc.setFont('Helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...primaryColor)
+      doc.text(`Orçamento Total Estimado dos Móveis: R$ ${totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin + 4, y)
     }
 
     y += 15

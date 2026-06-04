@@ -167,6 +167,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       isRound: itemTemplate.isRound,
       label: itemTemplate.name,
       createdAt: Date.now(),
+      price: itemTemplate.price,
+      finish: itemTemplate.finish,
+      code: itemTemplate.code,
+      height3d: itemTemplate.height3d,
     }
     set(s => ({
       items: [...s.items, newItem],

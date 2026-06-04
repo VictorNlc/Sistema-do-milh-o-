@@ -4,6 +4,7 @@
 // ============================================
 
 import { v4 as uuidv4 } from 'uuid'
+import { getItemById } from '../data/items'
 import type {
   StoreType,
   AILayoutResult,
@@ -26,7 +27,7 @@ interface StoreTypeConfig {
 const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   popular: {
     name: 'Farmácia Popular',
-    priority: ['gondola-dupla', 'balcao-atendimento', 'caixa-pdv', 'freezer-vertical', 'prateleira-parede'],
+    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'freezer-vertical', 'catalog-21-premium'],
     corridorMin: 1.2,
     focus: 'volume de vendas e acessibilidade',
     tips: [
@@ -38,7 +39,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   premium: {
     name: 'Farmácia Premium',
-    priority: ['expositor-cosmetico', 'balcao-atendimento', 'balcao-farmaceutico', 'gondola-simples', 'display-perfumaria'],
+    priority: ['catalog-92-premium', 'catalog-51-premium', 'catalog-55-premium', 'catalog-11-premium', 'catalog-31-premium'],
     corridorMin: 1.5,
     focus: 'experiência do cliente e perfumaria',
     tips: [
@@ -50,7 +51,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   manipulacao: {
     name: 'Farmácia de Manipulação',
-    priority: ['area-manipulacao', 'bancada-manipulacao', 'balcao-atendimento', 'geladeira-medicamentos', 'gondola-simples'],
+    priority: ['area-manipulacao', 'catalog-55-premium', 'catalog-51-premium', 'geladeira-medicamentos', 'catalog-21-premium'],
     corridorMin: 1.2,
     focus: 'área técnica e manipulação',
     tips: [
@@ -62,7 +63,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   completa: {
     name: 'Farmácia Completa',
-    priority: ['gondola-dupla', 'balcao-atendimento', 'caixa-pdv', 'expositor-cosmetico', 'freezer-vertical', 'consultorio'],
+    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-92-premium', 'freezer-vertical', 'consultorio'],
     corridorMin: 1.3,
     focus: 'mix completo de produtos e serviços',
     tips: [
@@ -166,20 +167,25 @@ function makeItem(
   stroke: string,
   extra: Partial<CanvasItem> = {},
 ): Partial<CanvasItem> {
+  const template = getItemById(itemId)
   return {
-    // Bug Fix: usa uuidv4() real em vez de Math.random().toString(36)
     id: `ai_${uuidv4()}`,
     itemId,
-    name,
-    icon,
+    name: template?.name ?? name,
+    icon: template?.icon ?? icon,
     x: Math.round(x * 10) / 10,
     y: Math.round(y * 10) / 10,
-    width: Math.round(w * 10) / 10,
-    height: Math.round(h * 10) / 10,
-    fillColor: fill,
-    strokeColor: stroke,
+    width: template?.width ?? Math.round(w * 10) / 10,
+    height: template?.height ?? Math.round(h * 10) / 10,
+    fillColor: template?.fillColor ?? fill,
+    strokeColor: template?.strokeColor ?? stroke,
+    color: template?.color,
     rotation: 0,
-    label: name,
+    label: template?.name ?? name,
+    price: template?.price,
+    finish: template?.finish,
+    code: template?.code,
+    height3d: template?.height3d,
     ...extra,
   }
 }
@@ -190,8 +196,8 @@ function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<Ca
   switch (zone.type) {
     case 'perfumaria': {
       if (zone.w > 2 && zone.h > 2) {
-        items.push(makeItem('ilha-perfumaria', 'Ilha Perfumaria', '🛍️', zone.x + 0.5, zone.y + 0.5, Math.min(zone.w - 1, 2.0), Math.min(zone.h - 1, 1.5), '#FCE7F3', '#9D174D'))
-        items.push(makeItem('expositor-cosmetico', 'Expositor Cosméticos', '💄', zone.x, zone.y + zone.h - 0.8, Math.min(zone.w, 2.0), 0.4, '#FBCFE8', '#9D174D'))
+        items.push(makeItem('catalog-31-premium', 'Ilha Perfumaria', '🛍️', zone.x + 0.5, zone.y + 0.5, Math.min(zone.w - 1, 2.0), Math.min(zone.h - 1, 1.5), '#FCE7F3', '#9D174D'))
+        items.push(makeItem('catalog-92-premium', 'Expositor Cosméticos', '💄', zone.x, zone.y + zone.h - 0.8, Math.min(zone.w, 2.0), 0.4, '#FBCFE8', '#9D174D'))
       }
       break
     }
@@ -200,7 +206,7 @@ function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<Ca
       const spacing = 1.4
       let gy = zone.y
       while (gy + 0.6 < zone.y + zone.h) {
-        items.push(makeItem('gondola-dupla', 'Gôndola', '📦', zone.x + 0.2, gy, gondolaW, 0.6, '#D4B896', '#5C4A2A'))
+        items.push(makeItem('catalog-31-premium', 'Gôndola', '📦', zone.x + 0.2, gy, gondolaW, 0.6, '#D4B896', '#5C4A2A'))
         gy += spacing
       }
       break
@@ -208,17 +214,17 @@ function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<Ca
     case 'parede_dir': {
       let wy = zone.y
       while (wy + 0.35 < zone.y + zone.h - 0.5) {
-        items.push(makeItem('prateleira-parede', 'Prateleira', '🗄️', zone.x, wy, Math.min(zone.w, 1.8), 0.3, '#E8D5B7', '#5C4A2A', { isWallItem: true }))
+        items.push(makeItem('catalog-21-premium', 'Prateleira', '🗄️', zone.x, wy, Math.min(zone.w, 1.8), 0.3, '#E8D5B7', '#5C4A2A', { isWallItem: true }))
         wy += 1.0
       }
       break
     }
     case 'atendimento': {
-      items.push(makeItem('balcao-atendimento', 'Balcão de Atendimento', '🏪', zone.x + 0.2, zone.y + 0.1, Math.min(zone.w - 0.4, 3.0), 0.6, '#DBEAFE', '#1D4ED8'))
+      items.push(makeItem('catalog-51-premium', 'Balcão de Atendimento', '🏪', zone.x + 0.2, zone.y + 0.1, Math.min(zone.w - 0.4, 3.0), 0.6, '#DBEAFE', '#1D4ED8'))
       break
     }
     case 'caixa': {
-      items.push(makeItem('caixa-pdv', 'Caixa / PDV', '💳', zone.x + 0.1, zone.y + 0.1, Math.min(zone.w - 0.2, 1.2), 0.7, '#D1FAE5', '#047857'))
+      items.push(makeItem('catalog-61-premium', 'Caixa / PDV', '💳', zone.x + 0.1, zone.y + 0.1, Math.min(zone.w - 0.2, 1.2), 0.7, '#D1FAE5', '#047857'))
       break
     }
     case 'manipulacao': {
@@ -228,9 +234,9 @@ function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<Ca
     }
     case 'higiene': {
       if (zone.w > 1.5) {
-        items.push(makeItem('gondola-simples', 'Gôndola Higiene', '📦', zone.x + 0.2, zone.y + 0.2, Math.min(zone.w - 0.4, 2.0), 0.4, '#D4B896', '#5C4A2A'))
+        items.push(makeItem('catalog-21-premium', 'Gôndola Higiene', '📦', zone.x + 0.2, zone.y + 0.2, Math.min(zone.w - 0.4, 2.0), 0.4, '#D4B896', '#5C4A2A'))
         if (zone.h > 1.5) {
-          items.push(makeItem('gondola-simples', 'Gôndola Higiene 2', '📦', zone.x + 0.2, zone.y + 1.0, Math.min(zone.w - 0.4, 2.0), 0.4, '#D4B896', '#5C4A2A'))
+          items.push(makeItem('catalog-21-premium', 'Gôndola Higiene 2', '📦', zone.x + 0.2, zone.y + 1.0, Math.min(zone.w - 0.4, 2.0), 0.4, '#D4B896', '#5C4A2A'))
         }
       }
       break
@@ -239,7 +245,7 @@ function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<Ca
       const vGondolaW = Math.min(zone.w - 0.4, 3.0)
       let vgy = zone.y
       while (vgy + 0.6 < zone.y + zone.h) {
-        items.push(makeItem('gondola-dupla', 'Gôndola', '📦', zone.x + 0.2, vgy, vGondolaW, 0.6, '#D4B896', '#5C4A2A'))
+        items.push(makeItem('catalog-31-premium', 'Gôndola', '📦', zone.x + 0.2, vgy, vGondolaW, 0.6, '#D4B896', '#5C4A2A'))
         vgy += 1.2
       }
       break

@@ -47,6 +47,10 @@ export interface PharmacyItemTemplate {
   isEmergency?: boolean
   isWallItem?: boolean
   isRound?: boolean
+  price?: number
+  finish?: string
+  code?: string
+  height3d?: number
 }
 
 // ─── Item no Canvas ───────────────────────────────────────────────────────────
@@ -79,6 +83,10 @@ export interface CanvasItem {
   isWallItem?: boolean
   isRound?: boolean
   createdAt: number
+  price?: number
+  finish?: string
+  code?: string
+  height3d?: number
 }
 
 // ─── Layout Salvo ─────────────────────────────────────────────────────────────

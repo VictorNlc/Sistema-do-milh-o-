@@ -1032,7 +1032,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const itemD = Number(item.height) || 1.0
       const itemX = Number(item.x) || 0
       const itemY = Number(item.y) || 0
-      const itemH = CATEGORY_HEIGHTS[item.category as keyof typeof CATEGORY_HEIGHTS] || 1.2
+      const itemH = Number(item.height3d) || CATEGORY_HEIGHTS[item.category as keyof typeof CATEGORY_HEIGHTS] || 1.2
       const itemGroup = new THREE.Group()
       itemGroup.name = item.category || 'MÓVEL'
 
