@@ -224,7 +224,7 @@ export default function Editor() {
               </div>
               <div className="form-group" style={{ gap: 5 }}>
                 <label className="label" htmlFor="in-type">Tipo de farmácia</label>
-                <select id="in-type" className="input input-sm" value={storeType} onChange={e => setStoreType(e.target.value)}>
+                <select id="in-type" className="input input-sm" value={storeType} onChange={e => setStoreType(e.target.value as StoreType)}>
                   {Object.entries(STORE_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>

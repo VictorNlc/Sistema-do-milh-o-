@@ -1067,7 +1067,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       
       newFurnitureMeshes.push({
         box: new THREE.Box3().setFromObject(itemGroup),
-        isObstacle: item.isObstacle || item.isPillar
+        isObstacle: !!(item.isObstacle || item.isPillar)
       })
     })
 

@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllLayoutsList, getAllAppointmentsList, updateAppointmentStatus } from '../services/storage'
 import { toast } from '../store/toastStore'
+import type { SavedLayout, Appointment, AppointmentStatus } from '../types'
 import './Admin.css'
 
 const ADMIN_PASSWORD = 'projefarma2025'
 
-const STATUS_OPTIONS = ['novo', 'em_analise', 'confirmado', 'proposta_enviada', 'concluido']
+const STATUS_OPTIONS: AppointmentStatus[] = ['novo', 'em_analise', 'confirmado', 'proposta_enviada', 'concluido']
 const STATUS_LABELS = {
   novo: { label: 'Novo', cls: 'badge-green' },
   em_analise: { label: 'Em análise', cls: 'badge-amber' },
@@ -30,8 +31,8 @@ export default function Admin() {
   const [authed, setAuthed] = useState(false)
   const [password, setPassword] = useState('')
   const [activeTab, setActiveTab] = useState('appointments')
-  const [layouts, setLayouts] = useState([])
-  const [appointments, setAppointments] = useState([])
+  const [layouts, setLayouts] = useState<SavedLayout[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [filterStatus, setFilterStatus] = useState('')
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function Admin() {
     }
   }
 
-  const handleStatusChange = (id, status) => {
+  const handleStatusChange = (id: string, status: AppointmentStatus) => {
     updateAppointmentStatus(id, status)
     setAppointments(getAllAppointmentsList())
     toast.success('Status atualizado!')
@@ -218,7 +219,7 @@ export default function Admin() {
                       <select
                         className="input input-sm"
                         value={appt.status}
-                        onChange={e => handleStatusChange(appt.id, e.target.value)}
+                        onChange={e => handleStatusChange(appt.id, e.target.value as AppointmentStatus)}
                       >
                         {STATUS_OPTIONS.map(s => (
                           <option key={s} value={s}>{STATUS_LABELS[s]?.label}</option>

@@ -162,7 +162,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   }, [])
 
   // Click/tap on empty area → deselect
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
     if (e.target === e.target.getStage() || e.target.name() === 'floor') {
       setSelectedItem(null)
     }

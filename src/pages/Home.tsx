@@ -208,7 +208,7 @@ export default function Home() {
             </button>
             <button
               className="btn btn-secondary btn-lg"
-              onClick={() => document.getElementById('como-funciona').scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Ver como funciona
             </button>
@@ -254,7 +254,7 @@ export default function Home() {
                 style={{ 
                   '--type-color': type.color,
                   transitionDelay: `${i * 80}ms`
-                }}
+                } as React.CSSProperties}
               >
                 <span className="store-type-icon">{type.icon}</span>
                 <span className="store-type-label">{type.label}</span>

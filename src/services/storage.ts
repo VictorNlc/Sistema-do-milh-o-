@@ -170,7 +170,7 @@ export interface LayoutStats {
   pillars: number
 }
 
-export function getLayoutStats(layout: SavedLayout | null): LayoutStats | null {
+export function getLayoutStats(layout: { storeWidth: number; storeHeight: number; items: CanvasItem[] } | null): LayoutStats | null {
   if (!layout?.items) return null
   const items = layout.items
   const storeWidth = layout.storeWidth || 10

@@ -1,10 +1,13 @@
 import { jsPDF } from 'jspdf'
 import { getLayoutStats } from './storage'
-import type { SavedLayout } from '../types'
+import type { SavedLayout, CanvasItem } from '../types'
 
 type RgbTuple = [number, number, number]
 
-export function exportLayoutToPDF(layout: SavedLayout, stageRef: React.RefObject<{ toDataURL: (opts: Record<string, unknown>) => string } | null>): boolean {
+export function exportLayoutToPDF(
+  layout: { storeWidth: number; storeHeight: number; storeType: string; items: CanvasItem[]; layoutName?: string },
+  stageRef: React.RefObject<{ toDataURL: (opts: Record<string, unknown>) => string } | null>
+): boolean {
   try {
     const { storeWidth, storeHeight, storeType, items, layoutName } = layout
     const stats = getLayoutStats(layout)
