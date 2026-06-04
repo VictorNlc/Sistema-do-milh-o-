@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useCanvasStore } from '../../store/canvasStore'
 import './ThreeDViewer.css'
 
@@ -137,6 +138,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   // Customization & Physics States
   const [floorStyle, setFloorStyle] = useState('grid') 
   const [wallColor, setWallColor] = useState('mint') 
+  const [cestaoLoaded, setCestaoLoaded] = useState(false)
+  const cestaoModelRef = useRef<THREE.Group | null>(null) 
   const [showSignage, setShowSignage] = useState(true)
   const [noclip, setNoclip] = useState(false) // Toggle physics/collisions
 
@@ -323,6 +326,28 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const furnitureGroup = new THREE.Group()
       scene.add(furnitureGroup)
       furnitureGroupRef.current = furnitureGroup
+
+      // Load Cestão 3D Model
+      console.log("📦 [3D Viewer] Carregando modelo do Cestão de /cestao.glb...")
+      const gltfLoader = new GLTFLoader()
+      gltfLoader.load(
+        '/cestao.glb',
+        (gltf) => {
+          console.log("✅ [3D Viewer] Modelo do Cestão carregado com sucesso!")
+          cestaoModelRef.current = gltf.scene
+          gltf.scene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.castShadow = true
+              child.receiveShadow = true
+            }
+          })
+          setCestaoLoaded(true)
+        },
+        undefined,
+        (error) => {
+          console.warn("⚠️ [3D Viewer] Falha ao carregar o modelo 3D do Cestão. Usando fallback.", error)
+        }
+      )
 
       if (typeof window !== 'undefined') {
         (window as any).debugScene = scene;
@@ -1043,6 +1068,64 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       itemGroup.position.set(thX, 0, thZ)
       itemGroup.rotation.y = -(Number(item.rotation) || 0) * Math.PI / 180
 
+      // Check if it's a cestão (wire basket)
+      const isCestao = item.itemId?.includes('catalog-71') || item.itemId?.includes('catalog-72')
+      if (isCestao) {
+        if (cestaoModelRef.current) {
+          try {
+            const modelClone = cestaoModelRef.current.clone()
+            
+            // Calculate size and scale
+            const bbox = new THREE.Box3().setFromObject(modelClone)
+            const size = new THREE.Vector3()
+            bbox.getSize(size)
+            
+            // Guard against divide-by-zero
+            const scaleX = size.x > 0 ? itemW / size.x : 1
+            const scaleY = size.y > 0 ? itemH / size.y : 1
+            const scaleZ = size.z > 0 ? itemD / size.z : 1
+            
+            modelClone.scale.set(scaleX, scaleY, scaleZ)
+            
+            // Adjust position so bottom of bounding box is at Y=0
+            const localBbox = new THREE.Box3().setFromObject(modelClone)
+            const minY = localBbox.min.y
+            modelClone.position.y = -minY
+            
+            modelClone.traverse(child => {
+              if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true
+                child.receiveShadow = true
+              }
+            })
+            
+            itemGroup.add(modelClone)
+          } catch (e) {
+            console.error("Erro ao clonar/renderizar modelo 3D do Cestão:", e)
+            const basketGeo = new THREE.CylinderGeometry(itemW / 2, itemW / 2, itemH, 12, 1, true)
+            const basketMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2, metalness: 0.8, side: THREE.DoubleSide, wireframe: true })
+            const basketMesh = new THREE.Mesh(basketGeo, basketMat)
+            basketMesh.position.y = itemH / 2
+            basketMesh.castShadow = true
+            itemGroup.add(basketMesh)
+          }
+        } else {
+          // Fallback wire basket
+          const basketGeo = new THREE.CylinderGeometry(itemW / 2, itemW / 2, itemH, 12, 1, true)
+          const basketMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2, metalness: 0.8, side: THREE.DoubleSide, wireframe: true })
+          const basketMesh = new THREE.Mesh(basketGeo, basketMat)
+          basketMesh.position.y = itemH / 2
+          basketMesh.castShadow = true
+          itemGroup.add(basketMesh)
+        }
+
+        furnitureGroup.add(itemGroup)
+        
+        const box3 = new THREE.Box3().setFromObject(itemGroup)
+        newFurnitureMeshes.push({ box: box3, isObstacle: false })
+        return
+      }
+
       const itemColor = new THREE.Color(0x4b5563)
       try {
         if (item.fillColor) {
@@ -1232,7 +1315,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     })
 
     furnitureMeshesRef.current = newFurnitureMeshes
-  }, [items, storeWidth, storeHeight])
+  }, [items, storeWidth, storeHeight, cestaoLoaded])
 
   // --- Effect 4: Atualização de Customizações (floorStyle, wallColor, showSignage) ---
   useEffect(() => {
