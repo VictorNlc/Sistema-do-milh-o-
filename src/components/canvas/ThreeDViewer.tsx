@@ -114,6 +114,11 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const ceilingMeshRef = useRef<THREE.Mesh | null>(null)
   const wallsRef = useRef<THREE.Mesh[]>([])
   const signageGroupRef = useRef<THREE.Group | null>(null)
+  const lightsGroupRef = useRef<THREE.Group | null>(null)
+
+  // Camera look rotation angles
+  const yawRef = useRef(0)
+  const pitchRef = useRef(0)
 
   // telemetry ref
   const debugTextRef = useRef<HTMLDivElement>(null)
@@ -202,13 +207,14 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
       
       const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x040a06)
-      scene.fog = new THREE.FogExp2(0x040a06, 0.05)
+      scene.background = new THREE.Color(0x060f0b)
+      scene.fog = new THREE.FogExp2(0x060f0b, 0.012) // much less dense, brighter depth
       sceneRef.current = scene
 
       // Camera
       const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 100)
       camera.position.set(0, 1.6, 5)
+      camera.rotation.order = 'YXZ' // Rotate Y then X for first-person controls without roll/tilt
       cameraRef.current = camera
 
       // Renderer
@@ -223,20 +229,31 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       canvasRef.current = renderer.domElement
 
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.75)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85)
       scene.add(ambientLight)
 
-      const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x333333, 0.45)
-      hemisphereLight.position.set(0, 20, 0)
+      const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.55)
+      hemisphereLight.position.set(0, 10, 0)
       scene.add(hemisphereLight)
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75)
-      directionalLight.position.set(0, 5, 0)
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+      directionalLight.position.set(5, 8, 5)
       directionalLight.castShadow = true
-      directionalLight.shadow.mapSize.width = 1024
-      directionalLight.shadow.mapSize.height = 1024
-      directionalLight.shadow.bias = -0.001
+      directionalLight.shadow.camera.left = -15
+      directionalLight.shadow.camera.right = 15
+      directionalLight.shadow.camera.top = 15
+      directionalLight.shadow.camera.bottom = -15
+      directionalLight.shadow.camera.near = 0.1
+      directionalLight.shadow.camera.far = 30
+      directionalLight.shadow.mapSize.width = 2048
+      directionalLight.shadow.mapSize.height = 2048
+      directionalLight.shadow.bias = -0.0005
       scene.add(directionalLight)
+
+      // Group for Ceiling Lights
+      const lightsGroup = new THREE.Group()
+      scene.add(lightsGroup)
+      lightsGroupRef.current = lightsGroup
 
       // Chão Mesh (placeholder geometry, redimensionado no Effect 2)
       const floorGeo = new THREE.PlaneGeometry(1, 1)
@@ -253,7 +270,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       floorMeshRef.current = floor
 
       // Grid helper (placeholder size, atualizado no Effect 2)
-      const gridHelper = new THREE.GridHelper(10, 10, 0x107c3f, 0x112b1c)
+      const gridHelper = new THREE.GridHelper(10, 10, 0x10b981, 0x112b1c)
       gridHelper.position.y = 0.01
       scene.add(gridHelper)
       floorGridRef.current = gridHelper
@@ -313,9 +330,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
 
       // --- CONTROLES DE OLHAR E NAVEGAÇÃO ---
-      let yaw = 0
       let isDragging = false
       let previousMouseX = 0
+      let previousMouseY = 0
 
       const canvas = renderer.domElement
 
@@ -323,20 +340,33 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         const cam = cameraRef.current
         if (!cam) return
         try {
-          const movementX = e.movementX ?? 0
           if (document.pointerLockElement === canvas) {
-            yaw -= movementX * 0.002
-            if (isNaN(yaw) || !isFinite(yaw)) yaw = 0
+            const movementX = e.movementX ?? 0
+            const movementY = e.movementY ?? 0
+            
+            yawRef.current -= movementX * 0.0025
+            pitchRef.current -= movementY * 0.0025
+            // Clamp pitch to avoid turning completely upside down (max 65 deg up/down)
+            pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
+            
             cam.rotation.set(0, 0, 0)
-            cam.rotation.y = yaw
+            cam.rotation.y = yawRef.current
+            cam.rotation.x = pitchRef.current
           } else if (isDragging) {
             const clientX = e.clientX ?? previousMouseX
+            const clientY = e.clientY ?? previousMouseY
             const deltaX = clientX - previousMouseX
+            const deltaY = clientY - previousMouseY
             previousMouseX = clientX
-            yaw -= deltaX * 0.003
-            if (isNaN(yaw) || !isFinite(yaw)) yaw = 0
+            previousMouseY = clientY
+            
+            yawRef.current -= deltaX * 0.003
+            pitchRef.current -= deltaY * 0.003
+            pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
+            
             cam.rotation.set(0, 0, 0)
-            cam.rotation.y = yaw
+            cam.rotation.y = yawRef.current
+            cam.rotation.x = pitchRef.current
           }
         } catch (err) {
           console.warn("Erro no mouse move:", err)
@@ -346,12 +376,26 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const handleMouseDown = (e: MouseEvent) => {
         const target = e.target as HTMLElement
         const tagName = target?.tagName
-        if (tagName === 'BUTTON' || tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' || target?.closest('.ios-toggle')) {
+        
+        // Ignore drag-look triggering if clicking UI customizer, D-pad, close button, etc.
+        if (
+          tagName === 'BUTTON' || 
+          tagName === 'INPUT' || 
+          tagName === 'SELECT' || 
+          tagName === 'TEXTAREA' || 
+          target?.closest('.three-customizer') || 
+          target?.closest('.three-dpad') || 
+          target?.closest('.hud-header') || 
+          target?.closest('.lock-card') ||
+          target?.closest('.ios-toggle')
+        ) {
           return
         }
+        
         if (e.button === 0) { // Click esquerdo
           isDragging = true
           previousMouseX = e.clientX ?? 0
+          previousMouseY = e.clientY ?? 0
           canvas.focus()
         }
       }
@@ -363,12 +407,25 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const handleTouchStart = (e: TouchEvent) => {
         const target = e.target as HTMLElement
         const tagName = target?.tagName
-        if (tagName === 'BUTTON' || tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' || target?.closest('.three-dpad') || target?.closest('.ios-toggle')) {
+        
+        if (
+          tagName === 'BUTTON' || 
+          tagName === 'INPUT' || 
+          tagName === 'SELECT' || 
+          tagName === 'TEXTAREA' || 
+          target?.closest('.three-customizer') || 
+          target?.closest('.three-dpad') || 
+          target?.closest('.hud-header') || 
+          target?.closest('.lock-card') ||
+          target?.closest('.ios-toggle')
+        ) {
           return
         }
+        
         if (e.touches && e.touches.length === 1) {
           isDragging = true
           previousMouseX = e.touches[0].clientX ?? 0
+          previousMouseY = e.touches[0].clientY ?? 0
           canvas.focus()
         }
       }
@@ -379,12 +436,19 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         try {
           if (isDragging && e.touches && e.touches.length === 1) {
             const clientX = e.touches[0].clientX ?? previousMouseX
+            const clientY = e.touches[0].clientY ?? previousMouseY
             const deltaX = clientX - previousMouseX
+            const deltaY = clientY - previousMouseY
             previousMouseX = clientX
-            yaw -= deltaX * 0.005
-            if (isNaN(yaw) || !isFinite(yaw)) yaw = 0
+            previousMouseY = clientY
+            
+            yawRef.current -= deltaX * 0.004
+            pitchRef.current -= deltaY * 0.004
+            pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
+            
             cam.rotation.set(0, 0, 0)
-            cam.rotation.y = yaw
+            cam.rotation.y = yawRef.current
+            cam.rotation.x = pitchRef.current
           }
         } catch (err) {
           console.warn("Erro no touch move:", err)
@@ -437,6 +501,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           e.preventDefault()
         }
       }
+      
       const handleKeyUp = (e: KeyboardEvent) => { 
         if (keysRef.current) {
           keysRef.current[e.code] = false 
@@ -444,11 +509,16 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         }
       }
 
+      const handleBlur = () => {
+        keysRef.current = {}
+      }
+
       canvas.addEventListener('keydown', handleKeyDown)
       canvas.addEventListener('keyup', handleKeyUp)
 
       window.addEventListener('keydown', handleKeyDown)
       window.addEventListener('keyup', handleKeyUp)
+      window.addEventListener('blur', handleBlur)
       document.addEventListener('keydown', handleKeyDown)
       document.addEventListener('keyup', handleKeyUp)
 
@@ -460,7 +530,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const rightVector = new THREE.Vector3()
       
       let animationFrameId = 0
-      const moveSpeed = 3.0 
+      const moveSpeed = 3.2 
 
       const animate = () => {
         const cam = cameraRef.current
@@ -519,15 +589,16 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             const wVal = Math.max(4, Number(currentWidth) || 10)
             const hVal = Math.max(4, Number(currentHeight) || 12)
 
-            const boundMargin = 0.4
+            const boundMargin = 0.3
             nextX = Math.max(-wVal / 2 + boundMargin, Math.min(nextX, wVal / 2 - boundMargin))
             nextZ = Math.max(-hVal / 2 + boundMargin, Math.min(nextZ, hVal / 2 - boundMargin))
 
+            // Reduced collision radius (0.12) to navigate narrow corridors easily without getting stuck
             let collidedX = false
             if (!noclipRef.current && furnitureMeshesRef.current) {
               const nextCamBoxX = new THREE.Box3(
-                new THREE.Vector3(nextX - 0.25, 0, cam.position.z - 0.25),
-                new THREE.Vector3(nextX + 0.25, 2.0, cam.position.z + 0.25)
+                new THREE.Vector3(nextX - 0.12, 0.1, cam.position.z - 0.12),
+                new THREE.Vector3(nextX + 0.12, 1.9, cam.position.z + 0.12)
               )
               for (const fItem of furnitureMeshesRef.current) {
                 if (fItem && fItem.isObstacle && fItem.box && nextCamBoxX.intersectsBox(fItem.box)) {
@@ -543,8 +614,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             let collidedZ = false
             if (!noclipRef.current && furnitureMeshesRef.current) {
               const nextCamBoxZ = new THREE.Box3(
-                new THREE.Vector3(cam.position.x - 0.25, 0, nextZ - 0.25),
-                new THREE.Vector3(cam.position.x + 0.25, 2.0, nextZ + 0.25)
+                new THREE.Vector3(cam.position.x - 0.12, 0.1, nextZ - 0.12),
+                new THREE.Vector3(cam.position.x + 0.12, 1.9, nextZ + 0.12)
               )
               for (const fItem of furnitureMeshesRef.current) {
                 if (fItem && fItem.isObstacle && fItem.box && nextCamBoxZ.intersectsBox(fItem.box)) {
@@ -616,6 +687,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         window.removeEventListener('resize', handleResize)
         window.removeEventListener('keydown', handleKeyDown)
         window.removeEventListener('keyup', handleKeyUp)
+        window.removeEventListener('blur', handleBlur)
         document.removeEventListener('keydown', handleKeyDown)
         document.removeEventListener('keyup', handleKeyUp)
         
@@ -653,6 +725,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         cameraRef.current = null
         sceneRef.current = null
         furnitureGroupRef.current = null
+        lightsGroupRef.current = null
         
         floorGeo.dispose()
         floorMat.dispose()
@@ -702,7 +775,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const newGrid = new THREE.GridHelper(
         Math.max(widthVal, heightVal), 
         Math.max(widthVal, heightVal), 
-        config.gridColor || 0x107c3f, 
+        config.gridColor || 0x10b981, 
         0x112b1c
       )
       newGrid.position.y = 0.01
@@ -783,17 +856,60 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       addSign('Caixa / Pagamentos', 0, 2.1, heightVal / 2 - 0.05, Math.PI)
     }
 
-    // 6. Recalcular spawn de câmera
+    // 6. Atualizar a Grade de Iluminação do Teto (Fluorescent LED Panels)
+    const lightsGroup = lightsGroupRef.current
+    if (lightsGroup) {
+      // Clear old lights and fixture meshes
+      while (lightsGroup.children.length > 0) {
+        const child = lightsGroup.children[0]
+        lightsGroup.remove(child)
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose()
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose())
+          } else {
+            child.material.dispose()
+          }
+        } else if (child instanceof THREE.Light) {
+          child.dispose()
+        }
+      }
+
+      // Compute grid size
+      const cols = Math.max(1, Math.floor(widthVal / 3.5))
+      const rows = Math.max(1, Math.floor(heightVal / 3.5))
+      
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const lx = -widthVal / 2 + (widthVal / (cols + 1)) * (c + 1)
+          const lz = -heightVal / 2 + (heightVal / (rows + 1)) * (r + 1)
+          
+          // White glowing panel fixture on the ceiling
+          const fixtureGeo = new THREE.BoxGeometry(0.8, 0.02, 0.8)
+          const fixtureMat = new THREE.MeshBasicMaterial({ color: 0xffffff })
+          const fixture = new THREE.Mesh(fixtureGeo, fixtureMat)
+          fixture.position.set(lx, 2.99, lz)
+          lightsGroup.add(fixture)
+
+          // Light source below the fixture
+          const light = new THREE.PointLight(0xffffff, 1.8, 12, 1.3)
+          light.position.set(lx, 2.7, lz)
+          lightsGroup.add(light)
+        }
+      }
+    }
+
+    // 7. Recalcular spawn de câmera
     let spawnX = 0
     let spawnZ = heightVal / 2 - 1.2
     let safeSpawnFound = false
     let attempts = 0
     while (!safeSpawnFound && attempts < 20) {
       let intersects = false
-      const camMinX = spawnX - 0.25
-      const camMaxX = spawnX + 0.25
-      const camMinZ = spawnZ - 0.25
-      const camMaxZ = spawnZ + 0.25
+      const camMinX = spawnX - 0.15
+      const camMaxX = spawnX + 0.15
+      const camMinZ = spawnZ - 0.15
+      const camMaxZ = spawnZ + 0.15
 
       for (const item of items) {
         if (item && (item.isObstacle || item.isPillar)) {
@@ -822,10 +938,15 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       spawnX = 0
       spawnZ = heightVal / 2 - 1.2
     }
-    const spawnMargin = 0.4
+    const spawnMargin = 0.3
     spawnX = Math.max(-widthVal / 2 + spawnMargin, Math.min(spawnX, widthVal / 2 - spawnMargin))
     spawnZ = Math.max(-heightVal / 2 + spawnMargin, Math.min(spawnZ, heightVal / 2 - spawnMargin))
+    
+    // Position camera and reset look angles
     camera.position.set(spawnX, 1.6, spawnZ)
+    yawRef.current = 0
+    pitchRef.current = 0
+    camera.rotation.set(0, 0, 0)
   }, [storeWidth, storeHeight])
 
   // --- Effect 3: Sincronização de Móveis ---
