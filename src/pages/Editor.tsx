@@ -1,0 +1,516 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
+import type Konva from 'konva'
+import type { ItemCategory, StoreType } from '../types'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import CanvasEditor from '../components/canvas/CanvasEditor'
+import ItemLibrary from '../components/canvas/ItemLibrary'
+import AiChat from '../components/ai/AiChat'
+import { useCanvasStore } from '../store/canvasStore'
+import { saveLayout } from '../services/storage'
+import { toast } from '../store/toastStore'
+import { exportLayoutToPDF } from '../services/pdfExport'
+import ThreeDViewer from '../components/canvas/ThreeDViewer'
+import './Editor.css'
+
+const STORE_TYPES = { popular: 'Popular', premium: 'Premium', manipulacao: 'Manipulação', completa: 'Completa' }
+
+// Inline SVG icons — no emoji, clean professional
+const I = {
+  Layers: () => <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+  Bot: () => <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M10 7a2 2 0 1 1 4 0"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="7" y1="16" x2="7" y2="16" strokeWidth="3"/><line x1="12" y1="16" x2="12" y2="16" strokeWidth="3"/><line x1="17" y1="16" x2="17" y2="16" strokeWidth="3"/></svg>,
+  Cog: () => <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Cal: () => <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Save: () => <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+  Export: () => <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  Undo: () => <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.14"/></svg>,
+  Redo: () => <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-3.14"/></svg>,
+  Rotate: () => <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-3.14"/></svg>,
+  Copy: () => <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+  Trash: () => <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>,
+}
+
+const CAT_ICONS = {
+  GONDOLAS: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /></svg>,
+  BALCOES: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>,
+  REFRIGERACAO: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H7.05a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2H17a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zM2 12h20" /></svg>,
+  PERFUMARIA: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="M12 6v12M6 12h12" /><circle cx="12" cy="12" r="3" /></svg>,
+  SERVICOS: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>,
+  OPERACIONAL: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  ESTRUTURA: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="m9 9 6 6M15 9l-6 6" /></svg>,
+  ACESSIBILIDADE: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1" /><path d="m9 20 3-6M13 10l-2 3M8 12h4l2-3" /><path d="M17 13a4 4 0 1 1-8 0" /></svg>,
+}
+
+const getCategoryIcon = (category: ItemCategory | string) => {
+  const Icon = CAT_ICONS[category as ItemCategory] ?? CAT_ICONS.GONDOLAS
+  return <Icon />
+}
+
+export default function Editor() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const stageRef = useRef<Konva.Stage | null>(null)
+
+  const [mobilePanel, setMobilePanel] = useState<'library' | 'ai' | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [desktopPanel, setDesktopPanel] = useState<'library' | 'ai'>('library')
+  const [showExportOptions, setShowExportOptions] = useState(false)
+  const [show3D, setShow3D] = useState(false)
+
+  const store = useCanvasStore()
+  const {
+    storeWidth, storeHeight, storeType, items, selectedItemId,
+    snapToGrid, showGrid, showMeasures, scale,
+    setStoreDimensions, setStoreType,
+    toggleSnapToGrid, toggleGrid, toggleMeasures, setScale,
+    deleteSelected, undo, redo, canUndo, canRedo,
+    getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas,
+  } = store
+
+  const selectedItem = getSelectedItem()
+  const stats = getStats()
+
+  useEffect(() => {
+    const t = searchParams.get('type') as StoreType | null
+    if (t && STORE_TYPES[t]) setStoreType(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleSave = useCallback(() => {
+    let thumbnail = null
+    try { thumbnail = stageRef.current?.toDataURL({ mimeType: 'image/jpeg', quality: 0.6, pixelRatio: 0.25 }) } catch {}
+    const saved = saveLayout({ storeWidth, storeHeight, storeType, items, thumbnail })
+    if (saved) toast.success('Layout salvo')
+    else toast.error('Erro ao salvar')
+    return saved
+  }, [storeWidth, storeHeight, storeType, items])
+
+  const handleSchedule = () => {
+    const saved = handleSave()
+    if (saved) navigate(`/agendar/${saved.id}`)
+  }
+
+  const handleExportPNG = () => {
+    try {
+      const uri = stageRef.current?.toDataURL({ pixelRatio: 2 })
+      if (!uri) return
+      const a = Object.assign(document.createElement('a'), { download: `projelayout-${Date.now()}.png`, href: uri })
+      a.click()
+      toast.success('Imagem PNG baixada!')
+      setShowExportOptions(false)
+    } catch { toast.error('Erro ao exportar imagem') }
+  }
+
+  const handleExportPDF = () => {
+    try {
+      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: store.layoutName || 'Meu Layout' }
+      const success = exportLayoutToPDF(layoutData, stageRef)
+      if (success) {
+        toast.success('Relatório PDF gerado!')
+      } else {
+        toast.error('Erro ao gerar PDF')
+      }
+      setShowExportOptions(false)
+    } catch { toast.error('Erro ao exportar PDF') }
+  }
+
+  const toggleMobile = (panel: 'library' | 'ai') => setMobilePanel(p => p === panel ? null : panel)
+
+  return (
+    <div className="editor-root">
+
+      {/* ─── TOPBAR ─── */}
+      <header className="tb">
+        <button className="tb-brand" onClick={() => navigate('/')} aria-label="Início">
+          <div className="tb-mark">PL</div>
+          <span className="tb-name desktop-only">ProjeLayout</span>
+        </button>
+
+        <div className="tb-sep desktop-only" />
+
+        {/* Store pill */}
+        <button id="btn-store" className="tb-store" onClick={() => setShowSettings(s => !s)}>
+          <span className="tb-store-val">{storeWidth}×{storeHeight}m</span>
+          <span className="tb-store-label desktop-only">{STORE_TYPES[storeType]}</span>
+          <span className="tb-store-arrow">▾</span>
+        </button>
+
+        <div className="tb-sep desktop-only" />
+
+        {/* Undo / Redo */}
+        <div className="tb-tools desktop-only">
+          <button className="tb-tool" onClick={undo} disabled={!canUndo()} title="Desfazer (Ctrl+Z)">
+            <I.Undo />
+          </button>
+          <button className="tb-tool" onClick={redo} disabled={!canRedo()} title="Refazer">
+            <I.Redo />
+          </button>
+        </div>
+
+        {/* Zoom */}
+        <div className="tb-zoom desktop-only">
+          <button className="tb-zoom-btn" onClick={() => setScale(Math.max(0.2, scale / 1.2))}>−</button>
+          <span className="tb-zoom-val">{Math.round(scale * 100)}%</span>
+          <button className="tb-zoom-btn" onClick={() => setScale(Math.min(4, scale * 1.2))}>+</button>
+        </div>
+
+        {/* Actions */}
+        <div className="tb-right">
+          <div className="tb-export-wrap desktop-only" style={{ position: 'relative' }}>
+            <button className="tb-btn" onClick={() => setShowExportOptions(s => !s)}>
+              <I.Export /> Exportar ▾
+            </button>
+            {showExportOptions && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => setShowExportOptions(false)} />
+                <div className="export-pop" style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  background: 'var(--surface-card)',
+                  border: '1px solid var(--border-xs)',
+                  borderRadius: 'var(--r-md)',
+                  boxShadow: 'var(--sh-lg)',
+                  padding: 'var(--s2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--s1)',
+                  zIndex: 99,
+                  minWidth: 160
+                }}>
+                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
+                    onClick={handleExportPNG}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg> Imagem PNG
+                  </button>
+                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
+                    onClick={handleExportPDF}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg> Relatório PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <button id="btn-3d" className="tb-btn" onClick={() => setShow3D(true)}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <span>Visualizar 3D</span>
+          </button>
+          <button id="btn-save" className="tb-btn" onClick={handleSave}>
+            <I.Save />
+            <span className="desktop-only">Salvar</span>
+          </button>
+          <button id="btn-schedule" className="tb-btn tb-btn-primary" onClick={handleSchedule}>
+            <I.Cal /> Agendar
+          </button>
+        </div>
+      </header>
+
+      {/* ─── SETTINGS POPOVER ─── */}
+      {showSettings && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowSettings(false)} />
+          <div className="settings-pop">
+            <div className="settings-pop-head">Configurações da loja</div>
+            <div className="settings-pop-body">
+              <div className="settings-2col">
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-w">Largura (m)</label>
+                  <input id="in-w" className="input input-sm" type="number" min={4} max={50} step={0.5}
+                    value={storeWidth} onChange={e => setStoreDimensions(+e.target.value || 10, storeHeight)} />
+                </div>
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-h">Comprimento (m)</label>
+                  <input id="in-h" className="input input-sm" type="number" min={4} max={50} step={0.5}
+                    value={storeHeight} onChange={e => setStoreDimensions(storeWidth, +e.target.value || 12)} />
+                </div>
+              </div>
+              <div className="form-group" style={{ gap: 5 }}>
+                <label className="label" htmlFor="in-type">Tipo de farmácia</label>
+                <select id="in-type" className="input input-sm" value={storeType} onChange={e => setStoreType(e.target.value)}>
+                  {Object.entries(STORE_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              {[
+                { id: 'tog-snap', label: 'Snap ao grid', checked: snapToGrid, fn: toggleSnapToGrid },
+                { id: 'tog-grid', label: 'Mostrar grid', checked: showGrid, fn: toggleGrid },
+                { id: 'tog-measures', label: 'Mostrar medidas', checked: showMeasures, fn: toggleMeasures },
+              ].map(t => (
+                <label key={t.id} className="toggle-row">
+                  <span className="toggle-row-label">{t.label}</span>
+                  <div className="ios-toggle">
+                    <input id={t.id} type="checkbox" checked={t.checked} onChange={t.fn} />
+                    <div className="ios-track" />
+                  </div>
+                </label>
+              ))}
+              <div style={{ height: 1, background: 'var(--border-xs)', margin: '15px 0' }} />
+              <div className="label" style={{ fontSize: 'var(--fs-xs)', marginBottom: 8 }}>Exportar Planta</div>
+              <div className="settings-2col" style={{ gap: 8 }}>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => { handleExportPNG(); setShowSettings(false); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg> PNG
+                </button>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => { handleExportPDF(); setShowSettings(false); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg> PDF
+                </button>
+              </div>
+            </div>
+            <div className="settings-pop-foot">
+              <button className="btn btn-danger btn-sm" style={{ flex: 1 }}
+                onClick={() => { if (confirm('Limpar todo o layout?')) { clearCanvas(); setShowSettings(false) } }}>
+                Limpar layout
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowSettings(false)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ─── EDITOR BODY ─── */}
+      <div className="editor-body">
+
+        {/* Desktop sidebar */}
+        <aside className="editor-sidebar desktop-only">
+          <div className="sb-tabs">
+            <button id="tab-lib" className={`sb-tab ${desktopPanel === 'library' ? 'active' : ''}`}
+              onClick={() => setDesktopPanel('library')}>Itens</button>
+            <button id="tab-ai" className={`sb-tab ${desktopPanel === 'ai' ? 'active' : ''}`}
+              onClick={() => setDesktopPanel('ai')}>IA</button>
+          </div>
+          <div className="sb-body">
+            {desktopPanel === 'library' && <ItemLibrary />}
+            {desktopPanel === 'ai' && <AiChat />}
+          </div>
+        </aside>
+
+        {/* Canvas */}
+        <main className="editor-canvas">
+          <CanvasEditor stageRef={stageRef} />
+        </main>
+
+        {/* Desktop props panel */}
+        {selectedItem && (
+          <aside className="props-panel desktop-only">
+            <div className="props-head">
+              <div className="props-head-swatch" style={{ background: selectedItem.fillColor || 'var(--surface-muted)' }}>
+                {getCategoryIcon(selectedItem.category)}
+              </div>
+              <div className="props-head-name">{selectedItem.name}</div>
+              <button className="props-head-close" onClick={() => useCanvasStore.getState().setSelectedItem(null)}>✕</button>
+            </div>
+            <div className="props-body">
+              <div className="form-group" style={{ gap: 4, marginBottom: 12 }}>
+                <label className="label" htmlFor="desk-label">Rótulo / Nome</label>
+                <input
+                  id="desk-label"
+                  className="input input-sm"
+                  type="text"
+                  value={selectedItem.label || ''}
+                  onChange={e => useCanvasStore.getState().updateItemLabel(selectedItem.id, e.target.value)}
+                />
+              </div>
+
+              <div className="stepper-item" style={{ marginBottom: 10 }}>
+                <span className="stepper-label" style={{ fontSize: 'var(--fs-xs)', fontWeight: '600', color: 'var(--text-3)' }}>Largura</span>
+                <div className="stepper-controls" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-sm)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--white)', marginTop: 4 }}>
+                  <button className="btn btn-sq btn-xs btn-ghost" style={{ flex: 1, borderRight: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, Math.max(0.2, selectedItem.width - 0.1), selectedItem.height)}>−</button>
+                  <span className="stepper-value" style={{ flex: 1.5, textAlign: 'center', fontWeight: '700', fontSize: 'var(--fs-xs)' }}>{selectedItem.width.toFixed(1)}m</span>
+                  <button className="btn btn-sq btn-xs btn-ghost" style={{ flex: 1, borderLeft: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, selectedItem.width + 0.1, selectedItem.height)}>+</button>
+                </div>
+              </div>
+
+              <div className="stepper-item" style={{ marginBottom: 12 }}>
+                <span className="stepper-label" style={{ fontSize: 'var(--fs-xs)', fontWeight: '600', color: 'var(--text-3)' }}>Profundidade</span>
+                <div className="stepper-controls" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-sm)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--white)', marginTop: 4 }}>
+                  <button className="btn btn-sq btn-xs btn-ghost" style={{ flex: 1, borderRight: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, selectedItem.width, Math.max(0.2, selectedItem.height - 0.1))}>−</button>
+                  <span className="stepper-value" style={{ flex: 1.5, textAlign: 'center', fontWeight: '700', fontSize: 'var(--fs-xs)' }}>{selectedItem.height.toFixed(1)}m</span>
+                  <button className="btn btn-sq btn-xs btn-ghost" style={{ flex: 1, borderLeft: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, selectedItem.width, selectedItem.height + 0.1)}>+</button>
+                </div>
+              </div>
+
+              <div className="nudge-pad-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 12 }}>
+                <span className="label" style={{ alignSelf: 'flex-start', fontSize: 'var(--fs-xs)' }}>Ajuste de Posição</span>
+                <div className="nudge-pad">
+                  <div />
+                  <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x, selectedItem.y - 0.1)}>▲</button>
+                  <div />
+                  <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x - 0.1, selectedItem.y)}>◀</button>
+                  <div className="nudge-center">0.1m</div>
+                  <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x + 0.1, selectedItem.y)}>▶</button>
+                  <div />
+                  <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x, selectedItem.y + 0.1)}>▼</button>
+                  <div />
+                </div>
+              </div>
+
+              <div className="props-sep" />
+              
+              <div className="label" style={{ fontSize: 'var(--fs-xs)' }}>Camadas</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+                <button className="btn btn-secondary btn-xs" onClick={() => useCanvasStore.getState().bringToFront(selectedItem.id)}>Frente</button>
+                <button className="btn btn-secondary btn-xs" onClick={() => useCanvasStore.getState().sendToBack(selectedItem.id)}>Trás</button>
+              </div>
+
+              <div className="props-sep" />
+
+              <div className="props-actions">
+                <button className="btn btn-secondary btn-sm btn-full" onClick={() => rotateItem(selectedItem.id, 90)}>Girar 90°</button>
+                <button className="btn btn-secondary btn-sm btn-full" onClick={() => duplicateItem(selectedItem.id)}>Duplicar</button>
+                <button className="btn btn-danger btn-sm btn-full" onClick={deleteSelected}>Remover</button>
+              </div>
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {/* ─── STATUSBAR ─── */}
+      <div className="statusbar desktop-only">
+        <div className="statusbar-item">
+          <div className="statusbar-dot" />
+          <span>{storeWidth}×{storeHeight}m · {(storeWidth * storeHeight).toFixed(0)}m²</span>
+        </div>
+        <div className="statusbar-item">
+          <span>{stats.itemCount} itens · {stats.pillars} pilares · {stats.occupancyRate}% ocupado</span>
+        </div>
+        <div className="statusbar-item statusbar-right">
+          <span>Scroll = zoom · Arrastar canvas = mover · Del = remover</span>
+        </div>
+      </div>
+
+      {/* ─── MOBILE: Selected Item Bottom Drawer ─── */}
+      {selectedItem && (
+        <>
+          <div className="drawer-backdrop open mobile-only" onClick={() => useCanvasStore.getState().setSelectedItem(null)} />
+          <div className="drawer properties-drawer open mobile-only">
+            <div className="drawer-handle" />
+            <div className="drawer-titlebar">
+              <div className="drawer-title-swatch" style={{ background: selectedItem.fillColor || 'var(--surface-muted)', width: 24, height: 24, borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                {getCategoryIcon(selectedItem.category)}
+              </div>
+              <span className="drawer-title">{selectedItem.name}</span>
+              <button className="drawer-close" onClick={() => useCanvasStore.getState().setSelectedItem(null)}>✕</button>
+            </div>
+            
+            <div className="drawer-content" style={{ maxHeight: '60vh', overflowY: 'auto', padding: '16px' }}>
+              <div className="form-group" style={{ gap: 4, marginBottom: 12 }}>
+                <label className="label" htmlFor="mob-label">Rótulo / Nome</label>
+                <input
+                  id="mob-label"
+                  className="input"
+                  type="text"
+                  value={selectedItem.label || ''}
+                  onChange={e => useCanvasStore.getState().updateItemLabel(selectedItem.id, e.target.value)}
+                />
+              </div>
+
+              <div className="steppers-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div className="stepper-item">
+                  <label className="label">Largura</label>
+                  <div className="stepper-controls" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-sm)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--white)' }}>
+                    <button className="btn btn-sq btn-ghost" style={{ flex: 1, borderRight: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, Math.max(0.2, selectedItem.width - 0.1), selectedItem.height)}>−</button>
+                    <span className="stepper-value" style={{ flex: 1.5, textAlign: 'center', fontWeight: '600', fontSize: 'var(--fs-sm)' }}>{selectedItem.width.toFixed(1)}m</span>
+                    <button className="btn btn-sq btn-ghost" style={{ flex: 1, borderLeft: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, selectedItem.width + 0.1, selectedItem.height)}>+</button>
+                  </div>
+                </div>
+
+                <div className="stepper-item">
+                  <label className="label">Profundidade</label>
+                  <div className="stepper-controls" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-sm)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--white)' }}>
+                    <button className="btn btn-sq btn-ghost" style={{ flex: 1, borderRight: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, selectedItem.width, Math.max(0.2, selectedItem.height - 0.1))}>−</button>
+                    <span className="stepper-value" style={{ flex: 1.5, textAlign: 'center', fontWeight: '600', fontSize: 'var(--fs-sm)' }}>{selectedItem.height.toFixed(1)}m</span>
+                    <button className="btn btn-sq btn-ghost" style={{ flex: 1, borderLeft: '1px solid var(--border-sm)' }} onClick={() => useCanvasStore.getState().updateItemSize(selectedItem.id, selectedItem.width, selectedItem.height + 0.1)}>+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+                {/* Nudge pad */}
+                <div className="nudge-pad-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span className="label" style={{ alignSelf: 'flex-start', marginBottom: 4 }}>Ajuste de Posição</span>
+                  <div className="nudge-pad">
+                    <div />
+                    <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x, selectedItem.y - 0.1)}>▲</button>
+                    <div />
+                    <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x - 0.1, selectedItem.y)}>◀</button>
+                    <div className="nudge-center">0.1m</div>
+                    <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x + 0.1, selectedItem.y)}>▶</button>
+                    <div />
+                    <button className="nudge-btn" onClick={() => useCanvasStore.getState().updateItemPosition(selectedItem.id, selectedItem.x, selectedItem.y + 0.1)}>▼</button>
+                    <div />
+                  </div>
+                </div>
+
+                {/* Layer order & quick actions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label className="label">Camadas</label>
+                  <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => useCanvasStore.getState().bringToFront(selectedItem.id)}>
+                    Trazer p/ Frente
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => useCanvasStore.getState().sendToBack(selectedItem.id)}>
+                    Enviar p/ Trás
+                  </button>
+                </div>
+              </div>
+
+              <div className="props-sep" style={{ height: 1, background: 'var(--border-xs)', margin: '16px 0' }} />
+
+              <div className="drawer-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <button className="btn btn-secondary" onClick={() => rotateItem(selectedItem.id, 90)}>
+                  <I.Rotate /> Girar 90°
+                </button>
+                <button className="btn btn-secondary" onClick={() => duplicateItem(selectedItem.id)}>
+                  <I.Copy /> Duplicar
+                </button>
+                <button className="btn btn-danger" onClick={deleteSelected}>
+                  <I.Trash /> Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ─── MOBILE BOTTOM NAV ─── */}
+      <nav className="mobile-nav">
+        <button id="mnav-items" className={`mnav-btn ${mobilePanel === 'library' ? 'active' : ''}`}
+          onClick={() => toggleMobile('library')}>
+          <div className="mnav-icon"><I.Layers /></div>
+          <span className="mnav-label">Itens</span>
+        </button>
+        <button id="mnav-ai" className={`mnav-btn ${mobilePanel === 'ai' ? 'active' : ''}`}
+          onClick={() => toggleMobile('ai')}>
+          <div className="mnav-icon"><I.Bot /></div>
+          <span className="mnav-label">IA</span>
+        </button>
+        <button id="mnav-config" className={`mnav-btn ${showSettings ? 'active' : ''}`}
+          onClick={() => { setMobilePanel(null); setShowSettings(s => !s) }}>
+          <div className="mnav-icon"><I.Cog /></div>
+          <span className="mnav-label">Config</span>
+        </button>
+        <button id="mnav-schedule" className="mnav-btn mnav-cta" onClick={handleSchedule}>
+          <div className="mnav-icon"><I.Cal /></div>
+          <span className="mnav-label">Agendar</span>
+        </button>
+      </nav>
+
+      {/* ─── MOBILE DRAWERS ─── */}
+      {mobilePanel && (
+        <>
+          <div className="drawer-backdrop open" onClick={() => setMobilePanel(null)} />
+          <div className="drawer">
+            <div className="drawer-handle" />
+            <div className="drawer-titlebar">
+              <span className="drawer-title">{mobilePanel === 'library' ? 'Biblioteca de Itens' : 'Assistente IA'}</span>
+              <button className="drawer-close" onClick={() => setMobilePanel(null)}>✕</button>
+            </div>
+            <div className="drawer-content">
+              {mobilePanel === 'library' && <ItemLibrary onItemAdded={() => setMobilePanel(null)} />}
+              {mobilePanel === 'ai' && <AiChat onClose={() => setMobilePanel(null)} />}
+            </div>
+          </div>
+        </>
+      )}
+      
+      {show3D && <ThreeDViewer onClose={() => setShow3D(false)} />}
+    </div>
+  )
+}

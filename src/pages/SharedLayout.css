@@ -1,0 +1,153 @@
+/* ============================================
+   Shared Layout Page Styles — ProjeLayout v3
+   ============================================ */
+
+.shared-layout-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, rgba(16, 124, 63, 0.15) 0%, var(--surface-base) 70%);
+}
+
+.shared-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4) var(--s6);
+  background: rgba(3, 7, 5, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.shared-logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  border-radius: var(--r-md);
+  color: white; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--sh-green-sm);
+}
+
+.shared-logo-title { font-size: var(--fs-md); font-weight: 800; color: var(--text-1); letter-spacing: -0.01em; }
+.shared-logo-sub { font-size: var(--fs-2xs); color: var(--text-3); font-weight: 600; text-transform: uppercase; }
+
+.shared-content {
+  max-width: 600px;
+  margin: var(--s8) auto;
+  padding: 0 var(--s4) var(--s10);
+}
+
+.shared-info-card {
+  overflow: visible;
+  background: rgba(7, 15, 11, 0.6) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: var(--r-xl);
+}
+
+.shared-info-header {
+  padding: var(--s6);
+  border-bottom: 1px solid var(--border-xs);
+}
+
+.shared-title { font-size: var(--fs-xl); font-weight: 800; color: var(--text-1); margin-bottom: var(--s3); letter-spacing: -0.01em; }
+
+.shared-badges { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.shared-thumb { width: 100%; max-height: 300px; object-fit: contain; background: var(--surface-canvas); border-bottom: 1px solid var(--border-xs); }
+
+.shared-stats {
+  display: flex;
+  padding: var(--s4) var(--s6);
+  border-bottom: 1px solid var(--border-xs);
+  gap: var(--s6);
+}
+
+.shared-stat { flex: 1; text-align: center; }
+.shared-stat-val { display: block; font-size: var(--fs-2xl); font-weight: 800; color: var(--primary); }
+.shared-stat-label { display: block; font-size: var(--fs-2xs); color: var(--text-3); font-weight: 600; text-transform: uppercase; }
+
+.shared-items-list { padding: var(--s6); border-bottom: 1px solid var(--border-xs); }
+.shared-items-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-2);
+  margin-bottom: var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.shared-items-title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+.shared-items-grid { display: flex; flex-direction: column; gap: var(--s2); }
+
+.shared-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  padding: var(--s3) var(--s4);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-xs);
+  border-radius: var(--r-md);
+  font-weight: 500;
+}
+
+.shared-item-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shared-item-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.shared-item-size { margin-left: auto; font-size: var(--fs-xs); color: var(--text-3); font-weight: 600; }
+
+.shared-cta {
+  padding: var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  text-align: center;
+}
+.shared-cta p { font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; margin-bottom: var(--s2); }
+
+/* Not found */
+.shared-not-found {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--s6);
+  background: radial-gradient(circle at 50% 50%, rgba(16, 124, 63, 0.1) 0%, var(--surface-base) 100%);
+}
+
+.not-found-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--s4);
+  color: var(--text-4);
+  animation: floatUp 3s ease-in-out infinite;
+}
+
+.not-found-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.shared-not-found h1 { font-size: var(--fs-xl); font-weight: 800; margin-bottom: var(--s3); color: var(--text-1); }
+.shared-not-found p { color: var(--text-3); margin-bottom: var(--s6); font-weight: 500; }
