@@ -899,40 +899,68 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
     }
 
-    // 7. Recalcular spawn de câmera
+    // 7. Recalcular spawn de câmera de forma segura usando busca em grade
     let spawnX = 0
     let spawnZ = heightVal / 2 - 1.2
     let safeSpawnFound = false
-    let attempts = 0
-    while (!safeSpawnFound && attempts < 20) {
-      let intersects = false
-      const camMinX = spawnX - 0.15
-      const camMaxX = spawnX + 0.15
-      const camMinZ = spawnZ - 0.15
-      const camMaxZ = spawnZ + 0.15
-
-      for (const item of items) {
-        if (item && (item.isObstacle || item.isPillar)) {
-          const itemW = Number(item.width) || 1.0
-          const itemD = Number(item.height) || 1.0
-          const minX = (Number(item.x) || 0) - widthVal / 2
-          const maxX = minX + itemW
-          const minZ = (Number(item.y) || 0) - heightVal / 2
-          const maxZ = minZ + itemD
-
-          if (camMinX < maxX && camMaxX > minX && camMinZ < maxZ && camMaxZ > minZ) {
-            intersects = true
-            break
+    
+    const stepSize = 0.4
+    const xSteps = Math.floor(widthVal / stepSize)
+    const zSteps = Math.floor(heightVal / stepSize)
+    
+    let bestX = 0
+    let bestZ = heightVal / 2 - 1.2
+    
+    // Procura por um ponto seguro sem colisões começando pela entrada (fundo da loja)
+    for (let zi = zSteps - 2; zi >= 2; zi--) {
+      const zPos = -heightVal / 2 + zi * stepSize
+      for (let xi = 1; xi < xSteps; xi++) {
+        // Busca do centro para as bordas (X)
+        const offset = Math.floor(xi / 2) * (xi % 2 === 0 ? 1 : -1)
+        const xPos = offset * stepSize
+        
+        if (Math.abs(xPos) > widthVal / 2 - 0.4) continue
+        if (zPos < -heightVal / 2 + 0.4 || zPos > heightVal / 2 - 0.4) continue
+        
+        let intersects = false
+        const camBox = new THREE.Box3(
+          new THREE.Vector3(xPos - 0.15, 0.1, zPos - 0.15),
+          new THREE.Vector3(xPos + 0.15, 1.9, zPos + 0.15)
+        )
+        
+        for (const item of items) {
+          if (item && (item.isObstacle || item.isPillar)) {
+            const itemW = Number(item.width) || 1.0
+            const itemD = Number(item.height) || 1.0
+            const minX = (Number(item.x) || 0) - widthVal / 2
+            const maxX = minX + itemW
+            const minZ = (Number(item.y) || 0) - heightVal / 2
+            const maxZ = minZ + itemD
+            
+            const obstacleBox = new THREE.Box3(
+              new THREE.Vector3(minX, 0, minZ),
+              new THREE.Vector3(maxX, 3.0, maxZ)
+            )
+            
+            if (camBox.intersectsBox(obstacleBox)) {
+              intersects = true
+              break
+            }
           }
         }
+        
+        if (!intersects) {
+          bestX = xPos
+          bestZ = zPos
+          safeSpawnFound = true
+          break
+        }
       }
-      if (intersects) {
-        spawnZ -= 0.5
-        attempts++
-      } else {
-        safeSpawnFound = true
-      }
+      if (safeSpawnFound) break
     }
+    
+    spawnX = bestX
+    spawnZ = bestZ
 
     if (isNaN(spawnX) || isNaN(spawnZ)) {
       spawnX = 0
@@ -947,7 +975,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     yawRef.current = 0
     pitchRef.current = 0
     camera.rotation.set(0, 0, 0)
-  }, [storeWidth, storeHeight])
+  }, [storeWidth, storeHeight, items])
 
   // --- Effect 3: Sincronização de Móveis ---
   useEffect(() => {
@@ -1046,8 +1074,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         for (let i = 1; i <= shelfLevels; i++) {
           const sy = (itemH / (shelfLevels + 1)) * i
           
-          // Front shelf
-          const shelfFGeo = new THREE.BoxGeometry(itemW - 0.05, 0.03, 0.25)
+          // Front shelf - clamped to prevent negative sizes (WebGL crash)
+          const shelfWClamped = Math.max(0.01, itemW - 0.05)
+          const shelfFGeo = new THREE.BoxGeometry(shelfWClamped, 0.03, 0.25)
           const shelfFMesh = new THREE.Mesh(shelfFGeo, shelfMat)
           shelfFMesh.position.set(0, sy, 0.15)
           shelfFMesh.castShadow = true
@@ -1055,8 +1084,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           
           addProductMeshes(itemGroup, itemW, sy, 0.15)
 
-          // Back shelf
-          const shelfBGeo = new THREE.BoxGeometry(itemW - 0.05, 0.03, 0.25)
+          // Back shelf - clamped to prevent negative sizes (WebGL crash)
+          const shelfBGeo = new THREE.BoxGeometry(shelfWClamped, 0.03, 0.25)
           const shelfBMesh = new THREE.Mesh(shelfBGeo, shelfMat)
           shelfBMesh.position.set(0, sy, -0.15)
           shelfBMesh.castShadow = true
@@ -1066,7 +1095,12 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         }
       } 
       else if (item.category === 'BALCOES') {
-        const baseGeo = new THREE.BoxGeometry(itemW - 0.02, itemH - 0.05, itemD - 0.02)
+        // Clamped to prevent negative sizes (WebGL crash)
+        const baseW = Math.max(0.01, itemW - 0.02)
+        const baseH = Math.max(0.01, itemH - 0.05)
+        const baseD = Math.max(0.01, itemD - 0.02)
+        
+        const baseGeo = new THREE.BoxGeometry(baseW, baseH, baseD)
         const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
         const baseMesh = new THREE.Mesh(baseGeo, baseMat)
         baseMesh.position.y = (itemH - 0.05) / 2
@@ -1099,9 +1133,11 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         itemGroup.add(cabMesh)
 
         const fridgeShelfLevels = 3
+        const wireW = Math.max(0.01, itemW - 0.06)
+        const wireD = Math.max(0.01, itemD - 0.06)
         for (let i = 1; i <= fridgeShelfLevels; i++) {
           const sy = (itemH / (fridgeShelfLevels + 1)) * i
-          const wireGeo = new THREE.BoxGeometry(itemW - 0.06, 0.01, itemD - 0.06)
+          const wireGeo = new THREE.BoxGeometry(wireW, 0.01, wireD)
           const wireMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2 })
           const wireMesh = new THREE.Mesh(wireGeo, wireMat)
           wireMesh.position.set(0, sy, 0)
@@ -1123,7 +1159,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           }
         }
 
-        const glassGeo = new THREE.BoxGeometry(itemW - 0.05, itemH - 0.1, 0.02)
+        const glassW = Math.max(0.01, itemW - 0.05)
+        const glassH = Math.max(0.01, itemH - 0.1)
+        const glassGeo = new THREE.BoxGeometry(glassW, glassH, 0.02)
         const glassMat = new THREE.MeshStandardMaterial({ 
           color: 0x67e8f9, 
           transparent: true, 
