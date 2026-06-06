@@ -185,50 +185,58 @@ export function generateAILayout(
   const middleEnd = storeWidth - 0.26 - latCaixaW
   const middleWidth = middleEnd - middleStart
 
-  // Precisamos colocar pelo menos 1 Caixa/PDV (catalog-61, largura 0.6m) e o restante de Balcões (catalog-51/catalog-55, largura 1.0m)
-  // Vamos calcular quantos Balcões cabem:
-  // Caixa = 0.6m. Restante = middleWidth - 0.6.
-  const caixaW = 0.6
-  const remainingForBalcoes = middleWidth - caixaW
-  let numBalcoes = Math.max(1, Math.floor(remainingForBalcoes / 1.0))
+  // Estações de atendimento alternadas: [BA (1.0m) + Caixa (0.6m)] = 1.6m por estação.
+  // Colocamos caixas intercalados com os balcões conforme os exemplos reais de layout.
+  const stationW = 1.6
+  const numStations = Math.max(1, Math.floor(middleWidth / stationW))
   
-  // Largura total ocupada pelo grupo central (Balcões + 1 Caixa)
-  const groupWidth = numBalcoes * 1.0 + caixaW
+  const stationsList: { type: 'BA' | 'CX', w: number }[] = []
+  for (let i = 0; i < numStations; i++) {
+    stationsList.push({ type: 'BA', w: 1.0 })
+    stationsList.push({ type: 'CX', w: 0.6 })
+  }
+  
+  // Se sobrar espaço para mais um balcão (1.0m), nós o adicionamos no fim
+  if (middleWidth - numStations * stationW >= 1.0) {
+    stationsList.push({ type: 'BA', w: 1.0 })
+  }
+  
+  const groupWidth = stationsList.reduce((acc, curr) => acc + curr.w, 0)
   // Centraliza o grupo
   const groupXStart = middleStart + (middleWidth - groupWidth) / 2
+  let currentGroupX = groupXStart
 
-  // Posiciona o Caixa do lado esquerdo do grupo
-  generatedItems.push(makeItem(
-    `catalog-61${lineSuffix}`,
-    'Caixa',
-    '💳',
-    groupXStart,
-    balcaoY,
-    caixaW,
-    0.4,
-    '#D1FAE5',
-    '#047857',
-    { rotation: 0 }
-  ))
-
-  // Posiciona os Balcões no restante do grupo
-  for (let i = 0; i < numBalcoes; i++) {
-    const balcaoX = groupXStart + caixaW + i * 1.0
-    // Usa catalog-51 (BA 100) para Popular, catalog-55 (BA 100 MDF) para Premium
-    const balcaoId = storeType === 'premium' ? `catalog-55${lineSuffix}` : `catalog-51${lineSuffix}`
-    generatedItems.push(makeItem(
-      balcaoId,
-      'Balcão de Atendimento',
-      '🏪',
-      balcaoX,
-      balcaoY,
-      1.0,
-      0.4,
-      '#DBEAFE',
-      '#1D4ED8',
-      { rotation: 0 }
-    ))
-  }
+  stationsList.forEach(station => {
+    if (station.type === 'CX') {
+      generatedItems.push(makeItem(
+        `catalog-61${lineSuffix}`,
+        'Caixa',
+        '💳',
+        currentGroupX,
+        balcaoY,
+        0.6,
+        0.4,
+        '#D1FAE5',
+        '#047857',
+        { rotation: 0 }
+      ))
+    } else {
+      const balcaoId = storeType === 'premium' ? `catalog-55${lineSuffix}` : `catalog-51${lineSuffix}`
+      generatedItems.push(makeItem(
+        balcaoId,
+        'Balcão de Atendimento',
+        '🏪',
+        currentGroupX,
+        balcaoY,
+        1.0,
+        0.4,
+        '#DBEAFE',
+        '#1D4ED8',
+        { rotation: 0 }
+      ))
+    }
+    currentGroupX += station.w
+  })
 
   // ==========================================
   // 3. PAREDES LATERAIS (FLUXO DE PRODUTOS E CATEGORIAS)
