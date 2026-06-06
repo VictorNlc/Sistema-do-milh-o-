@@ -98,6 +98,35 @@ export function generateAILayout(
 
   const generatedItems: Partial<CanvasItem>[] = []
 
+  // Helper para verificar colisões com pilares/obstáculos
+  const collidesWithObstacle = (x: number, y: number, w: number, h: number, rot: number) => {
+    const realW = rot === 90 || rot === 270 ? h : w
+    const realH = rot === 90 || rot === 270 ? w : h
+    let x1 = x
+    let y1 = y
+    if (rot === 90) {
+      x1 = x - realW
+    } else if (rot === 270) {
+      x1 = x
+      y1 = y - realH
+    }
+
+    return existingObstacles.some(obs => {
+      const ox = obs.x ?? 0
+      const oy = obs.y ?? 0
+      const ow = obs.width ?? 0.3
+      const oh = obs.height ?? 0.3
+      
+      // Margem de segurança de 0.05m
+      return (
+        x1 < ox + ow + 0.05 &&
+        x1 + realW > ox - 0.05 &&
+        y1 < oy + oh + 0.05 &&
+        y1 + realH > oy - 0.05
+      )
+    })
+  }
+
   // Sufixo da linha comercial baseada na escolha:
   // Se for premium, usa a linha premium. Caso contrário, usa especial.
   const lineSuffix = storeType === 'premium' ? '-premium' : '-especial'
@@ -188,8 +217,20 @@ export function generateAILayout(
   // Estações de atendimento alternadas: [BA (1.0m) + Caixa (0.6m)] = 1.6m por estação.
   // Colocamos caixas intercalados com os balcões conforme os exemplos reais de layout.
   const stationW = 1.6
-  const numStations = Math.max(1, Math.floor(middleWidth / stationW))
   
+  // Determinamos um número de caixas proporcional e seguro para o tamanho da loja
+  let numStations = 1
+  if (storeWidth > 10) {
+    numStations = 3
+  } else if (storeWidth > 6) {
+    numStations = 2
+  }
+  
+  // Garante que o número de estações cabe fisicamente na largura
+  while (numStations > 1 && numStations * stationW > middleWidth) {
+    numStations--
+  }
+
   const stationsList: { type: 'BA' | 'CX', w: number }[] = []
   for (let i = 0; i < numStations; i++) {
     stationsList.push({ type: 'BA', w: 1.0 })
@@ -269,8 +310,8 @@ export function generateAILayout(
       { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
       { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
       { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
-      { id: 'catalog-121', name: 'Expositor Maquiagem', icon: '💅', w: 1.9 },
-      { id: 'catalog-111', name: 'Expositor Esmaltes', icon: '💅', w: 1.9 },
+      { id: 'catalog-121', name: 'Expositor Maquiagem', icon: '💅', w: 0.5 },
+      { id: 'catalog-111', name: 'Expositor Esmaltes', icon: '💅', w: 0.5 },
       // MIPs completando o restante até o fundo
       { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
       { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
@@ -281,19 +322,24 @@ export function generateAILayout(
     for (const item of wallSequence) {
       if (currentY + item.w > wallYEnd) break
       
-      const fullId = `${item.id}${lineSuffix}`
-      generatedItems.push(makeItem(
-        fullId,
-        item.name,
-        item.icon,
-        x,
-        currentY,
-        item.w,
-        0.26,
-        '#FFF1F7',
-        '#DB2777',
-        { rotation, isWallItem: true }
-      ))
+      const yPos = rotation === 270 ? currentY + item.w : currentY
+
+      // Verifica colisão com pilares/obstáculos antes de colocar
+      if (!collidesWithObstacle(x, yPos, item.w, 0.26, rotation)) {
+        const fullId = `${item.id}${lineSuffix}`
+        generatedItems.push(makeItem(
+          fullId,
+          item.name,
+          item.icon,
+          x,
+          yPos,
+          item.w,
+          0.26,
+          '#FFF1F7',
+          '#DB2777',
+          { rotation, isWallItem: true }
+        ))
+      }
       currentY += item.w
     }
   }
@@ -348,18 +394,20 @@ export function generateAILayout(
           gondolaId = `catalog-32${lineSuffix}` // GOND 220
         }
 
-        generatedItems.push(makeItem(
-          gondolaId,
-          'Gôndola Central',
-          '📦',
-          gondolaX,
-          currentGondolaY,
-          gondolaLen,
-          0.43,
-          '#FDF8F0',
-          '#8B7355',
-          { rotation: 90 }
-        ))
+        if (!collidesWithObstacle(gondolaX, currentGondolaY, gondolaLen, 0.43, 90)) {
+          generatedItems.push(makeItem(
+            gondolaId,
+            'Gôndola Central',
+            '📦',
+            gondolaX,
+            currentGondolaY,
+            gondolaLen,
+            0.43,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 90 }
+          ))
+        }
 
         // Corredor vertical entre gôndolas na mesma coluna = 1.00m
         currentGondolaY += gondolaLen + 1.00
