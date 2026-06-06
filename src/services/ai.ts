@@ -84,75 +84,366 @@ export function generateAILayout(
   existingObstacles: Partial<CanvasItem>[] = [],
 ): AILayoutResult {
   const config = STORE_TYPE_CONFIGS[storeType] ?? STORE_TYPE_CONFIGS.popular
-  const corridorWidth = config.corridorMin
+  const minCorridor = 1.0 // Distância mínima padrão de 1m
 
-  // Check minimum dimensions
+  // Verificar dimensões mínimas
   if (storeWidth < 4 || storeHeight < 4) {
     return {
       items: [],
       messages: ['⚠️ A loja é muito pequena. O mínimo recomendado é 4m x 4m para uma farmácia funcional.'],
       valid: false,
-      stats: { usedArea: '0', totalArea: (storeWidth * storeHeight).toFixed(1), corridorMin: corridorWidth },
+      stats: { usedArea: '0', totalArea: (storeWidth * storeHeight).toFixed(1), corridorMin: minCorridor },
     }
   }
 
   const generatedItems: Partial<CanvasItem>[] = []
 
-  // === ZONE PLANNING ===
-  const zones = planZones(storeWidth, storeHeight, storeType)
+  // Sufixo da linha comercial baseada na escolha:
+  // Se for premium, usa a linha premium. Caso contrário, usa especial.
+  const lineSuffix = storeType === 'premium' ? '-premium' : '-especial'
 
-  // === PLACE ITEMS BY ZONE ===
-  zones.forEach(zone => {
-    const zoneItems = placeItemsInZone(zone, storeType)
-    generatedItems.push(...zoneItems)
+  // ==========================================
+  // 1. RETAGUARDA DE MEDICAMENTOS (PAREDE DO FUNDO)
+  // ==========================================
+  // Armários de medicamentos (MED, profundidade de 0.21m) encostados no fundo.
+  // Colocamos ao longo da parede traseira (y = storeHeight - 0.21), rotacionados em 180 graus.
+  // Deixamos um recuo lateral de 0.26m para não bater com as gôndolas laterais.
+  const medShelfDepth = 0.21
+  const backWallY = storeHeight - medShelfDepth
+  const backWallStart = 0.26
+  const backWallEnd = storeWidth - 0.26
+  let currentX = backWallStart
+
+  while (currentX + 0.807 <= backWallEnd) {
+    // Escolhe o módulo de 1.0m (catalog-23) se couber, senão o de 0.807m (catalog-21)
+    let itemId = `catalog-21${lineSuffix}`
+    let w = 0.807
+    if (currentX + 1.0 <= backWallEnd) {
+      itemId = `catalog-23${lineSuffix}`
+      w = 1.0
+    }
+    
+    generatedItems.push(makeItem(
+      itemId,
+      'Prateleira Medicamentos',
+      '💊',
+      currentX,
+      backWallY,
+      w,
+      medShelfDepth,
+      '#FDF8F0',
+      '#8B7355',
+      { rotation: 180, isWallItem: true }
+    ))
+    currentX += w
+  }
+
+  // ==========================================
+  // 2. BALCÃO DE ATENDIMENTO, CAIXAS E LATERAIS (ÁREA DE ATENDIMENTO)
+  // ==========================================
+  // Corredor livre para operador = 1.60 m.
+  // Balcão fica posicionado a y = storeHeight - medShelfDepth - 1.60 - balcaoDepth
+  const operatorSpace = 1.60
+  const balcaoDepth = 0.40
+  const balcaoY = storeHeight - medShelfDepth - operatorSpace - balcaoDepth // y = storeHeight - 2.21
+
+  // Entre a parede lateral e os balcões deve haver o Lateral Caixa (catalog-81, largura 0.4m)
+  // Colocamos um Lateral Caixa na esquerda e outro na direita.
+  const latCaixaW = 0.4
+  
+  // Adiciona Lateral Caixa Esquerdo
+  generatedItems.push(makeItem(
+    `catalog-81${lineSuffix}`,
+    'Lateral Caixa',
+    '📥',
+    0.26,
+    balcaoY,
+    latCaixaW,
+    0.26,
+    '#EFF6FF',
+    '#2563EB',
+    { rotation: 0 }
+  ))
+
+  // Adiciona Lateral Caixa Direito
+  generatedItems.push(makeItem(
+    `catalog-81${lineSuffix}`,
+    'Lateral Caixa',
+    '📥',
+    storeWidth - 0.26 - latCaixaW,
+    balcaoY,
+    latCaixaW,
+    0.26,
+    '#EFF6FF',
+    '#2563EB',
+    { rotation: 0 }
+  ))
+
+  // Largura disponível no meio para os Balcões e Caixa:
+  // De x = 0.26 + latCaixaW (0.66) até x = storeWidth - 0.26 - latCaixaW
+  const middleStart = 0.26 + latCaixaW // 0.66
+  const middleEnd = storeWidth - 0.26 - latCaixaW
+  const middleWidth = middleEnd - middleStart
+
+  // Precisamos colocar pelo menos 1 Caixa/PDV (catalog-61, largura 0.6m) e o restante de Balcões (catalog-51/catalog-55, largura 1.0m)
+  // Vamos calcular quantos Balcões cabem:
+  // Caixa = 0.6m. Restante = middleWidth - 0.6.
+  const caixaW = 0.6
+  const remainingForBalcoes = middleWidth - caixaW
+  let numBalcoes = Math.max(1, Math.floor(remainingForBalcoes / 1.0))
+  
+  // Largura total ocupada pelo grupo central (Balcões + 1 Caixa)
+  const groupWidth = numBalcoes * 1.0 + caixaW
+  // Centraliza o grupo
+  const groupXStart = middleStart + (middleWidth - groupWidth) / 2
+
+  // Posiciona o Caixa do lado esquerdo do grupo
+  generatedItems.push(makeItem(
+    `catalog-61${lineSuffix}`,
+    'Caixa',
+    '💳',
+    groupXStart,
+    balcaoY,
+    caixaW,
+    0.4,
+    '#D1FAE5',
+    '#047857',
+    { rotation: 0 }
+  ))
+
+  // Posiciona os Balcões no restante do grupo
+  for (let i = 0; i < numBalcoes; i++) {
+    const balcaoX = groupXStart + caixaW + i * 1.0
+    // Usa catalog-51 (BA 100) para Popular, catalog-55 (BA 100 MDF) para Premium
+    const balcaoId = storeType === 'premium' ? `catalog-55${lineSuffix}` : `catalog-51${lineSuffix}`
+    generatedItems.push(makeItem(
+      balcaoId,
+      'Balcão de Atendimento',
+      '🏪',
+      balcaoX,
+      balcaoY,
+      1.0,
+      0.4,
+      '#DBEAFE',
+      '#1D4ED8',
+      { rotation: 0 }
+    ))
+  }
+
+  // ==========================================
+  // 3. PAREDES LATERAIS (FLUXO DE PRODUTOS E CATEGORIAS)
+  // ==========================================
+  // Começam a y = 1.20 m (recuo da entrada)
+  // Terminam a y = balcaoY - 1.00 m (corredor livre antes do balcão)
+  const wallYStart = 1.20
+  const wallYEnd = balcaoY - 1.00
+
+  // Sequência de móveis nas paredes laterais (da entrada para o fundo):
+  // 1. Perfumaria (catalog-11, largura 0.807m, profundidade 0.26m)
+  // 2. Dermo (catalog-92, largura 0.5m, profundidade 0.26m)
+  // 3. Maquiagem (catalog-121, largura 1.9m, profundidade 0.26m)
+  // 4. Esmaltes (catalog-111, largura 1.9m, profundidade 0.26m)
+  // 5. MIPs / OTC (catalog-41, largura 0.807m, profundidade 0.26m)
+  
+  // Parede Esquerda (x = 0.26, pois o fundo do armário encosta em x = 0. Profundidade = 0.26m)
+  // Rotação: 90 graus (olhando para dentro/direita)
+  // Nota: Para itens com rotation: 90, Konva rotaciona horário a partir do canto superior esquerdo (x, y).
+  // Para caber na faixa [0, 0.26] e [y, y + largura], a coordenada X de inserção deve ser target_x + depth = 0 + 0.26 = 0.26.
+  
+  // Deixamos um espaço para o Freezer de Sorvete no início da Parede Esquerda (de y = 1.2 a y = 2.2)
+  const freezerGap = 1.0
+  
+  const placeWallItems = (x: number, rotation: number, startY: number) => {
+    let currentY = startY
+    
+    // Lista de móveis a colocar em ordem
+    const wallSequence = [
+      { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
+      { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
+      { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
+      { id: 'catalog-121', name: 'Expositor Maquiagem', icon: '💅', w: 1.9 },
+      { id: 'catalog-111', name: 'Expositor Esmaltes', icon: '💅', w: 1.9 },
+      // MIPs completando o restante até o fundo
+      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+    ]
+
+    for (const item of wallSequence) {
+      if (currentY + item.w > wallYEnd) break
+      
+      const fullId = `${item.id}${lineSuffix}`
+      generatedItems.push(makeItem(
+        fullId,
+        item.name,
+        item.icon,
+        x,
+        currentY,
+        item.w,
+        0.26,
+        '#FFF1F7',
+        '#DB2777',
+        { rotation, isWallItem: true }
+      ))
+      currentY += item.w
+    }
+  }
+
+  // Preenche Parede Esquerda
+  placeWallItems(0.26, 90, wallYStart + freezerGap)
+
+  // Preenche Parede Direita (x = storeWidth - 0.26, pois o fundo encosta em x = storeWidth. Profundidade = 0.26m)
+  // Rotação: 270 graus (olhando para dentro/esquerda)
+  // Para itens com rotation: 270, Konva rotaciona 270 graus horário.
+  // Para caber na faixa [storeWidth - 0.26, storeWidth] e [y, y + largura], a coordenada X de inserção deve ser storeWidth - 0.26.
+  placeWallItems(storeWidth - 0.26, 270, wallYStart)
+
+  // ==========================================
+  // 4. GÔNDOLAS CENTRAIS (ÁREA CENTRAL)
+  // ==========================================
+  // Corredor livre lateral de 1.00m de cada lado dos armários de parede (que têm 0.26m de profundidade)
+  // x_min = 0.26 + 1.00 = 1.26
+  // x_max = storeWidth - 0.26 - 1.00 = storeWidth - 1.26
+  const centralWidth = (storeWidth - 1.26) - 1.26
+
+  // Cada gôndola central tem profundidade 0.43m (a largura da gôndola vira sua profundidade ao rotacionar 90 graus)
+  // Corredor entre colunas de gôndola = 1.00m
+  // Fórmula: N * 0.43 + (N - 1) * 1.00 <= centralWidth  => N * 1.43 - 1.00 <= centralWidth => N <= (centralWidth + 1.00) / 1.43
+  const numColumns = Math.max(0, Math.floor((centralWidth + 1.00) / 1.43))
+
+  if (numColumns > 0) {
+    const totalColumnsWidth = numColumns * 0.43 + (numColumns - 1) * 1.00
+    const colXStart = 1.26 + (centralWidth - totalColumnsWidth) / 2
+
+    for (let c = 0; c < numColumns; c++) {
+      // Coordenada X da coluna. Como a gôndola será rotacionada em 90 graus, seu X de inserção deve ser colX + depth (0.43m)
+      const targetColX = colXStart + c * 1.43
+      const gondolaX = targetColX + 0.43
+
+      // Distanciamento vertical das gôndolas
+      // Começa a y = 1.20m (recuo da entrada)
+      // Termina a y = balcaoY - 1.00m (corredor livre antes do balcão)
+      let currentGondolaY = 1.20
+      const maxGondolaY = balcaoY - 1.00
+
+      while (currentGondolaY + 1.70 <= maxGondolaY) {
+        // Escolhe o maior tamanho de gôndola que cabe
+        let gondolaLen = 1.70
+        let gondolaId = `catalog-31${lineSuffix}` // GOND 170
+
+        if (currentGondolaY + 3.00 <= maxGondolaY) {
+          gondolaLen = 3.00
+          gondolaId = `catalog-33${lineSuffix}` // GOND 300
+        } else if (currentGondolaY + 2.20 <= maxGondolaY) {
+          gondolaLen = 2.20
+          gondolaId = `catalog-32${lineSuffix}` // GOND 220
+        }
+
+        generatedItems.push(makeItem(
+          gondolaId,
+          'Gôndola Central',
+          '📦',
+          gondolaX,
+          currentGondolaY,
+          gondolaLen,
+          0.43,
+          '#FDF8F0',
+          '#8B7355',
+          { rotation: 90 }
+        ))
+
+        // Corredor vertical entre gôndolas na mesma coluna = 1.00m
+        currentGondolaY += gondolaLen + 1.00
+      }
+    }
+  }
+
+  // ==========================================
+  // 5. TRATAMENTO DE PILARES E CESTÕES
+  // ==========================================
+  // Se houver pilares estruturais no meio da loja, adicionamos Cestões (catalog-71, 0.4m x 0.4m) ao redor deles
+  const pillars = existingObstacles.filter(obs => obs.isPillar)
+  
+  pillars.forEach(pillar => {
+    const px = pillar.x ?? 0
+    const py = pillar.y ?? 0
+    const pw = pillar.width ?? 0.3
+    const ph = pillar.height ?? 0.3
+
+    // Posições candidatas ao redor do pilar para colocar os Cestões (Norte, Sul, Leste, Oeste)
+    const candidates = [
+      { x: px + (pw - 0.4) / 2, y: py - 0.4 }, // Norte
+      { x: px + (pw - 0.4) / 2, y: py + ph },  // Sul
+      { x: px - 0.4, y: py + (ph - 0.4) / 2 }, // Oeste
+      { x: px + pw, y: py + (ph - 0.4) / 2 },  // Leste
+    ]
+
+    candidates.forEach(cand => {
+      // Verifica se o cestão fica dentro dos limites internos da farmácia (descontando paredes de 0.26m)
+      const insideX = cand.x >= 0.26 && cand.x + 0.4 <= storeWidth - 0.26
+      const insideY = cand.y >= 1.20 && cand.y + 0.4 <= balcaoY - 0.5
+      
+      if (insideX && insideY) {
+        // Verifica se colide com algum item já gerado
+        const collides = generatedItems.some(item => {
+          const itemX = item.x ?? 0
+          const itemY = item.y ?? 0
+          const itemW = item.width ?? 0.4
+          const itemH = item.height ?? 0.4
+          
+          // Tratamento de rotação para colisão básica
+          const realW = item.rotation === 90 || item.rotation === 270 ? itemH : itemW
+          const realH = item.rotation === 90 || item.rotation === 270 ? itemW : itemH
+          
+          let x1 = itemX
+          let y1 = itemY
+          if (item.rotation === 90) {
+            x1 = itemX - realW
+          } else if (item.rotation === 270) {
+            x1 = itemX
+          }
+
+          return (
+            cand.x < x1 + realW &&
+            cand.x + 0.4 > x1 &&
+            cand.y < y1 + realH &&
+            cand.y + 0.4 > y1
+          )
+        })
+
+        if (!collides) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            cand.x,
+            cand.y,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 0 }
+          ))
+        }
+      }
+    })
   })
 
-  // === VALIDATION ===
-  const validation = validateLayout(generatedItems, storeWidth, storeHeight, corridorWidth)
+  // === VALIDAÇÃO E ESTATÍSTICAS ===
+  const validation = validateLayout(generatedItems, storeWidth, storeHeight, minCorridor)
   const messages = [...config.tips, ...validation.messages]
 
   return {
     items: generatedItems,
     messages,
-    zones,
     stats: {
       usedArea: generatedItems.reduce((a, i) => a + (i.width ?? 0) * (i.height ?? 0), 0).toFixed(1),
       totalArea: (storeWidth * storeHeight).toFixed(1),
-      corridorMin: corridorWidth,
+      corridorMin: minCorridor,
     },
     valid: validation.valid,
   }
-}
-
-function planZones(width: number, height: number, storeType: StoreType): AILayoutZone[] {
-  const margin = 0.3
-
-  if (storeType === 'premium') {
-    return [
-      { name: 'Perfumaria (Zona Quente)', x: margin, y: margin, w: width * 0.45 - margin, h: height * 0.5 - margin, type: 'perfumaria' },
-      { name: 'Higiene e Cuidados', x: width * 0.5, y: margin, w: width * 0.45 - margin, h: height * 0.4, type: 'higiene' },
-      { name: 'Medicamentos', x: margin, y: height * 0.55, w: width * 0.6 - margin, h: height * 0.35, type: 'medicamentos' },
-      { name: 'Caixa e Atendimento', x: width * 0.65, y: height * 0.55, w: width * 0.3 - margin, h: height * 0.35, type: 'caixa' },
-    ]
-  }
-
-  if (storeType === 'manipulacao') {
-    return [
-      { name: 'Atendimento', x: margin, y: margin, w: width * 0.6 - margin, h: height * 0.3, type: 'atendimento' },
-      { name: 'Vendas', x: margin, y: height * 0.35, w: width * 0.6 - margin, h: height * 0.45, type: 'vendas' },
-      { name: 'Área Técnica', x: width * 0.65, y: margin, w: width * 0.3 - margin, h: height * 0.7, type: 'manipulacao' },
-      { name: 'Caixa', x: width * 0.65, y: height * 0.75, w: width * 0.3 - margin, h: height * 0.15, type: 'caixa' },
-    ]
-  }
-
-  // Default (popular / completa)
-  return [
-    { name: 'Zona de Entrada', x: margin, y: margin, w: width - margin * 2, h: 1.0, type: 'entrada' },
-    { name: 'Gôndolas Centrais', x: margin, y: 1.5, w: width * 0.65 - margin, h: height * 0.5, type: 'gondolas' },
-    { name: 'Parede Direita', x: width * 0.7, y: 1.5, w: width * 0.25 - margin, h: height * 0.5, type: 'parede_dir' },
-    { name: 'Atendimento ao Fundo', x: margin, y: height * 0.7, w: width * 0.7 - margin, h: height * 0.22, type: 'atendimento' },
-    { name: 'Caixa', x: width * 0.75, y: height * 0.7, w: width * 0.2 - margin, h: height * 0.22, type: 'caixa' },
-  ]
 }
 
 function makeItem(
@@ -173,10 +464,10 @@ function makeItem(
     itemId,
     name: template?.name ?? name,
     icon: template?.icon ?? icon,
-    x: Math.round(x * 10) / 10,
-    y: Math.round(y * 10) / 10,
-    width: template?.width ?? Math.round(w * 10) / 10,
-    height: template?.height ?? Math.round(h * 10) / 10,
+    x: Math.round(x * 100) / 100,
+    y: Math.round(y * 100) / 100,
+    width: template?.width ?? Math.round(w * 100) / 100,
+    height: template?.height ?? Math.round(h * 100) / 100,
     fillColor: template?.fillColor ?? fill,
     strokeColor: template?.strokeColor ?? stroke,
     color: template?.color,
@@ -188,77 +479,6 @@ function makeItem(
     height3d: template?.height3d,
     ...extra,
   }
-}
-
-function placeItemsInZone(zone: AILayoutZone, _storeType: StoreType): Partial<CanvasItem>[] {
-  const items: Partial<CanvasItem>[] = []
-
-  switch (zone.type) {
-    case 'perfumaria': {
-      if (zone.w > 2 && zone.h > 2) {
-        items.push(makeItem('catalog-31-premium', 'Ilha Perfumaria', '🛍️', zone.x + 0.5, zone.y + 0.5, Math.min(zone.w - 1, 2.0), Math.min(zone.h - 1, 1.5), '#FCE7F3', '#9D174D'))
-        items.push(makeItem('catalog-92-premium', 'Expositor Cosméticos', '💄', zone.x, zone.y + zone.h - 0.8, Math.min(zone.w, 2.0), 0.4, '#FBCFE8', '#9D174D'))
-      }
-      break
-    }
-    case 'gondolas': {
-      const gondolaW = Math.min(zone.w - 0.4, 3.5)
-      const spacing = 1.4
-      let gy = zone.y
-      while (gy + 0.6 < zone.y + zone.h) {
-        items.push(makeItem('catalog-31-premium', 'Gôndola', '📦', zone.x + 0.2, gy, gondolaW, 0.6, '#D4B896', '#5C4A2A'))
-        gy += spacing
-      }
-      break
-    }
-    case 'parede_dir': {
-      let wy = zone.y
-      while (wy + 0.35 < zone.y + zone.h - 0.5) {
-        items.push(makeItem('catalog-21-premium', 'Prateleira', '🗄️', zone.x, wy, Math.min(zone.w, 1.8), 0.3, '#E8D5B7', '#5C4A2A', { isWallItem: true }))
-        wy += 1.0
-      }
-      break
-    }
-    case 'atendimento': {
-      items.push(makeItem('catalog-51-premium', 'Balcão de Atendimento', '🏪', zone.x + 0.2, zone.y + 0.1, Math.min(zone.w - 0.4, 3.0), 0.6, '#DBEAFE', '#1D4ED8'))
-      break
-    }
-    case 'caixa': {
-      items.push(makeItem('catalog-61-premium', 'Caixa / PDV', '💳', zone.x + 0.1, zone.y + 0.1, Math.min(zone.w - 0.2, 1.2), 0.7, '#D1FAE5', '#047857'))
-      break
-    }
-    case 'manipulacao': {
-      // Bancada de manipulação usando balcão do catálogo
-      items.push(makeItem('catalog-55-premium', 'Bancada Manipulação', '🧪', zone.x + 0.1, zone.y + 0.1, zone.w - 0.2, 0.6, '#CFFAFE', '#0891B2'))
-      // Prateleiras de insumos
-      if (zone.h > 1.2) {
-        items.push(makeItem('catalog-21-premium', 'Expositor Insumos', '💊', zone.x + 0.1, zone.y + zone.h - 0.5, zone.w - 0.2, 0.4, '#ECFEFF', '#0E7490'))
-      }
-      break
-    }
-    case 'higiene': {
-      if (zone.w > 1.5) {
-        items.push(makeItem('catalog-21-premium', 'Gôndola Higiene', '📦', zone.x + 0.2, zone.y + 0.2, Math.min(zone.w - 0.4, 2.0), 0.4, '#D4B896', '#5C4A2A'))
-        if (zone.h > 1.5) {
-          items.push(makeItem('catalog-21-premium', 'Gôndola Higiene 2', '📦', zone.x + 0.2, zone.y + 1.0, Math.min(zone.w - 0.4, 2.0), 0.4, '#D4B896', '#5C4A2A'))
-        }
-      }
-      break
-    }
-    case 'vendas': {
-      const vGondolaW = Math.min(zone.w - 0.4, 3.0)
-      let vgy = zone.y
-      while (vgy + 0.6 < zone.y + zone.h) {
-        items.push(makeItem('catalog-31-premium', 'Gôndola', '📦', zone.x + 0.2, vgy, vGondolaW, 0.6, '#D4B896', '#5C4A2A'))
-        vgy += 1.2
-      }
-      break
-    }
-    default:
-      break
-  }
-
-  return items
 }
 
 function validateLayout(
