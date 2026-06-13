@@ -6,6 +6,7 @@ import type {
   HistorySnapshot,
   LayoutStats,
   StoreType,
+  LayoutDensity,
   PharmacyItemTemplate,
 } from '../types'
 
@@ -17,37 +18,43 @@ interface CanvasState {
   storeWidth: number
   storeHeight: number
   storeType: StoreType
-
+  layoutDensity: LayoutDensity
+  // === STRUCTURAL INFO ===
+  pillars: { x: number; y: number }[]
+  entrance: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null
+  emergencyExit: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null
+  // === CONFIGURATION STATE ===
+  isConfigured: boolean
   // === CANVAS ITEMS ===
   items: CanvasItem[]
   selectedItemId: string | null
   hoveredItemId: string | null
-
   // === TOOLS ===
   activeTool: ActiveTool
   snapToGrid: boolean
   gridSize: number
-
   // === VIEW ===
   scale: number
   stageX: number
   stageY: number
   showMeasures: boolean
   showGrid: boolean
-
   // === HISTORY (undo/redo) ===
   history: HistorySnapshot[]
   historyIndex: number
-
   // === METADATA ===
   layoutName: string
   layoutId: string | null
   shareToken: string | null
   isDirty: boolean
-
   // === ACTIONS ===
   setStoreDimensions: (width: number, height: number) => void
   setStoreType: (type: StoreType) => void
+  setLayoutDensity: (density: LayoutDensity) => void
+  setPillars: (pillars: { x: number; y: number }[]) => void
+  setEntrance: (entrance: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null) => void
+  setEmergencyExit: (exit: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null) => void
+  setConfigured: (configured: boolean) => void
   setActiveTool: (tool: ActiveTool) => void
   setSelectedItem: (id: string | null) => void
   setHoveredItem: (id: string | null) => void
@@ -82,7 +89,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   // === STORE DIMENSIONS ===
   storeWidth: 10,
   storeHeight: 12,
-  storeType: 'popular',
+  storeType: 'premium',
+  layoutDensity: 'normal',
+  pillars: [],
+  entrance: null,
+  emergencyExit: null,
+  isConfigured: false,
 
   // === CANVAS ITEMS ===
   items: [],
@@ -123,8 +135,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({ storeWidth: width, storeHeight: height, items: clampedItems, isDirty: true })
     get().saveToHistory()
   },
-
+  setPillars: (newPillars) => {
+    set(state => ({ ...state, pillars: newPillars, isDirty: true }))
+    get().saveToHistory()
+  },
+  setEntrance: (entrance) => {
+    set(state => ({ ...state, entrance, isDirty: true }))
+    get().saveToHistory()
+  },
+  setEmergencyExit: (exit) => {
+    set(state => ({ ...state, emergencyExit: exit, isDirty: true }))
+    get().saveToHistory()
+  },
+  setConfigured: (configured) => {
+    set(state => ({ ...state, isConfigured: configured, isDirty: true }))
+    get().saveToHistory()
+  },
   setStoreType: (type) => set({ storeType: type }),
+  setLayoutDensity: (density) => set({ layoutDensity: density }),
 
   setActiveTool: (tool) => set({ activeTool: tool, selectedItemId: null }),
 
@@ -293,6 +321,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       storeHeight: layoutData.storeHeight ?? 12,
       storeType: layoutData.storeType ?? 'popular',
       items: layoutData.items ?? [],
+      pillars: layoutData.pillars ?? [],
+      entrance: layoutData.entrance ?? null,
+      emergencyExit: layoutData.emergencyExit ?? null,
       layoutName: layoutData.layoutName ?? 'Layout',
       layoutId: layoutData.layoutId ?? null,
       shareToken: layoutData.shareToken ?? null,

@@ -363,9 +363,9 @@
   position: relative;
 }
 
-/* ══════════ SIDEBAR ══════════ */
-.editor-sidebar {
-  width: 280px;
+/* ══════════ SIDEBARS ══════════ */
+.editor-sidebar-left {
+  width: 290px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -374,20 +374,33 @@
   -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
   border-right: 1.5px solid rgba(16, 185, 129, 0.15) !important;
   overflow: hidden;
-  transition: width var(--dur-slow) var(--ease-out);
 }
-.editor-sidebar.collapsed { width: 0; border-right: none; }
 
-@media (max-width: 767px) { .editor-sidebar { display: none; } }
-
-/* Sidebar tab bar */
-.sb-tabs {
+.editor-sidebar-right {
+  width: 310px;
+  flex-shrink: 0;
   display: flex;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1.5px solid rgba(16, 185, 129, 0.12);
+  flex-direction: column;
+  background: rgba(7, 15, 11, 0.65) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border-left: 1.5px solid rgba(16, 185, 129, 0.15) !important;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .editor-sidebar-left, .editor-sidebar-right { display: none; }
+}
+
+/* Sidebar tab bar for right sidebar */
+.sb-tabs-right {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1.5px solid rgba(16, 185, 129, 0.15);
   flex-shrink: 0;
 }
-.sb-tab {
+.sb-tab-right {
   flex: 1;
   height: 46px;
   font-size: var(--fs-xs);
@@ -401,14 +414,14 @@
   cursor: pointer;
   transition: all var(--dur-fast);
 }
-.sb-tab:hover { color: var(--text-1); background: rgba(16, 185, 129, 0.04); }
-.sb-tab.active {
+.sb-tab-right:hover { color: var(--text-1); background: rgba(16, 185, 129, 0.04); }
+.sb-tab-right.active {
   color: var(--green-400);
   border-bottom-color: var(--green-400);
   background: rgba(7, 15, 11, 0.25);
 }
 
-.sb-body {
+.sb-body-right {
   flex: 1;
   overflow: hidden;
   display: flex;
@@ -425,17 +438,26 @@
 
 /* ══════════ PROPS PANEL ══════════ */
 .props-panel {
-  width: 240px;
-  flex-shrink: 0;
-  background: rgba(7, 15, 11, 0.65) !important;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 310px;
+  background: rgba(7, 15, 11, 0.93) !important;
   backdrop-filter: blur(28px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
   border-left: 1.5px solid rgba(16, 185, 129, 0.15) !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideRight 0.3s var(--ease-out);
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+  z-index: 20; /* overlay on top of right sidebar */
+  animation: slideLeft 0.25s var(--ease-out);
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 @media (max-width: 1024px) {

@@ -187,7 +187,7 @@ export default function Home() {
             <span>Planejamento de layout com IA para farmácias</span>
           </div>
           <h1 className="hero-title scale-in">
-            Crie o Layout Perfeito<br />
+            Crie o Layout Perfeito <br />
             para a Sua <span className="hero-title-highlight">Farmácia</span>
           </h1>
           <p className="hero-desc fade-in">

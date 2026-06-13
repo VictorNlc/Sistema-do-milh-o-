@@ -6,11 +6,9 @@
   touch-action: none; /* Critical for mobile pinch/pan */
   user-select: none;
   background:
-    radial-gradient(ellipse at 20% 10%, rgba(0,132,61,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 90%, rgba(0,132,61,0.04) 0%, transparent 40%),
-    repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(0,132,61,0.05) 24px),
-    repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(0,132,61,0.05) 24px),
-    #EBF3EE;
+    radial-gradient(ellipse at 20% 10%, rgba(16,185,129,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(16,185,129,0.04) 0%, transparent 40%),
+    #050A08; /* Deep blueprint black */
 }
 
 .ce-wrap:active { cursor: grabbing; }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useCanvasStore } from '../../store/canvasStore'
+import { getRotatedBounds } from '../../utils/geometry'
 import './ThreeDViewer.css'
 
 // Height estimations in meters based on item categories
@@ -30,6 +31,30 @@ const WALL_COLORS = {
   white: 0xf9fafb,
   gray: 0x374151,
   blue: 0x1e3a8a
+}
+// Global cache for soft contact shadow texture
+let cachedShadowTexture: THREE.CanvasTexture | null = null
+
+const getContactShadowTexture = (): THREE.CanvasTexture => {
+  if (cachedShadowTexture) return cachedShadowTexture
+
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const gradient = ctx.createRadialGradient(32, 32, 2, 32, 32, 28)
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.75)')
+    gradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.45)')
+    gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)')
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, 64, 64)
+  }
+
+  const texture = new THREE.CanvasTexture(canvas)
+  cachedShadowTexture = texture
+  return texture
 }
 
 // Helper to draw text onto a 2D canvas and convert it to a Three.js texture
@@ -89,9 +114,79 @@ const addProductMeshes = (group: THREE.Group, width: number, shelfY: number, dep
     }
     
     mesh.position.set(px, shelfY + pH / 2, depthOffset + (Math.random() - 0.5) * 0.02)
-    mesh.castShadow = true
+    mesh.castShadow = false
+    mesh.receiveShadow = false
     group.add(mesh)
   }
+}
+
+// Helper to filter shadow casting/receiving on GLTF sub-meshes by physical bounding volume (>= 2 liters)
+const configureMeshShadows = (object: THREE.Object3D) => {
+  const meshTempBox = new THREE.Box3()
+  const sizeVec = new THREE.Vector3()
+  object.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh
+      if (mesh.geometry) {
+        try {
+          mesh.geometry.computeBoundingBox()
+          if (mesh.geometry.boundingBox) {
+            meshTempBox.copy(mesh.geometry.boundingBox)
+            meshTempBox.getSize(sizeVec)
+            const volume = sizeVec.x * sizeVec.y * sizeVec.z
+            // If geometry volume is smaller than 0.002 m3 (2 liters), disable shadow calculations
+            if (volume < 0.002) {
+              mesh.castShadow = false
+              mesh.receiveShadow = false
+            } else {
+              mesh.castShadow = true
+              mesh.receiveShadow = true
+            }
+          } else {
+            mesh.castShadow = false
+            mesh.receiveShadow = false
+          }
+        } catch {
+          mesh.castShadow = true
+          mesh.receiveShadow = true
+        }
+      }
+    }
+  })
+}
+
+// Global cache for loaded GLTF models to avoid reloading on every component mount
+const modelCache: Record<string, THREE.Group | undefined> = {}
+const loadingPromises: Record<string, Promise<THREE.Group> | undefined> = {}
+
+const getRequiredModelKeys = (items: any[]): string[] => {
+  const keys = new Set<string>()
+  items.forEach(item => {
+    if (!item) return
+    const nameUpper = (item.name || '').toUpperCase()
+    const idUpper = (item.itemId || item.id || '').toUpperCase()
+    
+    if (idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')) {
+      keys.add('cestao')
+    } else if (idUpper.includes('CATALOG-101') || idUpper.includes('CATALOG-102') || nameUpper.includes('CONTROLADO') || nameUpper.includes('CTRL')) {
+      keys.add('controlado')
+    } else if (idUpper.includes('CATALOG-91') || idUpper.includes('CATALOG-92') || nameUpper.includes('DERMO')) {
+      keys.add('dermo')
+    } else if (idUpper.includes('CATALOG-111') || nameUpper.includes('ESMALTE') || nameUpper.includes('ESMALTES')) {
+      keys.add('esmalte')
+    } else if (idUpper.includes('CATALOG-14-') || nameUpper.includes('CANALETADO') || nameUpper.includes('CANAL')) {
+      keys.add('canaletado')
+    } else if (nameUpper.includes('FILA') || nameUpper.includes('FILA INTELIGENTE') || nameUpper.includes('FILA_INTELIGENTE')) {
+      keys.add('fila')
+    } else if (nameUpper.includes('MED ') || nameUpper.includes('MED 807') || nameUpper.includes('MED 500') || nameUpper.includes('MED DUPLO') || nameUpper.includes('MEDICAMENTO') || (item.category === 'GONDOLAS' && nameUpper.includes('MED'))) {
+      keys.add('medicamento')
+    } else if (item.category === 'PERFUMARIA') {
+      keys.add('perfumaria')
+    } else if (item.category === 'GONDOLAS' && (nameUpper.includes('GOND') || nameUpper.includes('GÔNDOLA') || nameUpper.includes('GONDOLA'))) {
+      keys.add('gondolabranca')
+    }
+  })
+  return Array.from(keys)
 }
 
 interface ThreeDViewerProps {
@@ -107,7 +202,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const sceneRef = useRef<THREE.Scene | null>(null)
   const furnitureGroupRef = useRef<THREE.Group | null>(null)
   const furnitureMeshesRef = useRef<{ box: THREE.Box3; isObstacle: boolean }[]>([])
+  const lodObjectsRef = useRef<{ group: THREE.Group; worldPos: THREE.Vector3 }[]>([])
   const keysRef = useRef<Record<string, boolean>>({})
+  const directionalLightRef = useRef<THREE.DirectionalLight | null>(null)
 
   // refs para meshes dinâmicas
   const floorMeshRef = useRef<THREE.Mesh | null>(null)
@@ -129,6 +226,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const initializedRef = useRef(false)
 
   const { storeWidth, storeHeight, items, storeType } = useCanvasStore()
+  const [requiredKeys] = useState(() => getRequiredModelKeys(items))
   
   const [isLocked, setIsLocked] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -138,8 +236,17 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   // Customization & Physics States
   const [floorStyle, setFloorStyle] = useState('grid') 
   const [wallColor, setWallColor] = useState('mint') 
-  const [cestaoLoaded, setCestaoLoaded] = useState(false)
-  const cestaoModelRef = useRef<THREE.Group | null>(null) 
+  const [shadowsEnabled, setShadowsEnabled] = useState(false)
+  const [loadedModelsCount, setLoadedModelsCount] = useState(0)
+  const cestaoModelRef = useRef<THREE.Group | null>(null)
+  const controladoModelRef = useRef<THREE.Group | null>(null)
+  const dermoModelRef = useRef<THREE.Group | null>(null)
+  const esmalteModelRef = useRef<THREE.Group | null>(null)
+  const gondolabrancaModelRef = useRef<THREE.Group | null>(null)
+  const canaletadoModelRef = useRef<THREE.Group | null>(null)
+  const filaModelRef = useRef<THREE.Group | null>(null)
+  const medicamentoModelRef = useRef<THREE.Group | null>(null)
+  const perfumariaModelRef = useRef<THREE.Group | null>(null) 
   const [showSignage, setShowSignage] = useState(true)
   const [noclip, setNoclip] = useState(false) // Toggle physics/collisions
 
@@ -147,6 +254,32 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   useEffect(() => {
     noclipRef.current = noclip
   }, [noclip])
+
+  const [showProducts, setShowProducts] = useState(true)
+  const showProductsRef = useRef(showProducts)
+  useEffect(() => {
+    showProductsRef.current = showProducts
+  }, [showProducts])
+
+  const [cameraMode, setCameraMode] = useState<'orbit' | 'first-person'>('orbit')
+  const cameraModeRef = useRef(cameraMode)
+  useEffect(() => {
+    cameraModeRef.current = cameraMode
+    if (cameraMode === 'orbit') {
+      if (document.pointerLockElement) {
+        try {
+          document.exitPointerLock()
+        } catch (e) {
+          console.warn("Erro ao liberar pointer lock:", e)
+        }
+      }
+    }
+  }, [cameraMode])
+
+  const orbitDistanceRef = useRef(12.0)
+  const orbitYawRef = useRef(0.0)
+  const orbitPitchRef = useRef(0.6) // ~34 degrees
+  const orbitTargetRef = useRef(new THREE.Vector3(0, 0.5, 0))
 
   // --- EFFECT 5: TEMATIZAÇÃO PADRÃO COM BASE NO STORETYPE ---
   useEffect(() => {
@@ -222,10 +355,15 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       cameraRef.current = camera
 
       // Renderer
-      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      const renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: "high-performance",
+        precision: "mediump"
+      })
       renderer.setSize(width, height)
       renderer.shadowMap.enabled = true
       renderer.shadowMap.type = THREE.PCFShadowMap
+      renderer.shadowMap.autoUpdate = false
       renderer.domElement.tabIndex = 1
       renderer.domElement.style.outline = 'none'
       container.appendChild(renderer.domElement)
@@ -249,10 +387,11 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       directionalLight.shadow.camera.bottom = -15
       directionalLight.shadow.camera.near = 0.1
       directionalLight.shadow.camera.far = 30
-      directionalLight.shadow.mapSize.width = 2048
-      directionalLight.shadow.mapSize.height = 2048
+      directionalLight.shadow.mapSize.width = 1024
+      directionalLight.shadow.mapSize.height = 1024
       directionalLight.shadow.bias = -0.0005
       scene.add(directionalLight)
+      directionalLightRef.current = directionalLight
 
       // Group for Ceiling Lights
       const lightsGroup = new THREE.Group()
@@ -327,27 +466,83 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       scene.add(furnitureGroup)
       furnitureGroupRef.current = furnitureGroup
 
-      // Load Cestão 3D Model
-      console.log("📦 [3D Viewer] Carregando modelo do Cestão de /models/cestao.glb...")
+      // Map keys to local refs
+      const refMap: Record<string, React.MutableRefObject<THREE.Group | null>> = {
+        cestao: cestaoModelRef,
+        controlado: controladoModelRef,
+        dermo: dermoModelRef,
+        esmalte: esmalteModelRef,
+        gondolabranca: gondolabrancaModelRef,
+        canaletado: canaletadoModelRef,
+        fila: filaModelRef,
+        medicamento: medicamentoModelRef,
+        perfumaria: perfumariaModelRef
+      }
+
+      // Load only required 3D Models
       const gltfLoader = new GLTFLoader()
-      gltfLoader.load(
-        '/models/cestao.glb',
-        (gltf) => {
-          console.log("✅ [3D Viewer] Modelo do Cestão carregado com sucesso!")
-          cestaoModelRef.current = gltf.scene
-          gltf.scene.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              child.castShadow = true
-              child.receiveShadow = true
-            }
-          })
-          setCestaoLoaded(true)
-        },
-        undefined,
-        (error) => {
-          console.warn("⚠️ [3D Viewer] Falha ao carregar o modelo 3D do Cestão. Usando fallback.", error)
+      const modelsToLoad = [
+        { key: 'cestao', path: '/models/cestao.glb' },
+        { key: 'controlado', path: '/models/Controlado.glb' },
+        { key: 'dermo', path: '/models/Dermo.glb' },
+        { key: 'esmalte', path: '/models/Esmalte.glb' },
+        { key: 'gondolabranca', path: '/models/Gondolabranca.glb' },
+        { key: 'canaletado', path: '/models/Pf canaletado.glb' },
+        { key: 'fila', path: '/models/fila inteligente.glb' },
+        { key: 'medicamento', path: '/models/medicamento.glb' },
+        { key: 'perfumaria', path: '/models/perfumaria.glb' },
+      ]
+
+      requiredKeys.forEach((key) => {
+        const modelInfo = modelsToLoad.find(m => m.key === key)
+        if (!modelInfo) {
+          setLoadedModelsCount(prev => prev + 1)
+          return
         }
-      )
+
+        const path = modelInfo.path
+
+        if (modelCache[key]) {
+          console.log(`⚡ [3D Viewer] Modelo ${key} recuperado do cache global.`)
+          refMap[key].current = modelCache[key]
+          setLoadedModelsCount(prev => prev + 1)
+        } else if (loadingPromises[key]) {
+          console.log(`⏳ [3D Viewer] Acompanhando carregamento existente de ${key}...`)
+          loadingPromises[key].then((group) => {
+            refMap[key].current = group
+            setLoadedModelsCount(prev => prev + 1)
+          }).catch(() => {
+            setLoadedModelsCount(prev => prev + 1)
+          })
+        } else {
+          console.log(`📦 [3D Viewer] Carregando modelo do ${key} de ${path}...`)
+          const loadPromise = new Promise<THREE.Group>((resolve, reject) => {
+            gltfLoader.load(
+              path,
+              (gltf) => {
+                configureMeshShadows(gltf.scene)
+                modelCache[key] = gltf.scene
+                resolve(gltf.scene)
+              },
+              undefined,
+              (error) => {
+                reject(error)
+              }
+            )
+          })
+
+          loadingPromises[key] = loadPromise
+
+          loadPromise.then((group) => {
+            console.log(`✅ [3D Viewer] Modelo do ${key} carregado com sucesso!`)
+            refMap[key].current = group
+            setLoadedModelsCount(prev => prev + 1)
+          }).catch((error) => {
+            console.warn(`⚠️ [3D Viewer] Falha ao carregar o modelo 3D do ${key} em ${path}. Usando fallback.`, error)
+            setLoadedModelsCount(prev => prev + 1)
+          })
+        }
+      })
 
       if (typeof window !== 'undefined') {
         (window as any).debugScene = scene;
@@ -366,33 +561,59 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         const cam = cameraRef.current
         if (!cam) return
         try {
-          if (document.pointerLockElement === canvas) {
-            const movementX = e.movementX ?? 0
-            const movementY = e.movementY ?? 0
-            
-            yawRef.current -= movementX * 0.0025
-            pitchRef.current -= movementY * 0.0025
-            // Clamp pitch to avoid turning completely upside down (max 65 deg up/down)
-            pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
-            
-            cam.rotation.set(0, 0, 0)
-            cam.rotation.y = yawRef.current
-            cam.rotation.x = pitchRef.current
-          } else if (isDragging) {
-            const clientX = e.clientX ?? previousMouseX
-            const clientY = e.clientY ?? previousMouseY
-            const deltaX = clientX - previousMouseX
-            const deltaY = clientY - previousMouseY
-            previousMouseX = clientX
-            previousMouseY = clientY
-            
-            yawRef.current -= deltaX * 0.003
-            pitchRef.current -= deltaY * 0.003
-            pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
-            
-            cam.rotation.set(0, 0, 0)
-            cam.rotation.y = yawRef.current
-            cam.rotation.x = pitchRef.current
+          const mode = cameraModeRef.current
+          if (mode === 'first-person') {
+            if (document.pointerLockElement === canvas) {
+              const movementX = e.movementX ?? 0
+              const movementY = e.movementY ?? 0
+              
+              yawRef.current -= movementX * 0.0025
+              pitchRef.current -= movementY * 0.0025
+              pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
+            } else if (isDragging) {
+              const clientX = e.clientX ?? previousMouseX
+              const clientY = e.clientY ?? previousMouseY
+              const deltaX = clientX - previousMouseX
+              const deltaY = clientY - previousMouseY
+              previousMouseX = clientX
+              previousMouseY = clientY
+              
+              yawRef.current -= deltaX * 0.003
+              pitchRef.current -= deltaY * 0.003
+              pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
+            }
+          } else { // mode === 'orbit'
+            if (isDragging) {
+              const clientX = e.clientX ?? previousMouseX
+              const clientY = e.clientY ?? previousMouseY
+              const deltaX = clientX - previousMouseX
+              const deltaY = clientY - previousMouseY
+              previousMouseX = clientX
+              previousMouseY = clientY
+
+              const isRightClick = e.buttons === 2 || (e.buttons === 1 && e.shiftKey)
+              if (isRightClick) {
+                // Pan target center on horizontal plane
+                const theta = orbitYawRef.current
+                const cosTheta = Math.cos(theta)
+                const sinTheta = Math.sin(theta)
+                
+                const factor = orbitDistanceRef.current * 0.0015
+                const dx = -deltaX * factor
+                const dz = -deltaY * factor
+                
+                const panX = dx * cosTheta - dz * sinTheta
+                const panZ = dx * sinTheta + dz * cosTheta
+                
+                orbitTargetRef.current.x += panX
+                orbitTargetRef.current.z += panZ
+              } else if (e.buttons === 1) {
+                // Rotate
+                orbitYawRef.current -= deltaX * 0.005
+                orbitPitchRef.current += deltaY * 0.005
+                orbitPitchRef.current = Math.max(0.05, Math.min(Math.PI / 2 - 0.05, orbitPitchRef.current))
+              }
+            }
           }
         } catch (err) {
           console.warn("Erro no mouse move:", err)
@@ -403,7 +624,6 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         const target = e.target as HTMLElement
         const tagName = target?.tagName
         
-        // Ignore drag-look triggering if clicking UI customizer, D-pad, close button, etc.
         if (
           tagName === 'BUTTON' || 
           tagName === 'INPUT' || 
@@ -418,7 +638,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           return
         }
         
-        if (e.button === 0) { // Click esquerdo
+        if (e.button === 0 || e.button === 2) {
+          if (e.button === 2) {
+            e.preventDefault()
+          }
           isDragging = true
           previousMouseX = e.clientX ?? 0
           previousMouseY = e.clientY ?? 0
@@ -460,21 +683,31 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         const cam = cameraRef.current
         if (!cam) return
         try {
-          if (isDragging && e.touches && e.touches.length === 1) {
-            const clientX = e.touches[0].clientX ?? previousMouseX
-            const clientY = e.touches[0].clientY ?? previousMouseY
-            const deltaX = clientX - previousMouseX
-            const deltaY = clientY - previousMouseY
-            previousMouseX = clientX
-            previousMouseY = clientY
-            
-            yawRef.current -= deltaX * 0.004
-            pitchRef.current -= deltaY * 0.004
-            pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
-            
-            cam.rotation.set(0, 0, 0)
-            cam.rotation.y = yawRef.current
-            cam.rotation.x = pitchRef.current
+          const mode = cameraModeRef.current
+          if (isDragging && e.touches) {
+            if (mode === 'first-person' && e.touches.length === 1) {
+              const clientX = e.touches[0].clientX ?? previousMouseX
+              const clientY = e.touches[0].clientY ?? previousMouseY
+              const deltaX = clientX - previousMouseX
+              const deltaY = clientY - previousMouseY
+              previousMouseX = clientX
+              previousMouseY = clientY
+              
+              yawRef.current -= deltaX * 0.004
+              pitchRef.current -= deltaY * 0.004
+              pitchRef.current = Math.max(-1.1, Math.min(1.1, pitchRef.current))
+            } else if (mode === 'orbit' && e.touches.length === 1) {
+              const clientX = e.touches[0].clientX ?? previousMouseX
+              const clientY = e.touches[0].clientY ?? previousMouseY
+              const deltaX = clientX - previousMouseX
+              const deltaY = clientY - previousMouseY
+              previousMouseX = clientX
+              previousMouseY = clientY
+              
+              orbitYawRef.current -= deltaX * 0.006
+              orbitPitchRef.current += deltaY * 0.006
+              orbitPitchRef.current = Math.max(0.05, Math.min(Math.PI / 2 - 0.05, orbitPitchRef.current))
+            }
           }
         } catch (err) {
           console.warn("Erro no touch move:", err)
@@ -502,10 +735,25 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
       const handleCanvasClick = () => {
         canvas.focus()
-        lockPointer()
+        if (cameraModeRef.current === 'first-person') {
+          lockPointer()
+        }
+      }
+
+      const handleContextMenu = (e: MouseEvent) => {
+        e.preventDefault()
+      }
+
+      const handleWheel = (e: WheelEvent) => {
+        if (cameraModeRef.current === 'orbit') {
+          e.preventDefault()
+          orbitDistanceRef.current = Math.max(3.0, Math.min(30.0, orbitDistanceRef.current + e.deltaY * 0.015))
+        }
       }
 
       canvas.addEventListener('click', handleCanvasClick)
+      canvas.addEventListener('contextmenu', handleContextMenu)
+      canvas.addEventListener('wheel', handleWheel, { passive: false })
       document.addEventListener('mousedown', handleMouseDown)
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
@@ -554,10 +802,14 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const moveVector = new THREE.Vector3()
       const upVector = new THREE.Vector3(0, 1, 0)
       const rightVector = new THREE.Vector3()
+      const frontVector = new THREE.Vector3()
+      const sideVector = new THREE.Vector3()
+      const nextCamBox = new THREE.Box3()
+      const camBoxMin = new THREE.Vector3()
+      const camBoxMax = new THREE.Vector3()
       
       let animationFrameId = 0
-      const moveSpeed = 3.2 
-
+      let frameCount = 0
       const animate = () => {
         const cam = cameraRef.current
         const sc = sceneRef.current
@@ -565,6 +817,43 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         if (!cam || !sc || !ren) return
 
         try {
+          const mode = cameraModeRef.current
+
+          if (mode === 'orbit') {
+            const r = orbitDistanceRef.current
+            const pitch = orbitPitchRef.current
+            const yaw = orbitYawRef.current
+            const target = orbitTargetRef.current
+
+            cam.position.x = target.x + r * Math.cos(pitch) * Math.sin(yaw)
+            cam.position.y = target.y + r * Math.sin(pitch)
+            cam.position.z = target.z + r * Math.cos(pitch) * Math.cos(yaw)
+            cam.lookAt(target)
+          } else {
+            // Sync camera look rotation exactly once per frame at the start of rendering
+            cam.rotation.set(0, 0, 0)
+            cam.rotation.y = yawRef.current
+            cam.rotation.x = pitchRef.current
+          }
+
+          // Dynamic LOD visibility culling for products
+          const camX = cam.position.x
+          const camZ = cam.position.z
+          const lodObjects = lodObjectsRef.current
+          const showProductsVal = showProductsRef.current
+          const maxDistSq = mode === 'orbit' ? 64.0 : 20.25 // 8.0m in orbit, 4.5m in first-person
+          for (let i = 0; i < lodObjects.length; i++) {
+            const item = lodObjects[i]
+            if (!showProductsVal) {
+              item.group.visible = false
+            } else {
+              const dx = camX - item.worldPos.x
+              const dz = camZ - item.worldPos.z
+              const distSq = dx * dx + dz * dz
+              item.group.visible = distSq <= maxDistSq
+            }
+          }
+
           const currentTime = performance.now()
           let deltaTime = (currentTime - lastTime) / 1000
           lastTime = currentTime
@@ -575,95 +864,97 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             deltaTime = 0.1
           }
 
-          cam.getWorldDirection(cameraDirection)
-          cameraDirection.y = 0 
-          
-          if (isNaN(cameraDirection.x) || isNaN(cameraDirection.z) || cameraDirection.lengthSq() < 0.0001) {
-            cameraDirection.set(0, 0, -1)
-          } else {
-            cameraDirection.normalize()
-          }
-
-          rightVector.crossVectors(cameraDirection, upVector)
-          if (isNaN(rightVector.x) || isNaN(rightVector.z) || rightVector.lengthSq() < 0.0001) {
-            rightVector.set(1, 0, 0)
-          } else {
-            rightVector.normalize()
-          }
-
-          const frontVector = new THREE.Vector3()
-          const sideVector = new THREE.Vector3()
-
-          const keys = keysRef.current || {}
-          if (keys['KeyW'] || keys['ArrowUp'] || keys['w'] || keys['arrowup'] || keys['z'] || keys['KeyZ']) frontVector.copy(cameraDirection)
-          if (keys['KeyS'] || keys['ArrowDown'] || keys['s'] || keys['arrowdown']) frontVector.copy(cameraDirection).multiplyScalar(-1)
-          if (keys['KeyD'] || keys['ArrowRight'] || keys['d'] || keys['arrowright']) sideVector.copy(rightVector)
-          if (keys['KeyA'] || keys['ArrowLeft'] || keys['a'] || keys['arrowleft'] || keys['q'] || keys['KeyQ']) sideVector.copy(rightVector).multiplyScalar(-1)
-
-          moveVector.addVectors(frontVector, sideVector)
-          
-          if (moveVector.lengthSq() > 0.0001) {
-            moveVector.normalize().multiplyScalar(moveSpeed * deltaTime)
+          if (mode === 'first-person') {
+            const moveSpeed = 3.0
+            cam.getWorldDirection(cameraDirection)
+            cameraDirection.y = 0 
             
-            let nextX = cam.position.x + moveVector.x
-            let nextZ = cam.position.z + moveVector.z
+            if (isNaN(cameraDirection.x) || isNaN(cameraDirection.z) || cameraDirection.lengthSq() < 0.0001) {
+              cameraDirection.set(0, 0, -1)
+            } else {
+              cameraDirection.normalize()
+            }
+
+            rightVector.crossVectors(cameraDirection, upVector)
+            if (isNaN(rightVector.x) || isNaN(rightVector.z) || rightVector.lengthSq() < 0.0001) {
+              rightVector.set(1, 0, 0)
+            } else {
+              rightVector.normalize()
+            }
+
+            frontVector.set(0, 0, 0)
+            sideVector.set(0, 0, 0)
+
+            const keys = keysRef.current || {}
+            if (keys['KeyW'] || keys['ArrowUp'] || keys['w'] || keys['arrowup'] || keys['z'] || keys['KeyZ']) frontVector.copy(cameraDirection)
+            if (keys['KeyS'] || keys['ArrowDown'] || keys['s'] || keys['arrowdown']) frontVector.copy(cameraDirection).multiplyScalar(-1)
+            if (keys['KeyD'] || keys['ArrowRight'] || keys['d'] || keys['arrowright']) sideVector.copy(rightVector)
+            if (keys['KeyA'] || keys['ArrowLeft'] || keys['a'] || keys['arrowleft'] || keys['q'] || keys['KeyQ']) sideVector.copy(rightVector).multiplyScalar(-1)
+
+            moveVector.addVectors(frontVector, sideVector)
             
-            if (isNaN(nextX) || !isFinite(nextX)) nextX = cam.position.x
-            if (isNaN(nextZ) || !isFinite(nextZ)) nextZ = cam.position.z
+            if (moveVector.lengthSq() > 0.0001) {
+              moveVector.normalize().multiplyScalar(moveSpeed * deltaTime)
+              
+              let nextX = cam.position.x + moveVector.x
+              let nextZ = cam.position.z + moveVector.z
+              
+              if (isNaN(nextX) || !isFinite(nextX)) nextX = cam.position.x
+              if (isNaN(nextZ) || !isFinite(nextZ)) nextZ = cam.position.z
 
-            const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
-            const wVal = Math.max(4, Number(currentWidth) || 10)
-            const hVal = Math.max(4, Number(currentHeight) || 12)
+              const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
+              const wVal = Math.max(4, Number(currentWidth) || 10)
+              const hVal = Math.max(4, Number(currentHeight) || 12)
 
-            const boundMargin = 0.3
-            nextX = Math.max(-wVal / 2 + boundMargin, Math.min(nextX, wVal / 2 - boundMargin))
-            nextZ = Math.max(-hVal / 2 + boundMargin, Math.min(nextZ, hVal / 2 - boundMargin))
+              const boundMargin = 0.3
+              nextX = Math.max(-wVal / 2 + boundMargin, Math.min(nextX, wVal / 2 - boundMargin))
+              nextZ = Math.max(-hVal / 2 + boundMargin, Math.min(nextZ, hVal / 2 - boundMargin))
 
-            // Reduced collision radius (0.12) to navigate narrow corridors easily without getting stuck
-            let collidedX = false
-            if (!noclipRef.current && furnitureMeshesRef.current) {
-              const nextCamBoxX = new THREE.Box3(
-                new THREE.Vector3(nextX - 0.12, 0.1, cam.position.z - 0.12),
-                new THREE.Vector3(nextX + 0.12, 1.9, cam.position.z + 0.12)
-              )
-              for (const fItem of furnitureMeshesRef.current) {
-                if (fItem && fItem.isObstacle && fItem.box && nextCamBoxX.intersectsBox(fItem.box)) {
-                  collidedX = true
-                  break
+              // Reduced collision radius (0.12) to navigate narrow corridors easily without getting stuck
+              let collidedX = false
+              if (!noclipRef.current && furnitureMeshesRef.current) {
+                camBoxMin.set(nextX - 0.12, 0.1, cam.position.z - 0.12)
+                camBoxMax.set(nextX + 0.12, 1.9, cam.position.z + 0.12)
+                nextCamBox.set(camBoxMin, camBoxMax)
+                for (const fItem of furnitureMeshesRef.current) {
+                  if (fItem && fItem.isObstacle && fItem.box && nextCamBox.intersectsBox(fItem.box)) {
+                    collidedX = true
+                    break
+                  }
                 }
               }
-            }
-            if (!collidedX) {
-              cam.position.x = nextX
-            }
+              if (!collidedX) {
+                cam.position.x = nextX
+              }
 
-            let collidedZ = false
-            if (!noclipRef.current && furnitureMeshesRef.current) {
-              const nextCamBoxZ = new THREE.Box3(
-                new THREE.Vector3(cam.position.x - 0.12, 0.1, nextZ - 0.12),
-                new THREE.Vector3(cam.position.x + 0.12, 1.9, nextZ + 0.12)
-              )
-              for (const fItem of furnitureMeshesRef.current) {
-                if (fItem && fItem.isObstacle && fItem.box && nextCamBoxZ.intersectsBox(fItem.box)) {
-                  collidedZ = true
-                  break
+              let collidedZ = false
+              if (!noclipRef.current && furnitureMeshesRef.current) {
+                camBoxMin.set(cam.position.x - 0.12, 0.1, nextZ - 0.12)
+                camBoxMax.set(cam.position.x + 0.12, 1.9, nextZ + 0.12)
+                nextCamBox.set(camBoxMin, camBoxMax)
+                for (const fItem of furnitureMeshesRef.current) {
+                  if (fItem && fItem.isObstacle && fItem.box && nextCamBox.intersectsBox(fItem.box)) {
+                    collidedZ = true
+                    break
+                  }
                 }
               }
+              if (!collidedZ) {
+                cam.position.z = nextZ
+              }
             }
-            if (!collidedZ) {
-              cam.position.z = nextZ
+
+            if (isNaN(cam.position.x) || !isFinite(cam.position.x)) cam.position.x = 0
+            if (isNaN(cam.position.z) || !isFinite(cam.position.z)) {
+              const { storeHeight: currentHeight } = useCanvasStore.getState()
+              const hVal = Math.max(4, Number(currentHeight) || 12)
+              cam.position.z = hVal / 2 - 1.2
             }
           }
 
-          if (isNaN(cam.position.x) || !isFinite(cam.position.x)) cam.position.x = 0
-          if (isNaN(cam.position.z) || !isFinite(cam.position.z)) {
-            const { storeHeight: currentHeight } = useCanvasStore.getState()
-            const hVal = Math.max(4, Number(currentHeight) || 12)
-            cam.position.z = hVal / 2 - 1.2
-          }
-
-          // Telemetria do HUD
-          if (debugTextRef.current) {
+          frameCount++
+          // Telemetria do HUD - Throttled to once every 15 frames to prevent layout reflow bottlenecks
+          if (debugTextRef.current && frameCount % 15 === 0) {
             const activeKeys = Object.keys(keysRef.current || {})
               .filter(k => keysRef.current[k])
               .map(k => k.replace('Key', ''))
@@ -705,7 +996,6 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       // Conclusão do Setup (Bug 3)
       initializedRef.current = true
       setInitialized(true)
-      setLoading(false)
 
       // --- CLEANUP ---
       return () => {
@@ -721,6 +1011,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           canvas.removeEventListener('keydown', handleKeyDown)
           canvas.removeEventListener('keyup', handleKeyUp)
           canvas.removeEventListener('click', handleCanvasClick)
+          canvas.removeEventListener('contextmenu', handleContextMenu)
+          canvas.removeEventListener('wheel', handleWheel)
           try {
             if (container.contains(canvas)) {
               container.removeChild(canvas)
@@ -738,6 +1030,28 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         document.removeEventListener('touchend', handleTouchEnd)
         document.removeEventListener('pointerlockchange', onPointerLockChange)
         
+        if (furnitureGroupRef.current) {
+          furnitureGroupRef.current.traverse(child => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh
+              if (mesh.geometry) {
+                try {
+                  mesh.geometry.dispose()
+                } catch {}
+              }
+              if (mesh.material) {
+                try {
+                  if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => { if (m) m.dispose(); })
+                  } else {
+                    mesh.material.dispose()
+                  }
+                } catch {}
+              }
+            }
+          })
+        }
+
         if (rendererRef.current) {
           try {
             rendererRef.current.dispose()
@@ -767,6 +1081,13 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     }
   }, []) // <- Sem dependências (Bug 2)
 
+  // --- EFFECT: Resolution of Loading State ---
+  useEffect(() => {
+    if (initialized && loadedModelsCount >= requiredKeys.length) {
+      setLoading(false)
+    }
+  }, [initialized, loadedModelsCount, requiredKeys])
+
   // --- Effect 2: Atualização de Dimensões (Paredes, Piso, Teto, Spawn) ---
   useEffect(() => {
     if (!initializedRef.current) return
@@ -774,6 +1095,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
     const widthVal = Math.max(4, Number(storeWidth) || 10)
     const heightVal = Math.max(4, Number(storeHeight) || 12)
+
+    const initialDistance = Math.max(widthVal, heightVal) * 1.15
+    orbitDistanceRef.current = initialDistance
+    orbitTargetRef.current.set(0, 0.5, 0)
 
     const scene = sceneRef.current
     const camera = cameraRef.current
@@ -910,19 +1235,19 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           const lx = -widthVal / 2 + (widthVal / (cols + 1)) * (c + 1)
           const lz = -heightVal / 2 + (heightVal / (rows + 1)) * (r + 1)
           
-          // White glowing panel fixture on the ceiling
+          // White glowing panel fixture on the ceiling (looks like emitting light)
           const fixtureGeo = new THREE.BoxGeometry(0.8, 0.02, 0.8)
           const fixtureMat = new THREE.MeshBasicMaterial({ color: 0xffffff })
           const fixture = new THREE.Mesh(fixtureGeo, fixtureMat)
           fixture.position.set(lx, 2.99, lz)
           lightsGroup.add(fixture)
-
-          // Light source below the fixture
-          const light = new THREE.PointLight(0xffffff, 1.8, 12, 1.3)
-          light.position.set(lx, 2.7, lz)
-          lightsGroup.add(light)
         }
       }
+
+      // Add one central PointLight to illuminate the shop volumetric space efficiently
+      const centralLight = new THREE.PointLight(0xffffff, 1.5, Math.max(widthVal, heightVal) * 2, 1.0)
+      centralLight.position.set(0, 2.5, 0)
+      lightsGroup.add(centralLight)
     }
 
     // 7. Recalcular spawn de câmera de forma segura usando busca em grade
@@ -956,12 +1281,17 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         
         for (const item of items) {
           if (item && (item.isObstacle || item.isPillar)) {
-            const itemW = Number(item.width) || 1.0
-            const itemD = Number(item.height) || 1.0
-            const minX = (Number(item.x) || 0) - widthVal / 2
-            const maxX = minX + itemW
-            const minZ = (Number(item.y) || 0) - heightVal / 2
-            const maxZ = minZ + itemD
+            const bounds = getRotatedBounds(
+              Number(item.x) || 0,
+              Number(item.y) || 0,
+              Number(item.width) || 1.0,
+              Number(item.height) || 1.0,
+              Number(item.rotation) || 0
+            )
+            const minX = bounds.x - widthVal / 2
+            const maxX = minX + bounds.width
+            const minZ = bounds.y - heightVal / 2
+            const maxZ = minZ + bounds.height
             
             const obstacleBox = new THREE.Box3(
               new THREE.Vector3(minX, 0, minZ),
@@ -1001,6 +1331,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     yawRef.current = 0
     pitchRef.current = 0
     camera.rotation.set(0, 0, 0)
+
+    if (rendererRef.current) {
+      rendererRef.current.shadowMap.needsUpdate = true
+    }
   }, [storeWidth, storeHeight, items])
 
   // --- Effect 3: Sincronização de Móveis ---
@@ -1046,6 +1380,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
     }
 
+    lodObjectsRef.current = []
+
     const widthVal = Math.max(4, Number(storeWidth) || 10)
     const heightVal = Math.max(4, Number(storeHeight) || 12)
     const newFurnitureMeshes: { box: THREE.Box3; isObstacle: boolean }[] = []
@@ -1061,261 +1397,345 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const itemGroup = new THREE.Group()
       itemGroup.name = item.category || 'MÓVEL'
 
-      const center2Dx = itemX + itemW / 2
-      const center2Dy = itemY + itemD / 2
-      const thX = center2Dx - widthVal / 2
-      const thZ = center2Dy - heightVal / 2
+      const thX = itemX - widthVal / 2
+      const thZ = itemY - heightVal / 2
       itemGroup.position.set(thX, 0, thZ)
       itemGroup.rotation.y = -(Number(item.rotation) || 0) * Math.PI / 180
 
-      // Check if it's a cestão (wire basket)
-      const isCestao = item.itemId?.includes('catalog-71') || item.itemId?.includes('catalog-72')
-      if (isCestao) {
-        if (cestaoModelRef.current) {
-          try {
-            const modelClone = cestaoModelRef.current.clone()
-            
-            // Calculate size and scale
-            const bbox = new THREE.Box3().setFromObject(modelClone)
-            const size = new THREE.Vector3()
-            bbox.getSize(size)
-            
-            // Guard against divide-by-zero
-            const scaleX = size.x > 0 ? itemW / size.x : 1
-            const scaleY = size.y > 0 ? itemH / size.y : 1
-            const scaleZ = size.z > 0 ? itemD / size.z : 1
-            
-            modelClone.scale.set(scaleX, scaleY, scaleZ)
-            
-            // Adjust position so bottom of bounding box is at Y=0
-            const localBbox = new THREE.Box3().setFromObject(modelClone)
-            const minY = localBbox.min.y
-            modelClone.position.y = -minY
-            
-            modelClone.traverse(child => {
-              if ((child as THREE.Mesh).isMesh) {
-                child.castShadow = true
-                child.receiveShadow = true
-              }
-            })
-            
-            itemGroup.add(modelClone)
-          } catch (e) {
-            console.error("Erro ao clonar/renderizar modelo 3D do Cestão:", e)
-            const basketGeo = new THREE.CylinderGeometry(itemW / 2, itemW / 2, itemH, 12, 1, true)
-            const basketMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2, metalness: 0.8, side: THREE.DoubleSide, wireframe: true })
-            const basketMesh = new THREE.Mesh(basketGeo, basketMat)
-            basketMesh.position.y = itemH / 2
-            basketMesh.castShadow = true
-            itemGroup.add(basketMesh)
+      const subGroup = new THREE.Group()
+      const productsGroup = new THREE.Group()
+      productsGroup.name = "productsGroup"
+      subGroup.add(productsGroup)
+
+      // Helper function to clone and scale model to fit the item's dimensions
+      const applyModelToSubGroup = (model: THREE.Group) => {
+        const modelClone = model.clone()
+        const bbox = new THREE.Box3().setFromObject(modelClone)
+        const size = new THREE.Vector3()
+        bbox.getSize(size)
+        
+        const scaleX = size.x > 0 ? itemW / size.x : 1
+        const scaleY = size.y > 0 ? itemH / size.y : 1
+        const scaleZ = size.z > 0 ? itemD / size.z : 1
+        
+        modelClone.scale.set(scaleX, scaleY, scaleZ)
+        
+        const localBbox = new THREE.Box3().setFromObject(modelClone)
+        const minY = localBbox.min.y
+        modelClone.position.y = -minY
+        
+        // Centering the model relative to its boundaries in X and Z
+        const centerX = (localBbox.max.x + localBbox.min.x) / 2
+        const centerZ = (localBbox.max.z + localBbox.min.z) / 2
+        modelClone.position.x = -centerX
+        modelClone.position.z = -centerZ
+        
+        modelClone.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true
+            child.receiveShadow = true
           }
-        } else {
-          // Fallback wire basket
-          const basketGeo = new THREE.CylinderGeometry(itemW / 2, itemW / 2, itemH, 12, 1, true)
-          const basketMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2, metalness: 0.8, side: THREE.DoubleSide, wireframe: true })
-          const basketMesh = new THREE.Mesh(basketGeo, basketMat)
-          basketMesh.position.y = itemH / 2
-          basketMesh.castShadow = true
-          itemGroup.add(basketMesh)
-        }
-
-        furnitureGroup.add(itemGroup)
-        
-        const box3 = new THREE.Box3().setFromObject(itemGroup)
-        newFurnitureMeshes.push({ box: box3, isObstacle: false })
-        return
-      }
-
-      const itemColor = new THREE.Color(0x4b5563)
-      try {
-        if (item.fillColor) {
-          itemColor.set(item.fillColor)
-        }
-      } catch {
-        // fallback
-      }
-
-      if (item.isPillar) {
-        const pillarGeo = new THREE.BoxGeometry(itemW, 3.0, itemD)
-        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 })
-        const pillarMesh = new THREE.Mesh(pillarGeo, pillarMat)
-        pillarMesh.position.y = 1.5
-        pillarMesh.castShadow = true
-        pillarMesh.receiveShadow = true
-        itemGroup.add(pillarMesh)
-      } 
-      else if (item.category === 'GONDOLAS' || item.category === 'PERFUMARIA') {
-        const backGeo = new THREE.BoxGeometry(itemW, itemH, 0.08)
-        const backMat = new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6 })
-        const backMesh = new THREE.Mesh(backGeo, backMat)
-        backMesh.position.y = itemH / 2
-        backMesh.castShadow = true
-        itemGroup.add(backMesh)
-
-        const shelfColor = itemColor.clone().multiplyScalar(0.9)
-        const shelfMat = new THREE.MeshStandardMaterial({ color: shelfColor, roughness: 0.5 })
-        const shelfLevels = 4
-        for (let i = 1; i <= shelfLevels; i++) {
-          const sy = (itemH / (shelfLevels + 1)) * i
-          
-          // Front shelf - clamped to prevent negative sizes (WebGL crash)
-          const shelfWClamped = Math.max(0.01, itemW - 0.05)
-          const shelfFGeo = new THREE.BoxGeometry(shelfWClamped, 0.03, 0.25)
-          const shelfFMesh = new THREE.Mesh(shelfFGeo, shelfMat)
-          shelfFMesh.position.set(0, sy, 0.15)
-          shelfFMesh.castShadow = true
-          itemGroup.add(shelfFMesh)
-          
-          addProductMeshes(itemGroup, itemW, sy, 0.15)
-
-          // Back shelf - clamped to prevent negative sizes (WebGL crash)
-          const shelfBGeo = new THREE.BoxGeometry(shelfWClamped, 0.03, 0.25)
-          const shelfBMesh = new THREE.Mesh(shelfBGeo, shelfMat)
-          shelfBMesh.position.set(0, sy, -0.15)
-          shelfBMesh.castShadow = true
-          itemGroup.add(shelfBMesh)
-          
-          addProductMeshes(itemGroup, itemW, sy, -0.15)
-        }
-      } 
-      else if (item.category === 'BALCOES') {
-        // Clamped to prevent negative sizes (WebGL crash)
-        const baseW = Math.max(0.01, itemW - 0.02)
-        const baseH = Math.max(0.01, itemH - 0.05)
-        const baseD = Math.max(0.01, itemD - 0.02)
-        
-        const baseGeo = new THREE.BoxGeometry(baseW, baseH, baseD)
-        const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
-        const baseMesh = new THREE.Mesh(baseGeo, baseMat)
-        baseMesh.position.y = (itemH - 0.05) / 2
-        baseMesh.castShadow = true
-        itemGroup.add(baseMesh)
-
-        const topGeo = new THREE.BoxGeometry(itemW, 0.05, itemD)
-        const topMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 })
-        const topMesh = new THREE.Mesh(topGeo, topMat)
-        topMesh.position.y = itemH - 0.025
-        topMesh.castShadow = true
-        itemGroup.add(topMesh)
-        
-        const bottleCount = Math.floor(itemW / 0.35)
-        for (let b = 0; b < bottleCount; b++) {
-          const bx = -itemW / 2 + 0.18 + b * 0.35 + (Math.random() - 0.5) * 0.05
-          const bGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 6)
-          const bMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, transparent: true, opacity: 0.75 })
-          const bMesh = new THREE.Mesh(bGeo, bMat)
-          bMesh.position.set(bx, itemH + 0.035, (Math.random() - 0.5) * (itemD - 0.1))
-          itemGroup.add(bMesh)
-        }
-      }
-      else if (item.category === 'REFRIGERACAO') {
-        const cabGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
-        const cabMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.3 })
-        const cabMesh = new THREE.Mesh(cabGeo, cabMat)
-        cabMesh.position.y = itemH / 2
-        cabMesh.castShadow = true
-        itemGroup.add(cabMesh)
-
-        const fridgeShelfLevels = 3
-        const wireW = Math.max(0.01, itemW - 0.06)
-        const wireD = Math.max(0.01, itemD - 0.06)
-        for (let i = 1; i <= fridgeShelfLevels; i++) {
-          const sy = (itemH / (fridgeShelfLevels + 1)) * i
-          const wireGeo = new THREE.BoxGeometry(wireW, 0.01, wireD)
-          const wireMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2 })
-          const wireMesh = new THREE.Mesh(wireGeo, wireMat)
-          wireMesh.position.set(0, sy, 0)
-          itemGroup.add(wireMesh)
-          
-          const drinkColors = [0xef4444, 0x10b981, 0x3b82f6, 0xf59e0b]
-          const drinkCount = Math.floor((itemW - 0.1) / 0.08)
-          for (let d = 0; d < drinkCount; d++) {
-            const dx = -(itemW - 0.06) / 2 + 0.04 + d * 0.08
-            const drinkGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.08, 6)
-            const drinkMat = new THREE.MeshStandardMaterial({ 
-              color: drinkColors[Math.floor(Math.random() * drinkColors.length)], 
-              roughness: 0.1,
-              metalness: 0.8
-            })
-            const drinkMesh = new THREE.Mesh(drinkGeo, drinkMat)
-            drinkMesh.position.set(dx, sy + 0.04, 0)
-            itemGroup.add(drinkMesh)
-          }
-        }
-
-        const glassW = Math.max(0.01, itemW - 0.05)
-        const glassH = Math.max(0.01, itemH - 0.1)
-        const glassGeo = new THREE.BoxGeometry(glassW, glassH, 0.02)
-        const glassMat = new THREE.MeshStandardMaterial({ 
-          color: 0x67e8f9, 
-          transparent: true, 
-          opacity: 0.45,
-          roughness: 0.1,
-          metalness: 0.9,
-          emissive: 0x0891b2,
-          emissiveIntensity: 0.3
         })
-        const glassMesh = new THREE.Mesh(glassGeo, glassMat)
-        glassMesh.position.set(0, itemH / 2, itemD / 2 - 0.01)
-        itemGroup.add(glassMesh)
-      }
-      else if (item.category === 'OPERACIONAL') {
-        const baseGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
-        const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
-        const baseMesh = new THREE.Mesh(baseGeo, baseMat)
-        baseMesh.position.y = itemH / 2
-        baseMesh.castShadow = true
-        itemGroup.add(baseMesh)
+        configureMeshShadows(modelClone)
 
-        const monGroup = new THREE.Group()
-        monGroup.position.set(0, itemH, 0)
-        
-        const standGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8)
-        const standMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8 })
-        const standMesh = new THREE.Mesh(standGeo, standMat)
-        standMesh.position.y = 0.06
-        monGroup.add(standMesh)
-        
-        const scrGeo = new THREE.BoxGeometry(0.24, 0.18, 0.02)
-        const scrMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 })
-        const scrMesh = new THREE.Mesh(scrGeo, scrMat)
-        scrMesh.position.set(0, 0.15, 0)
-        scrMesh.rotation.x = -0.15
-        monGroup.add(scrMesh)
-        
-        const faceGeo = new THREE.BoxGeometry(0.22, 0.16, 0.002)
-        const faceMesh = new THREE.Mesh(faceGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }))
-        faceMesh.position.set(0, 0.15, 0.011)
-        faceMesh.rotation.x = -0.15
-        monGroup.add(faceMesh)
+        // Separate products by volume (< 2 liters)
+        const smallMeshes: THREE.Mesh[] = []
+        const meshTempBox = new THREE.Box3()
+        const sizeVec = new THREE.Vector3()
 
-        const kbGeo = new THREE.BoxGeometry(0.22, 0.01, 0.08)
-        const kbMesh = new THREE.Mesh(kbGeo, new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 }))
-        kbMesh.position.set(0, 0.005, 0.08)
-        monGroup.add(kbMesh)
+        modelClone.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh
+            if (mesh.geometry) {
+              try {
+                mesh.geometry.computeBoundingBox()
+                if (mesh.geometry.boundingBox) {
+                  meshTempBox.copy(mesh.geometry.boundingBox)
+                  meshTempBox.getSize(sizeVec)
+                  const volume = sizeVec.x * sizeVec.y * sizeVec.z
+                  if (volume < 0.002) {
+                    smallMeshes.push(mesh)
+                  }
+                }
+              } catch {}
+            }
+          }
+        })
 
-        itemGroup.add(monGroup)
-      }
-      else {
-        const boxGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
-        const boxMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.5 })
-        const boxMesh = new THREE.Mesh(boxGeo, boxMat)
-        boxMesh.position.y = itemH / 2
-        boxMesh.castShadow = true
-        boxMesh.receiveShadow = true
-        itemGroup.add(boxMesh)
+        smallMeshes.forEach(mesh => {
+          productsGroup.attach(mesh)
+        })
+
+        subGroup.add(modelClone)
       }
 
+      // Match items to custom GLB 3D models added by the user
+      const nameUpper = (item.name || '').toUpperCase()
+      const idUpper = (item.itemId || item.id || '').toUpperCase()
+      let matchedModel: THREE.Group | null = null
+
+      if (idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')) {
+        matchedModel = cestaoModelRef.current
+      } else if (idUpper.includes('CATALOG-101') || idUpper.includes('CATALOG-102') || nameUpper.includes('CONTROLADO') || nameUpper.includes('CTRL')) {
+        matchedModel = controladoModelRef.current
+      } else if (idUpper.includes('CATALOG-91') || idUpper.includes('CATALOG-92') || nameUpper.includes('DERMO')) {
+        matchedModel = dermoModelRef.current
+      } else if (idUpper.includes('CATALOG-111') || nameUpper.includes('ESMALTE') || nameUpper.includes('ESMALTES')) {
+        matchedModel = esmalteModelRef.current
+      } else if (idUpper.includes('CATALOG-14-') || nameUpper.includes('CANALETADO') || nameUpper.includes('CANAL')) {
+        matchedModel = canaletadoModelRef.current
+      } else if (nameUpper.includes('FILA') || nameUpper.includes('FILA INTELIGENTE') || nameUpper.includes('FILA_INTELIGENTE')) {
+        matchedModel = filaModelRef.current
+      } else if (nameUpper.includes('MED ') || nameUpper.includes('MED 807') || nameUpper.includes('MED 500') || nameUpper.includes('MED DUPLO') || nameUpper.includes('MEDICAMENTO') || (item.category === 'GONDOLAS' && nameUpper.includes('MED'))) {
+        matchedModel = medicamentoModelRef.current
+      } else if (item.category === 'PERFUMARIA') {
+        matchedModel = perfumariaModelRef.current
+      } else if (item.category === 'GONDOLAS' && (nameUpper.includes('GOND') || nameUpper.includes('GÔNDOLA') || nameUpper.includes('GONDOLA'))) {
+        matchedModel = gondolabrancaModelRef.current
+      }
+
+      const isCestao = idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')
+
+      if (matchedModel) {
+        try {
+          applyModelToSubGroup(matchedModel)
+        } catch (e) {
+          console.error(`⚠️ [3D Viewer] Erro ao clonar/renderizar modelo 3D para ${item.name}:`, e)
+        }
+      } else if (isCestao) {
+        const basketGeo = new THREE.CylinderGeometry(itemW / 2, itemW / 2, itemH, 12, 1, true)
+        const basketMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2, metalness: 0.8, side: THREE.DoubleSide, wireframe: true })
+        const basketMesh = new THREE.Mesh(basketGeo, basketMat)
+        basketMesh.position.y = itemH / 2
+        basketMesh.castShadow = true
+        subGroup.add(basketMesh)
+      } else {
+        const itemColor = new THREE.Color(0x4b5563)
+        try {
+          if (item.fillColor) {
+            itemColor.set(item.fillColor)
+          }
+        } catch {}
+
+        if (item.isPillar) {
+          const pillarGeo = new THREE.BoxGeometry(itemW, 3.0, itemD)
+          const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 })
+          const pillarMesh = new THREE.Mesh(pillarGeo, pillarMat)
+          pillarMesh.position.y = 1.5
+          pillarMesh.castShadow = true
+          pillarMesh.receiveShadow = true
+          subGroup.add(pillarMesh)
+        } 
+        else if (item.category === 'GONDOLAS' || item.category === 'PERFUMARIA') {
+          const backGeo = new THREE.BoxGeometry(itemW, itemH, 0.08)
+          const backMat = new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6 })
+          const backMesh = new THREE.Mesh(backGeo, backMat)
+          backMesh.position.y = itemH / 2
+          backMesh.castShadow = true
+          subGroup.add(backMesh)
+
+          const shelfColor = itemColor.clone().multiplyScalar(0.9)
+          const shelfMat = new THREE.MeshStandardMaterial({ color: shelfColor, roughness: 0.5 })
+          const shelfLevels = 4
+          for (let i = 1; i <= shelfLevels; i++) {
+            const sy = (itemH / (shelfLevels + 1)) * i
+            
+            // Front shelf - clamped to prevent negative sizes (WebGL crash)
+            const shelfWClamped = Math.max(0.01, itemW - 0.05)
+            const shelfFGeo = new THREE.BoxGeometry(shelfWClamped, 0.03, 0.25)
+            const shelfFMesh = new THREE.Mesh(shelfFGeo, shelfMat)
+            shelfFMesh.position.set(0, sy, 0.15)
+            shelfFMesh.castShadow = true
+            subGroup.add(shelfFMesh)
+            
+            addProductMeshes(productsGroup, itemW, sy, 0.15)
+
+            // Back shelf - clamped to prevent negative sizes (WebGL crash)
+            const shelfBGeo = new THREE.BoxGeometry(shelfWClamped, 0.03, 0.25)
+            const shelfBMesh = new THREE.Mesh(shelfBGeo, shelfMat)
+            shelfBMesh.position.set(0, sy, -0.15)
+            shelfBMesh.castShadow = true
+            subGroup.add(shelfBMesh)
+            
+            addProductMeshes(productsGroup, itemW, sy, -0.15)
+          }
+        } 
+        else if (item.category === 'BALCOES') {
+          const baseW = Math.max(0.01, itemW - 0.02)
+          const baseH = Math.max(0.01, itemH - 0.05)
+          const baseD = Math.max(0.01, itemD - 0.02)
+          
+          const baseGeo = new THREE.BoxGeometry(baseW, baseH, baseD)
+          const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
+          const baseMesh = new THREE.Mesh(baseGeo, baseMat)
+          baseMesh.position.y = (itemH - 0.05) / 2
+          baseMesh.castShadow = true
+          subGroup.add(baseMesh)
+
+          const topGeo = new THREE.BoxGeometry(itemW, 0.05, itemD)
+          const topMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 })
+          const topMesh = new THREE.Mesh(topGeo, topMat)
+          topMesh.position.y = itemH - 0.025
+          topMesh.castShadow = true
+          subGroup.add(topMesh)
+          
+          const bottleCount = Math.floor(itemW / 0.35)
+          for (let b = 0; b < bottleCount; b++) {
+            const bx = -itemW / 2 + 0.18 + b * 0.35 + (Math.random() - 0.5) * 0.05
+            const bGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 6)
+            const bMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, transparent: true, opacity: 0.75 })
+            const bMesh = new THREE.Mesh(bGeo, bMat)
+            bMesh.position.set(bx, itemH + 0.035, (Math.random() - 0.5) * (itemD - 0.1))
+            productsGroup.add(bMesh)
+          }
+        }
+        else if (item.category === 'REFRIGERACAO') {
+          const cabGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
+          const cabMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.3 })
+          const cabMesh = new THREE.Mesh(cabGeo, cabMat)
+          cabMesh.position.y = itemH / 2
+          cabMesh.castShadow = true
+          subGroup.add(cabMesh)
+
+          const fridgeShelfLevels = 3
+          const wireW = Math.max(0.01, itemW - 0.06)
+          const wireD = Math.max(0.01, itemD - 0.06)
+          for (let i = 1; i <= fridgeShelfLevels; i++) {
+            const sy = (itemH / (fridgeShelfLevels + 1)) * i
+            const wireGeo = new THREE.BoxGeometry(wireW, 0.01, wireD)
+            const wireMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2 })
+            const wireMesh = new THREE.Mesh(wireGeo, wireMat)
+            wireMesh.position.set(0, sy, 0)
+            subGroup.add(wireMesh)
+            
+            const drinkColors = [0xef4444, 0x10b981, 0x3b82f6, 0xf59e0b]
+            const drinkCount = Math.floor((itemW - 0.1) / 0.08)
+            for (let d = 0; d < drinkCount; d++) {
+              const dx = -(itemW - 0.06) / 2 + 0.04 + d * 0.08
+              const drinkGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.08, 6)
+              const drinkMat = new THREE.MeshStandardMaterial({ 
+                color: drinkColors[Math.floor(Math.random() * drinkColors.length)], 
+                roughness: 0.1,
+                metalness: 0.8
+              })
+              const drinkMesh = new THREE.Mesh(drinkGeo, drinkMat)
+              drinkMesh.position.set(dx, sy + 0.04, 0)
+              productsGroup.add(drinkMesh)
+            }
+          }
+
+          const glassW = Math.max(0.01, itemW - 0.05)
+          const glassH = Math.max(0.01, itemH - 0.1)
+          const glassGeo = new THREE.BoxGeometry(glassW, glassH, 0.02)
+          const glassMat = new THREE.MeshStandardMaterial({ 
+            color: 0x67e8f9, 
+            transparent: true, 
+            opacity: 0.45,
+            roughness: 0.1,
+            metalness: 0.9,
+            emissive: 0x0891b2,
+            emissiveIntensity: 0.3
+          })
+          const glassMesh = new THREE.Mesh(glassGeo, glassMat)
+          glassMesh.position.set(0, itemH / 2, itemD / 2 - 0.01)
+          subGroup.add(glassMesh)
+        }
+        else if (item.category === 'OPERACIONAL') {
+          const baseGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
+          const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
+          const baseMesh = new THREE.Mesh(baseGeo, baseMat)
+          baseMesh.position.y = itemH / 2
+          baseMesh.castShadow = true
+          subGroup.add(baseMesh)
+
+          const monGroup = new THREE.Group()
+          monGroup.position.set(0, itemH, 0)
+          
+          const standGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8)
+          const standMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8 })
+          const standMesh = new THREE.Mesh(standGeo, standMat)
+          standMesh.position.y = 0.06
+          monGroup.add(standMesh)
+          
+          const scrGeo = new THREE.BoxGeometry(0.24, 0.18, 0.02)
+          const scrMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 })
+          const scrMesh = new THREE.Mesh(scrGeo, scrMat)
+          scrMesh.position.set(0, 0.15, 0)
+          scrMesh.rotation.x = -0.15
+          monGroup.add(scrMesh)
+          
+          const faceGeo = new THREE.BoxGeometry(0.22, 0.16, 0.002)
+          const faceMesh = new THREE.Mesh(faceGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }))
+          faceMesh.position.set(0, 0.15, 0.011)
+          faceMesh.rotation.x = -0.15
+          monGroup.add(faceMesh)
+
+          const kbGeo = new THREE.BoxGeometry(0.22, 0.01, 0.08)
+          const kbMesh = new THREE.Mesh(kbGeo, new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 }))
+          kbMesh.position.set(0, 0.005, 0.08)
+          monGroup.add(kbMesh)
+
+          subGroup.add(monGroup)
+        }
+        else {
+          const boxGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
+          const boxMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.5 })
+          const boxMesh = new THREE.Mesh(boxGeo, boxMat)
+          boxMesh.position.y = itemH / 2
+          boxMesh.castShadow = true
+          boxMesh.receiveShadow = true
+          subGroup.add(boxMesh)
+        }
+      }
+
+      // Add a fake contact shadow under the furniture item (if not a pillar)
+      if (!item.isPillar) {
+        const shadowGeo = new THREE.PlaneGeometry(itemW * 1.1, itemD * 1.1)
+        const shadowMat = new THREE.MeshBasicMaterial({
+          map: getContactShadowTexture(),
+          transparent: true,
+          opacity: 0.7,
+          blending: THREE.MultiplyBlending,
+          depthWrite: false
+        })
+        const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat)
+        shadowMesh.rotation.x = -Math.PI / 2
+        // Positioned slightly above floor to prevent z-fighting
+        shadowMesh.position.set(0, 0.004, 0)
+        subGroup.add(shadowMesh)
+      }
+
+      subGroup.position.set(itemW / 2, 0, itemD / 2)
+      itemGroup.add(subGroup)
       furnitureGroup.add(itemGroup)
       
       newFurnitureMeshes.push({
         box: new THREE.Box3().setFromObject(itemGroup),
         isObstacle: !!(item.isObstacle || item.isPillar)
       })
+
+      // Add to LOD list if it contains products
+      if (productsGroup.children.length > 0) {
+        const angle = -(Number(item.rotation) || 0) * Math.PI / 180
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+        const cx = (itemW / 2) * cos - (itemD / 2) * sin
+        const cz = (itemW / 2) * sin + (itemD / 2) * cos
+        const worldPos = new THREE.Vector3(thX + cx, 0, thZ + cz)
+
+        lodObjectsRef.current.push({
+          group: productsGroup,
+          worldPos
+        })
+      }
     })
 
     furnitureMeshesRef.current = newFurnitureMeshes
-  }, [items, storeWidth, storeHeight, cestaoLoaded])
+    
+    if (rendererRef.current) {
+      rendererRef.current.shadowMap.needsUpdate = true
+    }
+  }, [items, storeWidth, storeHeight, loadedModelsCount])
 
   // --- Effect 4: Atualização de Customizações (floorStyle, wallColor, showSignage) ---
   useEffect(() => {
@@ -1355,6 +1775,28 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       signageGroupRef.current.visible = showSignage
     }
   }, [floorStyle, wallColor, showSignage])
+
+  // --- Effect: Update shadowMap state ---
+  useEffect(() => {
+    const ren = rendererRef.current
+    const dirLight = directionalLightRef.current
+    if (dirLight) {
+      dirLight.castShadow = shadowsEnabled
+    }
+    if (ren) {
+      ren.shadowMap.enabled = shadowsEnabled
+      ren.shadowMap.needsUpdate = true
+      sceneRef.current?.traverse(child => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mat = (child as THREE.Mesh).material
+          if (mat) {
+            if (Array.isArray(mat)) mat.forEach(m => { if (m) m.needsUpdate = true; })
+            else mat.needsUpdate = true
+          }
+        }
+      })
+    }
+  }, [shadowsEnabled])
 
   const handleLockClick = () => {
     setShowIntro(false)
@@ -1441,6 +1883,18 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           <div className="cust-title">Customizar Espaço</div>
           
           <div className="cust-section">
+            <label className="cust-label">Modo de Visualização</label>
+            <div className="cust-grid">
+              <button className={`cust-btn ${cameraMode === 'orbit' ? 'active' : ''}`} onClick={() => setCameraMode('orbit')}>
+                🛸 Órbita 3D
+              </button>
+              <button className={`cust-btn ${cameraMode === 'first-person' ? 'active' : ''}`} onClick={() => setCameraMode('first-person')}>
+                🚶‍♂️ Primeira Pessoa
+              </button>
+            </div>
+          </div>
+          
+          <div className="cust-section">
             <label className="cust-label">Piso (Textura & Cor)</label>
             <div className="cust-grid">
               <button className={`cust-btn ${floorStyle === 'grid' ? 'active' : ''}`} onClick={() => setFloorStyle('grid')}>
@@ -1481,6 +1935,26 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
               <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>Exibir Placas de Setorização</span>
               <div className="ios-toggle">
                 <input type="checkbox" checked={showSignage} onChange={e => setShowSignage(e.target.checked)} />
+                <div className="ios-track" />
+              </div>
+            </label>
+          </div>
+
+          <div className="cust-section">
+            <label className="toggle-row" style={{ padding: 0 }}>
+              <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>Sombras de Alta Qualidade</span>
+              <div className="ios-toggle">
+                <input type="checkbox" checked={shadowsEnabled} onChange={e => setShadowsEnabled(e.target.checked)} />
+                <div className="ios-track" />
+              </div>
+            </label>
+          </div>
+
+          <div className="cust-section">
+            <label className="toggle-row" style={{ padding: 0 }}>
+              <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>Exibir Produtos nas Prateleiras</span>
+              <div className="ios-toggle">
+                <input type="checkbox" checked={showProducts} onChange={e => setShowProducts(e.target.checked)} />
                 <div className="ios-track" />
               </div>
             </label>
@@ -1536,12 +2010,12 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           >▼</button>
         </div>
 
-        {showIntro && (
+        {!loading && showIntro && (
           <div className="three-lock-overlay" onClick={handleLockClick}>
             <div className="lock-card" onClick={e => e.stopPropagation()}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--green-400)', marginBottom: 12 }}><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
-              <h3>Clique no ecrã para iniciar</h3>
-              <p>Mova o rato ou arraste para olhar ao redor, e use as teclas **W, A, S, D** ou os botões para navegar.</p>
+              <h3>Clique na tela para iniciar</h3>
+              <p>Mova o mouse ou arraste para olhar ao redor, e use as teclas **W, A, S, D** ou os botões para navegar.</p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
                 <button className="btn btn-primary btn-md" onClick={handleLockClick}>
                   Entrar na Farmácia
@@ -1566,19 +2040,23 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
         {isLocked ? (
           <div className="hud-instructions">
-            <span>🚶‍♂️ <strong>WASD / Setas</strong> para andar · <strong>Mova o rato</strong> para olhar · Pressione <strong>ESC</strong> para liberar o cursor</span>
+            <span>🚶‍♂️ <strong>WASD / Setas</strong> para andar · <strong>Mova o mouse</strong> para olhar · Pressione <strong>ESC</strong> para liberar o cursor</span>
           </div>
         ) : (
-          !showIntro && (
+          !showIntro && !loading && (
             <div className="hud-instructions">
-              <span>🚶‍♂️ <strong>WASD / Setas</strong> para andar · <strong>Arraste o ecrã</strong> para olhar · <span style={{ textDecoration: 'underline', cursor: 'pointer', color: 'var(--green-400)' }} onClick={handleLockClick}>Focar Cursor</span></span>
+              <span>🚶‍♂️ <strong>WASD / Setas</strong> para andar · <strong>Arraste a tela</strong> para olhar · <span style={{ textDecoration: 'underline', cursor: 'pointer', color: 'var(--green-400)' }} onClick={handleLockClick}>Focar Cursor</span></span>
             </div>
           )
         )}
         {loading && (
           <div className="hud-loader">
             <div className="spin" style={{ width: 32, height: 32, border: '3px solid var(--green-400)', borderTopColor: 'transparent', borderRadius: '50%' }} />
-            <span style={{ marginTop: 8 }}>Gerando maquete 3D...</span>
+            <span style={{ marginTop: 8 }}>
+              {requiredKeys.length > 0
+                ? `Carregando móveis 3D... (${loadedModelsCount}/${requiredKeys.length})`
+                : 'Gerando maquete 3D...'}
+            </span>
           </div>
         )}
       </div>

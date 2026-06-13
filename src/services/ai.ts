@@ -1,17 +1,19 @@
 // ============================================
-// AI Layout Assistant — Rule-based + Simulated AI
+// AI Layout Assistant — Rule-based + Layouts de Referência (SketchUp)
 // Bug Fix: usa uuid real em vez de Math.random()
 // ============================================
 
 import { v4 as uuidv4 } from 'uuid'
 import { getItemById } from '../data/items'
+import { getRotatedBounds, checkAABBCollision } from '../utils/geometry'
+import { findCompatibleReferenceLayouts } from './sketchupVision'
 import type {
   StoreType,
   AILayoutResult,
   AILayoutZone,
-  AIContext,
   CanvasItem,
   ItemCategory,
+  LayoutDensity,
 } from '../types'
 
 // ─── Configurações por tipo de loja ──────────────────────────────────────────
@@ -77,14 +79,84 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
 
 // ─── Geração de Layout ────────────────────────────────────────────────────────
 
-export function generateAILayout(
+
+export async function generateAILayout(
   storeWidth: number,
   storeHeight: number,
   storeType: StoreType,
   existingObstacles: Partial<CanvasItem>[] = [],
-): AILayoutResult {
+  density: LayoutDensity = 'normal',
+): Promise<AILayoutResult> {
   const config = STORE_TYPE_CONFIGS[storeType] ?? STORE_TYPE_CONFIGS.popular
-  const minCorridor = 1.0 // Distância mínima padrão de 1m
+
+  // ─── Verificar se há layout de referência compatível (SketchUp) ────────────
+  const referenceLayouts = findCompatibleReferenceLayouts(storeType, storeWidth, storeHeight, 0.40)
+  if (referenceLayouts.length > 0) {
+    const ref = referenceLayouts[0]
+    const scaleX = storeWidth / ref.storeWidth
+    const scaleY = storeHeight / ref.storeHeight
+
+    // Escalar as posições dos itens do layout de referência para as novas dimensões sem alterar suas dimensões físicas (mantendo o catálogo real)
+    const scaledItems: Partial<CanvasItem>[] = ref.items.map(item => {
+      let targetX = item.x * scaleX
+      let targetY = item.y * scaleY
+
+      // Ajustar para garantir que o item caiba dentro da nova largura/altura
+      targetX = Math.max(0, Math.min(targetX, storeWidth - item.width))
+      targetY = Math.max(0, Math.min(targetY, storeHeight - item.height))
+
+      return {
+        ...item,
+        id: `ai_ref_${uuidv4()}`,
+        x: Math.round(targetX * 100) / 100,
+        y: Math.round(targetY * 100) / 100,
+        width: item.width,
+        height: item.height,
+      }
+    })
+
+    // Filtrar itens que ficaram fora dos limites
+    const validItems = scaledItems.filter(item =>
+      (item.x ?? 0) >= 0 &&
+      (item.y ?? 0) >= 0 &&
+      (item.x ?? 0) + (item.width ?? 0) <= storeWidth + 0.1 &&
+      (item.y ?? 0) + (item.height ?? 0) <= storeHeight + 0.1
+    )
+
+    const refArea = (ref.storeWidth * ref.storeHeight).toFixed(1)
+    const newArea = (storeWidth * storeHeight).toFixed(1)
+
+    return {
+      items: validItems,
+      messages: [
+        `🎨 Layout baseado em modelo real dos seus projetistas (${ref.name})`,
+        `📀 Modelo original: ${ref.storeWidth}m×${ref.storeHeight}m (${refArea}m²) → adaptado para ${storeWidth}m×${storeHeight}m (${newArea}m²)`,
+        `✅ ${validItems.length} itens posicionados com base no projeto do projetista`,
+        ...config.tips.slice(0, 2),
+      ],
+      stats: {
+        usedArea: validItems.reduce((a, i) => a + (i.width ?? 0) * (i.height ?? 0), 0).toFixed(1),
+        totalArea: (storeWidth * storeHeight).toFixed(1),
+        corridorMin: 1.0,
+      },
+      valid: true,
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────────
+  // Fallback: lógica original de geração por regras
+  // ───────────────────────────────────────────────────────────────────────
+
+  const isLargeStore = storeWidth * storeHeight > 100
+
+  // Corridor size based on layout density option (Livre, Padrão, Apertado)
+  let minCorridor = 1.0
+  if (density === 'spacious') minCorridor = 1.2
+  else if (density === 'compact') minCorridor = 0.80 // 80cm is compact accessibility corridor
+
+  // Forçar 80cm (0.80) para farmácias <= 100m²
+  if (!isLargeStore) {
+    minCorridor = 0.80
+  }
 
   // Verificar dimensões mínimas
   if (storeWidth < 4 || storeHeight < 4) {
@@ -98,327 +170,1663 @@ export function generateAILayout(
 
   const generatedItems: Partial<CanvasItem>[] = []
 
-  // Helper para verificar colisões com pilares/obstáculos
+  // Helper para verificar colisões com pilares/obstáculos/portas e itens já gerados
   const collidesWithObstacle = (x: number, y: number, w: number, h: number, rot: number) => {
-    const realW = rot === 90 || rot === 270 ? h : w
-    const realH = rot === 90 || rot === 270 ? w : h
-    let x1 = x
-    let y1 = y
-    if (rot === 90) {
-      x1 = x - realW
-    } else if (rot === 270) {
-      x1 = x
-      y1 = y - realH
-    }
+    const boxA = getRotatedBounds(x, y, w, h, rot)
 
-    return existingObstacles.some(obs => {
+    // 1. Verificar contra obstáculos estáticos da loja (margem de 5cm)
+    const collidesObstacle = existingObstacles.some(obs => {
+      if (!obs.isPillar && !obs.isObstacle && !obs.isDoor) return false
+
       const ox = obs.x ?? 0
       const oy = obs.y ?? 0
       const ow = obs.width ?? 0.3
       const oh = obs.height ?? 0.3
-      
-      // Margem de segurança de 0.05m
+      const oRot = obs.rotation ?? 0
+
+      const boxB = getRotatedBounds(ox, oy, ow, oh, oRot)
+
       return (
-        x1 < ox + ow + 0.05 &&
-        x1 + realW > ox - 0.05 &&
-        y1 < oy + oh + 0.05 &&
-        y1 + realH > oy - 0.05
+        boxA.x < boxB.x + boxB.width + 0.05 &&
+        boxA.x + boxA.width > boxB.x - 0.05 &&
+        boxA.y < boxB.y + boxB.height + 0.05 &&
+        boxA.y + boxA.height > boxB.y - 0.05
       )
     })
+
+    if (collidesObstacle) return true
+
+    // 2. Verificar contra itens já posicionados no layout (tolerância de 1cm para permitir encostar)
+    const collidesGenerated = generatedItems.some(item => {
+      const ix = item.x ?? 0
+      const iy = item.y ?? 0
+      const iw = item.width ?? 0.3
+      const ih = item.height ?? 0.3
+      const iRot = item.rotation ?? 0
+
+      const boxB = getRotatedBounds(ix, iy, iw, ih, iRot)
+
+      return (
+        boxA.x < boxB.x + boxB.width - 0.01 &&
+        boxA.x + boxA.width > boxB.x + 0.01 &&
+        boxA.y < boxB.y + boxB.height - 0.01 &&
+        boxA.y + boxA.height > boxB.y + 0.01
+      )
+    })
+
+    return collidesGenerated
   }
 
-  // Sufixo da linha comercial baseada na escolha:
-  // Se for premium, usa a linha premium. Caso contrário, usa especial.
   const lineSuffix = storeType === 'premium' ? '-premium' : '-especial'
 
-  // ==========================================
-  // 1. RETAGUARDA DE MEDICAMENTOS (PAREDE DO FUNDO)
-  // ==========================================
-  // Armários de medicamentos (MED, profundidade de 0.21m) encostados no fundo.
-  // Colocamos ao longo da parede traseira (y = storeHeight - 0.21), rotacionados em 180 graus.
-  // Deixamos um recuo lateral de 0.26m para não bater com as gôndolas laterais.
+  // 1. Detectar ou criar portas (entrada e saída)
+  const doors = existingObstacles.filter(i => i.isDoor || i.itemId?.includes('door') || i.itemId?.includes('porta'))
+  let entrance = doors.find(i => i.itemId === 'porta-entrada' || i.name?.toLowerCase().includes('entrada'))
+  let exit = doors.find(i => i.itemId === 'porta-saida-emergencia' || i.name?.toLowerCase().includes('saida') || i.isEmergency)
+
+  if (!entrance) {
+    const entX = Math.max(0.5, storeWidth / 2 - 0.8)
+    const entY = storeHeight - 0.15
+    const newEnt = makeItem(
+      'porta-entrada',
+      'Porta de Entrada',
+      '🚪',
+      entX,
+      entY,
+      1.2,
+      0.15,
+      '#FCD34D',
+      '#78350F',
+      { rotation: 0 }
+    )
+    generatedItems.push(newEnt)
+    entrance = newEnt
+  }
+
+  if (!exit) {
+    const extX = Math.min(storeWidth - 1.5, storeWidth / 2 + 0.8)
+    const extY = storeHeight - 0.15
+    const newExt = makeItem(
+      'porta-saida-emergencia',
+      'Saída de Emergência',
+      '🆘',
+      extX,
+      extY,
+      1.0,
+      0.15,
+      '#FCA5A5',
+      '#991B1B',
+      { rotation: 0 }
+    )
+    generatedItems.push(newExt)
+    exit = newExt
+  }
+
+  // 2. Determinar parede da entrada e parede oposta (rxWall)
+  let entranceWall: 'Top' | 'Bottom' | 'Left' | 'Right' = 'Bottom'
+  if (entrance) {
+    const ex = entrance.x ?? 0
+    const ey = entrance.y ?? 0
+    const distTop = ey
+    const distBottom = storeHeight - ey
+    const distLeft = ex
+    const distRight = storeWidth - ex
+
+    const minDist = Math.min(distTop, distBottom, distLeft, distRight)
+    if (minDist === distTop) entranceWall = 'Top'
+    else if (minDist === distBottom) entranceWall = 'Bottom'
+    else if (minDist === distLeft) entranceWall = 'Left'
+    else entranceWall = 'Right'
+  }
+
+  let rxWall: 'Top' | 'Bottom' | 'Left' | 'Right' = 'Bottom'
+  if (entranceWall === 'Bottom') rxWall = 'Top'
+  else if (entranceWall === 'Top') rxWall = 'Bottom'
+  else if (entranceWall === 'Left') rxWall = 'Right'
+  else rxWall = 'Left'
+
+  // Variáveis para controlar os limites centrais (corredores baseados na densidade)
+  const sideOffset = 0.26 + minCorridor
+  let centralMinX = sideOffset
+  let centralMaxX = storeWidth - sideOffset
+  let centralMinY = sideOffset
+  let centralMaxY = storeHeight - sideOffset
+
   const medShelfDepth = 0.21
-  const backWallY = storeHeight - medShelfDepth
-  const backWallStart = 0.26
-  const backWallEnd = storeWidth - 0.26
-  let currentX = backWallStart
-
-  while (currentX + 0.807 <= backWallEnd) {
-    // Escolhe o módulo de 1.0m (catalog-23) se couber, senão o de 0.807m (catalog-21)
-    let itemId = `catalog-21${lineSuffix}`
-    let w = 0.807
-    if (currentX + 1.0 <= backWallEnd) {
-      itemId = `catalog-23${lineSuffix}`
-      w = 1.0
-    }
-    
-    generatedItems.push(makeItem(
-      itemId,
-      'Prateleira Medicamentos',
-      '💊',
-      currentX,
-      backWallY,
-      w,
-      medShelfDepth,
-      '#FDF8F0',
-      '#8B7355',
-      { rotation: 180, isWallItem: true }
-    ))
-    currentX += w
-  }
-
-  // ==========================================
-  // 2. BALCÃO DE ATENDIMENTO, CAIXAS E LATERAIS (ÁREA DE ATENDIMENTO)
-  // ==========================================
-  // Corredor livre para operador = 1.60 m.
-  // Balcão fica posicionado a y = storeHeight - medShelfDepth - 1.60 - balcaoDepth
-  const operatorSpace = 1.60
+  const operatorSpace = 1.30
   const balcaoDepth = 0.40
-  const balcaoY = storeHeight - medShelfDepth - operatorSpace - balcaoDepth // y = storeHeight - 2.21
-
-  // Entre a parede lateral e os balcões deve haver o Lateral Caixa (catalog-81, largura 0.4m)
-  // Colocamos um Lateral Caixa na esquerda e outro na direita.
   const latCaixaW = 0.4
-  
-  // Adiciona Lateral Caixa Esquerdo
-  generatedItems.push(makeItem(
-    `catalog-81${lineSuffix}`,
-    'Lateral Caixa',
-    '📥',
-    0.26,
-    balcaoY,
-    latCaixaW,
-    0.26,
-    '#EFF6FF',
-    '#2563EB',
-    { rotation: 0 }
-  ))
 
-  // Adiciona Lateral Caixa Direito
-  generatedItems.push(makeItem(
-    `catalog-81${lineSuffix}`,
-    'Lateral Caixa',
-    '📥',
-    storeWidth - 0.26 - latCaixaW,
-    balcaoY,
-    latCaixaW,
-    0.26,
-    '#EFF6FF',
-    '#2563EB',
-    { rotation: 0 }
-  ))
-
-  // Largura disponível no meio para os Balcões e Caixa:
-  // De x = 0.26 + latCaixaW (0.66) até x = storeWidth - 0.26 - latCaixaW
-  const middleStart = 0.26 + latCaixaW // 0.66
-  const middleEnd = storeWidth - 0.26 - latCaixaW
-  const middleWidth = middleEnd - middleStart
-
-  // Estações de atendimento alternadas: [BA (1.0m) + Caixa (0.6m)] = 1.6m por estação.
-  // Colocamos caixas intercalados com os balcões conforme os exemplos reais de layout.
-  const stationW = 1.6
-  
-  // Determinamos um número de caixas proporcional e seguro para o tamanho da loja
-  let numStations = 1
-  if (storeWidth > 10) {
-    numStations = 3
-  } else if (storeWidth > 6) {
-    numStations = 2
-  }
-  
-  // Garante que o número de estações cabe fisicamente na largura
-  while (numStations > 1 && numStations * stationW > middleWidth) {
-    numStations--
-  }
-
-  const stationsList: { type: 'BA' | 'CX', w: number }[] = []
-  for (let i = 0; i < numStations; i++) {
-    stationsList.push({ type: 'BA', w: 1.0 })
-    stationsList.push({ type: 'CX', w: 0.6 })
-  }
-  
-  // Se sobrar espaço para mais um balcão (1.0m), nós o adicionamos no fim
-  if (middleWidth - numStations * stationW >= 1.0) {
-    stationsList.push({ type: 'BA', w: 1.0 })
-  }
-  
-  const groupWidth = stationsList.reduce((acc, curr) => acc + curr.w, 0)
-  // Centraliza o grupo
-  const groupXStart = middleStart + (middleWidth - groupWidth) / 2
-  let currentGroupX = groupXStart
-
-  stationsList.forEach(station => {
-    if (station.type === 'CX') {
-      generatedItems.push(makeItem(
-        `catalog-61${lineSuffix}`,
-        'Caixa',
-        '💳',
-        currentGroupX,
-        balcaoY,
-        0.6,
-        0.4,
-        '#D1FAE5',
-        '#047857',
-        { rotation: 0 }
-      ))
-    } else {
-      const balcaoId = storeType === 'premium' ? `catalog-55${lineSuffix}` : `catalog-51${lineSuffix}`
-      generatedItems.push(makeItem(
-        balcaoId,
-        'Balcão de Atendimento',
-        '🏪',
-        currentGroupX,
-        balcaoY,
-        1.0,
-        0.4,
-        '#DBEAFE',
-        '#1D4ED8',
-        { rotation: 0 }
-      ))
-    }
-    currentGroupX += station.w
-  })
-
-  // ==========================================
-  // 3. PAREDES LATERAIS (FLUXO DE PRODUTOS E CATEGORIAS)
-  // ==========================================
-  // Começam a y = 1.20 m (recuo da entrada)
-  // Terminam a y = balcaoY - 1.00 m (corredor livre antes do balcão)
-  const wallYStart = 1.20
-  const wallYEnd = balcaoY - 1.00
-
-  // Sequência de móveis nas paredes laterais (da entrada para o fundo):
-  // 1. Perfumaria (catalog-11, largura 0.807m, profundidade 0.26m)
-  // 2. Dermo (catalog-92, largura 0.5m, profundidade 0.26m)
-  // 3. Maquiagem (catalog-121, largura 1.9m, profundidade 0.26m)
-  // 4. Esmaltes (catalog-111, largura 1.9m, profundidade 0.26m)
-  // 5. MIPs / OTC (catalog-41, largura 0.807m, profundidade 0.26m)
-  
-  // Parede Esquerda (x = 0.26, pois o fundo do armário encosta em x = 0. Profundidade = 0.26m)
-  // Rotação: 90 graus (olhando para dentro/direita)
-  // Nota: Para itens com rotation: 90, Konva rotaciona horário a partir do canto superior esquerdo (x, y).
-  // Para caber na faixa [0, 0.26] e [y, y + largura], a coordenada X de inserção deve ser target_x + depth = 0 + 0.26 = 0.26.
-  
-  // Deixamos um espaço para o Freezer de Sorvete no início da Parede Esquerda (de y = 1.2 a y = 2.2)
-  const freezerGap = 1.0
-  
-  const placeWallItems = (x: number, rotation: number, startY: number) => {
-    let currentY = startY
+  // Helper para posicionar gôndolas em layout horizontal (rxWall = Top ou Bottom)
+  const placeHorizontalLayoutGondolas = (yStart: number, yEnd: number) => {
+    const leftLimit = 0.26
+    const rightLimit = storeWidth - 0.26
+    const availableWidth = rightLimit - leftLimit
     
-    // Lista de móveis a colocar em ordem
-    const wallSequence = [
+    let numColumns = 0
+    while (true) {
+      const nextNum = numColumns + 1
+      const nextCorridor = (availableWidth - nextNum * 0.43) / (nextNum + 1)
+      if (nextCorridor >= minCorridor) {
+        numColumns = nextNum
+      } else {
+        break
+      }
+    }
+    
+    if (numColumns === 0) return
+
+    const innerCorridor = numColumns > 1
+      ? (availableWidth - 2 * minCorridor - numColumns * 0.43) / (numColumns - 1)
+      : (availableWidth - 0.43) / 2
+
+    for (let c = 0; c < numColumns; c++) {
+      const gondolaLeft = numColumns > 1
+        ? leftLimit + minCorridor + c * (0.43 + innerCorridor)
+        : leftLimit + innerCorridor
+      const gondolaX = gondolaLeft + 0.43 // rotation 90, so group X is right edge
+
+      const minY = Math.min(yStart, yEnd)
+      const maxY = Math.max(yStart, yEnd)
+      const availableHeight = maxY - minY
+
+      let tempY = minY
+      const rowLengths: number[] = []
+      while (tempY + 1.70 <= maxY) {
+        let gondolaLen = 1.70
+        if (tempY + 3.00 <= maxY) {
+          gondolaLen = 3.00
+        } else if (tempY + 2.20 <= maxY) {
+          gondolaLen = 2.20
+        }
+        rowLengths.push(gondolaLen)
+        tempY += gondolaLen + minCorridor
+      }
+
+      const numRows = rowLengths.length
+      if (numRows > 0) {
+        const totalGondolaLength = rowLengths.reduce((sum, len) => sum + len, 0)
+        
+        if (numRows === 1) {
+          const currentY = minY + (availableHeight - totalGondolaLength) / 2
+          const gondolaLen = rowLengths[0]
+          let gondolaId = `catalog-31${lineSuffix}`
+          if (gondolaLen === 3.00) gondolaId = `catalog-33${lineSuffix}`
+          else if (gondolaLen === 2.20) gondolaId = `catalog-32${lineSuffix}`
+
+          if (!collidesWithObstacle(gondolaX, currentY, gondolaLen, 0.43, 90)) {
+            generatedItems.push(makeItem(
+              gondolaId,
+              'Gôndola Central',
+              '📦',
+              gondolaX,
+              currentY,
+              gondolaLen,
+              0.43,
+              '#FDF8F0',
+              '#8B7355',
+              { rotation: 90 }
+            ))
+          }
+        } else {
+          const adjustedGapY = (availableHeight - totalGondolaLength) / (numRows - 1)
+          let currentY = minY
+          for (let r = 0; r < numRows; r++) {
+            const gondolaLen = rowLengths[r]
+            let gondolaId = `catalog-31${lineSuffix}`
+            if (gondolaLen === 3.00) gondolaId = `catalog-33${lineSuffix}`
+            else if (gondolaLen === 2.20) gondolaId = `catalog-32${lineSuffix}`
+
+            if (!collidesWithObstacle(gondolaX, currentY, gondolaLen, 0.43, 90)) {
+              generatedItems.push(makeItem(
+                gondolaId,
+                'Gôndola Central',
+                '📦',
+                gondolaX,
+                currentY,
+                gondolaLen,
+                0.43,
+                '#FDF8F0',
+                '#8B7355',
+                { rotation: 90 }
+              ))
+            }
+            currentY += gondolaLen + adjustedGapY
+          }
+        }
+      }
+    }
+  }
+
+  // Helper para posicionar gôndolas em layout vertical (rxWall = Left ou Right)
+  const placeVerticalLayoutGondolas = (xStart: number, xEnd: number) => {
+    const topLimit = 0.26
+    const bottomLimit = storeHeight - 0.26
+    const availableHeight = bottomLimit - topLimit
+    
+    let numRows = 0
+    while (true) {
+      const nextNum = numRows + 1
+      const nextCorridor = (availableHeight - nextNum * 0.43) / (nextNum + 1)
+      if (nextCorridor >= minCorridor) {
+        numRows = nextNum
+      } else {
+        break
+      }
+    }
+
+    if (numRows === 0) return
+
+    const innerCorridorY = numRows > 1
+      ? (availableHeight - 2 * minCorridor - numRows * 0.43) / (numRows - 1)
+      : (availableHeight - 0.43) / 2
+
+    for (let r = 0; r < numRows; r++) {
+      const gondolaY = numRows > 1
+        ? topLimit + minCorridor + r * (0.43 + innerCorridorY)
+        : topLimit + innerCorridorY
+
+      const minX = Math.min(xStart, xEnd)
+      const maxX = Math.max(xStart, xEnd)
+      const availableWidth = maxX - minX
+
+      let tempX = minX
+      const colLengths: number[] = []
+      while (tempX + 1.70 <= maxX) {
+        let gondolaLen = 1.70
+        if (tempX + 3.00 <= maxX) {
+          gondolaLen = 3.00
+        } else if (tempX + 2.20 <= maxX) {
+          gondolaLen = 2.20
+        }
+        colLengths.push(gondolaLen)
+        tempX += gondolaLen + minCorridor
+      }
+
+      const numCols = colLengths.length
+      if (numCols > 0) {
+        const totalGondolaLength = colLengths.reduce((sum, len) => sum + len, 0)
+        
+        if (numCols === 1) {
+          const currentX = minX + (availableWidth - totalGondolaLength) / 2
+          const gondolaLen = colLengths[0]
+          let gondolaId = `catalog-31${lineSuffix}`
+          if (gondolaLen === 3.00) gondolaId = `catalog-33${lineSuffix}`
+          else if (gondolaLen === 2.20) gondolaId = `catalog-32${lineSuffix}`
+
+          if (!collidesWithObstacle(currentX, gondolaY, gondolaLen, 0.43, 0)) {
+            generatedItems.push(makeItem(
+              gondolaId,
+              'Gôndola Central',
+              '📦',
+              currentX,
+              gondolaY,
+              gondolaLen,
+              0.43,
+              '#FDF8F0',
+              '#8B7355',
+              { rotation: 0 }
+            ))
+          }
+        } else {
+          const adjustedGapX = (availableWidth - totalGondolaLength) / (numCols - 1)
+          let currentX = minX
+          for (let c = 0; c < numCols; c++) {
+            const gondolaLen = colLengths[c]
+            let gondolaId = `catalog-31${lineSuffix}`
+            if (gondolaLen === 3.00) gondolaId = `catalog-33${lineSuffix}`
+            else if (gondolaLen === 2.20) gondolaId = `catalog-32${lineSuffix}`
+
+            if (!collidesWithObstacle(currentX, gondolaY, gondolaLen, 0.43, 0)) {
+              generatedItems.push(makeItem(
+                gondolaId,
+                'Gôndola Central',
+                '📦',
+                currentX,
+                gondolaY,
+                gondolaLen,
+                0.43,
+                '#FDF8F0',
+                '#8B7355',
+                { rotation: 0 }
+              ))
+            }
+            currentX += gondolaLen + adjustedGapX
+          }
+        }
+      }
+    }
+  }
+
+  // Helper para prateleiras de medicamentos nas paredes laterais (wrap-around)
+  const placeWrapAroundShelves = (
+    fixedCoord: number,
+    axis: 'x' | 'y',
+    rot: number,
+    startVal: number,
+    endVal: number,
+    sign: number
+  ) => {
+    const modules = [
+      { id: 'catalog-23', name: 'Prateleira Medicamentos', icon: '💊', w: 1.0 },
+      { id: 'catalog-21', name: 'Prateleira Medicamentos', icon: '💊', w: 0.807 },
+      { id: 'catalog-22', name: 'Prateleira Medicamentos', icon: '💊', w: 0.5 },
+    ]
+
+    let currentVal = startVal
+    while (true) {
+      const remaining = sign === 1 ? (endVal - currentVal) : (currentVal - endVal)
+      if (remaining <= 0.01) break
+
+      const fitting = modules.filter(m => m.w <= remaining + 0.001)
+      if (fitting.length === 0) break
+
+      const item = fitting[0]
+      const itemVal = getPos(currentVal, item.w, rot, sign)
+      const posX = axis === 'x' ? itemVal : fixedCoord
+      const posY = axis === 'y' ? itemVal : fixedCoord
+      
+      const itemW = axis === 'x' ? item.w : 0.21
+      const itemH = axis === 'y' ? item.w : 0.21
+
+      if (!collidesWithObstacle(posX, posY, itemW, itemH, rot)) {
+        generatedItems.push(makeItem(
+          `${item.id}${lineSuffix}`,
+          item.name,
+          item.icon,
+          posX,
+          posY,
+          itemW,
+          itemH,
+          '#FDF8F0',
+          '#8B7355',
+          { rotation: rot, isWallItem: true }
+        ))
+      }
+      currentVal += sign * item.w
+    }
+  }
+
+  // Helper para expositores das laterais (Perfumaria, MIPs)
+  const placeWallSequence = (
+    fixedCoord: number,
+    axis: 'x' | 'y',
+    rot: number,
+    startVal: number,
+    endVal: number,
+    sign: number,
+    extraGap: number = 0
+  ) => {
+    let currentVal = startVal + sign * extraGap
+    const preferredSequence = [
       { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
       { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
       { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
       { id: 'catalog-121', name: 'Expositor Maquiagem', icon: '💅', w: 0.5 },
       { id: 'catalog-111', name: 'Expositor Esmaltes', icon: '💅', w: 0.5 },
-      // MIPs completando o restante até o fundo
+      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
       { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
       { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
       { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
       { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
     ]
 
-    for (const item of wallSequence) {
-      if (currentY + item.w > wallYEnd) break
-      
-      const yPos = rotation === 270 ? currentY + item.w : currentY
+    const fallbacks = [
+      { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
+      { id: 'catalog-42', name: 'Medicamentos MIP', icon: '💊', w: 0.5 },
+    ]
 
-      // Verifica colisão com pilares/obstáculos antes de colocar
-      if (!collidesWithObstacle(x, yPos, item.w, 0.26, rotation)) {
-        const fullId = `${item.id}${lineSuffix}`
+    let seqIndex = 0
+    while (true) {
+      const remaining = sign === 1 ? (endVal - currentVal) : (currentVal - endVal)
+      if (remaining <= 0.01) break
+
+      let item = preferredSequence[seqIndex]
+      if (!item || item.w > remaining + 0.001) {
+        const fittingFallback = fallbacks.find(f => f.w <= remaining + 0.001)
+        if (fittingFallback) {
+          item = fittingFallback
+        } else {
+          break
+        }
+      }
+
+      const itemVal = getPos(currentVal, item.w, rot, sign)
+      const posX = axis === 'x' ? itemVal : fixedCoord
+      const posY = axis === 'y' ? itemVal : fixedCoord
+      
+      const itemW = axis === 'x' ? item.w : 0.26
+      const itemH = axis === 'y' ? item.w : 0.26
+
+      if (!collidesWithObstacle(posX, posY, itemW, itemH, rot)) {
         generatedItems.push(makeItem(
-          fullId,
+          `${item.id}${lineSuffix}`,
           item.name,
           item.icon,
-          x,
-          yPos,
-          item.w,
-          0.26,
+          posX,
+          posY,
+          itemW,
+          itemH,
           '#FFF1F7',
           '#DB2777',
-          { rotation, isWallItem: true }
+          { rotation: rot, isWallItem: true }
         ))
       }
-      currentY += item.w
+      currentVal += sign * item.w
+      seqIndex++
     }
   }
 
-  // Preenche Parede Esquerda
-  placeWallItems(0.26, 90, wallYStart + freezerGap)
+  // 3. Gerar Zonas Conforme Case
+  if (rxWall === 'Top') {
+    // Back wall medicines along y = 0
+    const backWallY = 0
+    const backWallStart = 0.21
+    const backWallEnd = storeWidth - 0.21
+    let currentX = backWallStart
 
-  // Preenche Parede Direita (x = storeWidth - 0.26, pois o fundo encosta em x = storeWidth. Profundidade = 0.26m)
-  // Rotação: 270 graus (olhando para dentro/esquerda)
-  // Para itens com rotation: 270, Konva rotaciona 270 graus horário.
-  // Para caber na faixa [storeWidth - 0.26, storeWidth] e [y, y + largura], a coordenada X de inserção deve ser storeWidth - 0.26.
-  placeWallItems(storeWidth - 0.26, 270, wallYStart)
+    while (currentX + 0.5 <= backWallEnd) {
+      const remaining = backWallEnd - currentX
+      let itemId = `catalog-22${lineSuffix}`
+      let w = 0.5
+      if (remaining >= 1.0) {
+        itemId = `catalog-23${lineSuffix}`
+        w = 1.0
+      } else if (remaining >= 0.807) {
+        itemId = `catalog-21${lineSuffix}`
+        w = 0.807
+      }
+      
+      if (!collidesWithObstacle(currentX, backWallY, w, medShelfDepth, 0)) {
+        generatedItems.push(makeItem(
+          itemId,
+          'Prateleira Medicamentos',
+          '💊',
+          currentX,
+          backWallY,
+          w,
+          medShelfDepth,
+          '#FDF8F0',
+          '#8B7355',
+          { rotation: 0, isWallItem: true }
+        ))
+      }
+      currentX += w
+    }
 
-  // ==========================================
-  // 4. GÔNDOLAS CENTRAIS (ÁREA CENTRAL)
-  // ==========================================
-  // Corredor livre lateral de 1.00m de cada lado dos armários de parede (que têm 0.26m de profundidade)
-  // x_min = 0.26 + 1.00 = 1.26
-  // x_max = storeWidth - 0.26 - 1.00 = storeWidth - 1.26
-  const centralWidth = (storeWidth - 1.26) - 1.26
+    // Counters facing UP (rotation 180) at y = medShelfDepth + operatorSpace + balcaoDepth
+    const balcaoY = medShelfDepth + operatorSpace + balcaoDepth
 
-  // Cada gôndola central tem profundidade 0.43m (a largura da gôndola vira sua profundidade ao rotacionar 90 graus)
-  // Corredor entre colunas de gôndola = 1.00m
-  // Fórmula: N * 0.43 + (N - 1) * 1.00 <= centralWidth  => N * 1.43 - 1.00 <= centralWidth => N <= (centralWidth + 1.00) / 1.43
-  const numColumns = Math.max(0, Math.floor((centralWidth + 1.00) / 1.43))
+    // Wrap around side walls: Top section of Left and Right walls
+    placeWrapAroundShelves(0.21, 'y', 90, medShelfDepth, balcaoY, 1)
+    placeWrapAroundShelves(storeWidth - 0.21, 'y', 270, medShelfDepth, balcaoY, 1)
+    
+    // Left and Right limits for the counter line (aligned with side wall shelves)
+    const leftLimit = 0.21
+    const rightLimit = storeWidth - 0.21
+    const availableWidth = rightLimit - leftLimit
 
-  if (numColumns > 0) {
-    const totalColumnsWidth = numColumns * 0.43 + (numColumns - 1) * 1.00
-    const colXStart = 1.26 + (centralWidth - totalColumnsWidth) / 2
+    const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
 
-    for (let c = 0; c < numColumns; c++) {
-      // Coordenada X da coluna. Como a gôndola será rotacionada em 90 graus, seu X de inserção deve ser colX + depth (0.43m)
-      const targetColX = colXStart + c * 1.43
-      const gondolaX = targetColX + 0.43
+    // 1. Place Checkout L and Baskets first (if large store) so they occupy their spaces
+    if (isLarge) {
+      const checkoutX = Math.max(0.26, storeWidth / 2 - 2.0)
+      const checkoutY = storeHeight - 1.2
+      if (!collidesWithObstacle(checkoutX, checkoutY, 1.2, 1.2, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-131${lineSuffix}`,
+          'Checkout em L',
+          '💳',
+          checkoutX,
+          checkoutY,
+          1.2,
+          1.2,
+          '#DBEAFE',
+          '#1D4ED8',
+          { rotation: 0, width: 1.2, height: 1.2 }
+        ))
+      }
 
-      // Distanciamento vertical das gôndolas
-      // Começa a y = 1.20m (recuo da entrada)
-      // Termina a y = balcaoY - 1.00m (corredor livre antes do balcão)
-      let currentGondolaY = 1.20
-      const maxGondolaY = balcaoY - 1.00
-
-      while (currentGondolaY + 1.70 <= maxGondolaY) {
-        // Escolhe o maior tamanho de gôndola que cabe
-        let gondolaLen = 1.70
-        let gondolaId = `catalog-31${lineSuffix}` // GOND 170
-
-        if (currentGondolaY + 3.00 <= maxGondolaY) {
-          gondolaLen = 3.00
-          gondolaId = `catalog-33${lineSuffix}` // GOND 300
-        } else if (currentGondolaY + 2.20 <= maxGondolaY) {
-          gondolaLen = 2.20
-          gondolaId = `catalog-32${lineSuffix}` // GOND 220
-        }
-
-        if (!collidesWithObstacle(gondolaX, currentGondolaY, gondolaLen, 0.43, 90)) {
+      // Baskets Left wall (encostados na parede, rotation 90)
+      for (let offset = 0; offset < 3; offset++) {
+        const by = storeHeight - 0.80 - offset * 0.45 - 0.40
+        if (!collidesWithObstacle(0.40, by, 0.4, 0.4, 90)) {
           generatedItems.push(makeItem(
-            gondolaId,
-            'Gôndola Central',
-            '📦',
-            gondolaX,
-            currentGondolaY,
-            gondolaLen,
-            0.43,
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            0.40,
+            by,
+            0.4,
+            0.4,
             '#FDF8F0',
             '#8B7355',
             { rotation: 90 }
           ))
         }
+      }
 
-        // Corredor vertical entre gôndolas na mesma coluna = 1.00m
-        currentGondolaY += gondolaLen + 1.00
+      // Baskets Front wall (encostados na parede, rotation 180)
+      const maxFrontBaskets = Math.floor((checkoutX - 0.26) / 0.45)
+      for (let offset = 0; offset < maxFrontBaskets; offset++) {
+        const bx = 0.26 + offset * 0.45
+        if (!collidesWithObstacle(bx + 0.40, storeHeight, 0.4, 0.4, 180)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            bx + 0.40,
+            storeHeight,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 180 }
+          ))
+        }
       }
     }
+
+    // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
+    let passageW = 1.20
+    if (availableWidth < 3.20) {
+      passageW = Math.max(0.80, availableWidth - 2.00)
+    }
+    const totalCounterW = availableWidth - passageW
+    const twoGroups = totalCounterW >= 2.00
+
+    if (twoGroups) {
+      const W_left = Math.round((totalCounterW / 2) * 100) / 100
+      const W_right = Math.round((totalCounterW - W_left) * 100) / 100
+
+      // Left Group (starts at leftLimit)
+      // Lateral Caixa: spans leftLimit to leftLimit + 0.40
+      const latCxX = leftLimit + 0.40
+      if (!collidesWithObstacle(latCxX, balcaoY, 0.40, 0.26, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          latCxX,
+          balcaoY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 180 }
+        ))
+      }
+      // Caixa: spans leftLimit + 0.40 to leftLimit + 1.00
+      const cxX = leftLimit + 1.00
+      if (!collidesWithObstacle(cxX, balcaoY, 0.60, 0.40, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          cxX,
+          balcaoY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 180 }
+        ))
+      }
+      // Balcões: span leftLimit + 1.00 to leftLimit + W_left
+      const W_balcao = W_left - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const bx_min = leftLimit + 1.00 + i * w_each
+          const bx_max = bx_min + w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(bx_max, balcaoY, w_each, 0.40, 180)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              bx_max,
+              balcaoY,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 180, width: w_each }
+            ))
+          }
+        }
+      }
+
+      // Right Group (ends at rightLimit)
+      // Lateral Caixa: spans rightLimit - 0.40 to rightLimit
+      if (!collidesWithObstacle(rightLimit, balcaoY, 0.40, 0.26, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          rightLimit,
+          balcaoY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 180 }
+        ))
+      }
+      // Caixa: spans rightLimit - 1.00 to rightLimit - 0.40
+      const rightCxX = rightLimit - 0.40
+      if (!collidesWithObstacle(rightCxX, balcaoY, 0.60, 0.40, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          rightCxX,
+          balcaoY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 180 }
+        ))
+      }
+      // Balcões: span rightLimit - W_right to rightLimit - 1.00
+      const W_balcaoR = W_right - 1.00
+      if (W_balcaoR > 0.01) {
+        const N = Math.max(1, Math.round(W_balcaoR / 1.00))
+        const w_each = W_balcaoR / N
+        for (let i = 0; i < N; i++) {
+          const bx_min = rightLimit - 1.00 - (i + 1) * w_each
+          const bx_max = bx_min + w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(bx_max, balcaoY, w_each, 0.40, 180)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              bx_max,
+              balcaoY,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 180, width: w_each }
+            ))
+          }
+        }
+      }
+    } else {
+      // Single group
+      const W_left = totalCounterW
+      const latCxX = leftLimit + 0.40
+      if (!collidesWithObstacle(latCxX, balcaoY, 0.40, 0.26, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          latCxX,
+          balcaoY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 180 }
+        ))
+      }
+      const cxX = leftLimit + 1.00
+      if (!collidesWithObstacle(cxX, balcaoY, 0.60, 0.40, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          cxX,
+          balcaoY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 180 }
+        ))
+      }
+      const W_balcao = W_left - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const bx_min = leftLimit + 1.00 + i * w_each
+          const bx_max = bx_min + w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(bx_max, balcaoY, w_each, 0.40, 180)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              bx_max,
+              balcaoY,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 180, width: w_each }
+            ))
+          }
+        }
+      }
+    }
+
+    // 3. Place side wall sequences (perfumaria/MIPs)
+    const wallSequenceGap = isLarge ? 2.15 : 0
+    placeWallSequence(0.26, 'y', 90, storeHeight, balcaoY, -1, wallSequenceGap)
+    placeWallSequence(storeWidth - 0.26, 'y', 270, storeHeight, balcaoY, -1, 0)
+
+    // 4. Place Central Gondolas
+    placeHorizontalLayoutGondolas(balcaoY + minCorridor, storeHeight - minCorridor)
+
+    centralMinY = balcaoY + minCorridor
+    centralMaxY = storeHeight - minCorridor
+  } 
+  else if (rxWall === 'Bottom') {
+    // Back wall medicines along y = storeHeight
+    const backWallY = storeHeight - medShelfDepth
+    const backWallStart = 0.21
+    const backWallEnd = storeWidth - 0.21
+    let currentX = backWallStart
+
+    while (currentX + 0.5 <= backWallEnd) {
+      const remaining = backWallEnd - currentX
+      let itemId = `catalog-22${lineSuffix}`
+      let w = 0.5
+      if (remaining >= 1.0) {
+        itemId = `catalog-23${lineSuffix}`
+        w = 1.0
+      } else if (remaining >= 0.807) {
+        itemId = `catalog-21${lineSuffix}`
+        w = 0.807
+      }
+      
+      if (!collidesWithObstacle(currentX + w, storeHeight, w, medShelfDepth, 180)) {
+        generatedItems.push(makeItem(
+          itemId,
+          'Prateleira Medicamentos',
+          '💊',
+          currentX + w,
+          storeHeight,
+          w,
+          medShelfDepth,
+          '#FDF8F0',
+          '#8B7355',
+          { rotation: 180, isWallItem: true }
+        ))
+      }
+      currentX += w
+    }
+
+    const balcaoY = storeHeight - medShelfDepth - operatorSpace - balcaoDepth
+
+    placeWrapAroundShelves(0.21, 'y', 90, storeHeight - medShelfDepth, balcaoY, -1)
+    placeWrapAroundShelves(storeWidth - 0.21, 'y', 270, storeHeight - medShelfDepth, balcaoY, -1)
+    
+    // Left and Right limits
+    const leftLimit = 0.21
+    const rightLimit = storeWidth - 0.21
+    const availableWidth = rightLimit - leftLimit
+
+    const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
+
+    // 1. Place Checkout L and Baskets first (if large store)
+    if (isLarge) {
+      const checkoutX = Math.max(0.26, storeWidth / 2 - 2.0)
+      const checkoutY = 0.26
+      if (!collidesWithObstacle(checkoutX + 1.2, checkoutY + 1.2, 1.2, 1.2, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-131${lineSuffix}`,
+          'Checkout em L',
+          '💳',
+          checkoutX + 1.2,
+          checkoutY + 1.2,
+          1.2,
+          1.2,
+          '#DBEAFE',
+          '#1D4ED8',
+          { rotation: 180, width: 1.2, height: 1.2 }
+        ))
+      }
+
+      // Baskets Left wall (encostados na parede, rotation 90)
+      for (let offset = 0; offset < 3; offset++) {
+        const by = 0.80 + offset * 0.45
+        if (!collidesWithObstacle(0.40, by, 0.4, 0.4, 90)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            0.40,
+            by,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 90 }
+          ))
+        }
+      }
+      // Baskets Front wall (encostados na parede, rotation 0)
+      const maxFrontBaskets = Math.floor((checkoutX - 0.26) / 0.45)
+      for (let offset = 0; offset < maxFrontBaskets; offset++) {
+        const bx = 0.26 + offset * 0.45
+        if (!collidesWithObstacle(bx, 0, 0.4, 0.4, 0)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            bx,
+            0,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 0 }
+          ))
+        }
+      }
+    }
+
+    // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
+    let passageW = 1.20
+    if (availableWidth < 3.20) {
+      passageW = Math.max(0.80, availableWidth - 2.00)
+    }
+    const totalCounterW = availableWidth - passageW
+    const twoGroups = totalCounterW >= 2.00
+
+    if (twoGroups) {
+      const W_left = Math.round((totalCounterW / 2) * 100) / 100
+      const W_right = Math.round((totalCounterW - W_left) * 100) / 100
+
+      // Left Group (starts at leftLimit)
+      // Lateral Caixa: spans leftLimit to leftLimit + 0.40. Rotation 0.
+      if (!collidesWithObstacle(leftLimit, balcaoY, 0.40, 0.26, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          leftLimit,
+          balcaoY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 0 }
+        ))
+      }
+      // Caixa: spans leftLimit + 0.40 to leftLimit + 1.00
+      if (!collidesWithObstacle(leftLimit + 0.40, balcaoY, 0.60, 0.40, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          leftLimit + 0.40,
+          balcaoY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 0 }
+        ))
+      }
+      // Balcões: span leftLimit + 1.00 to leftLimit + W_left
+      const W_balcao = W_left - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const bx_min = leftLimit + 1.00 + i * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(bx_min, balcaoY, w_each, 0.40, 0)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              bx_min,
+              balcaoY,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 0, width: w_each }
+            ))
+          }
+        }
+      }
+
+      // Right Group (ends at rightLimit)
+      // Lateral Caixa: spans rightLimit - 0.40 to rightLimit
+      const latCxX = rightLimit - 0.40
+      if (!collidesWithObstacle(latCxX, balcaoY, 0.40, 0.26, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          latCxX,
+          balcaoY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 0 }
+        ))
+      }
+      // Caixa: spans rightLimit - 1.00 to rightLimit - 0.40
+      const cxX = rightLimit - 1.00
+      if (!collidesWithObstacle(cxX, balcaoY, 0.60, 0.40, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          cxX,
+          balcaoY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 0 }
+        ))
+      }
+      // Balcões: span rightLimit - W_right to rightLimit - 1.00
+      const W_balcaoR = W_right - 1.00
+      if (W_balcaoR > 0.01) {
+        const N = Math.max(1, Math.round(W_balcaoR / 1.00))
+        const w_each = W_balcaoR / N
+        for (let i = 0; i < N; i++) {
+          const bx_min = rightLimit - 1.00 - (i + 1) * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(bx_min, balcaoY, w_each, 0.40, 0)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              bx_min,
+              balcaoY,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 0, width: w_each }
+            ))
+          }
+        }
+      }
+    } else {
+      // Single group
+      const W_left = totalCounterW
+      if (!collidesWithObstacle(leftLimit, balcaoY, 0.40, 0.26, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          leftLimit,
+          balcaoY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 0 }
+        ))
+      }
+      if (!collidesWithObstacle(leftLimit + 0.40, balcaoY, 0.60, 0.40, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          leftLimit + 0.40,
+          balcaoY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 0 }
+        ))
+      }
+      const W_balcao = W_left - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const bx_min = leftLimit + 1.00 + i * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(bx_min, balcaoY, w_each, 0.40, 0)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              bx_min,
+              balcaoY,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 0, width: w_each }
+            ))
+          }
+        }
+      }
+    }
+
+    // 3. Place side wall sequences (perfumaria/MIPs)
+    const wallSequenceGap = isLarge ? 2.15 : 0
+    placeWallSequence(0.26, 'y', 90, 0, balcaoY, 1, wallSequenceGap)
+    placeWallSequence(storeWidth - 0.26, 'y', 270, 0, balcaoY, 1, 0)
+
+    // 4. Place Central Gondolas
+    placeHorizontalLayoutGondolas(minCorridor, balcaoY - minCorridor)
+
+    centralMinY = minCorridor
+    centralMaxY = balcaoY - minCorridor
+  } 
+  else if (rxWall === 'Left') {
+    // Back wall medicines along x = 0
+    const backWallX = 0
+    const backWallStart = 0.21
+    const backWallEnd = storeHeight - 0.21
+    let currentY = backWallStart
+
+    while (currentY + 0.5 <= backWallEnd) {
+      const remaining = backWallEnd - currentY
+      let itemId = `catalog-22${lineSuffix}`
+      let w = 0.5
+      if (remaining >= 1.0) {
+        itemId = `catalog-23${lineSuffix}`
+        w = 1.0
+      } else if (remaining >= 0.807) {
+        itemId = `catalog-21${lineSuffix}`
+        w = 0.807
+      }
+      
+      if (!collidesWithObstacle(0.21, currentY, w, medShelfDepth, 90)) {
+        generatedItems.push(makeItem(
+          itemId,
+          'Prateleira Medicamentos',
+          '💊',
+          0.21,
+          currentY,
+          w,
+          medShelfDepth,
+          '#FDF8F0',
+          '#8B7355',
+          { rotation: 90, isWallItem: true }
+        ))
+      }
+      currentY += w
+    }
+
+    const balcaoX = medShelfDepth + operatorSpace + balcaoDepth
+
+    placeWrapAroundShelves(0, 'x', 0, medShelfDepth, balcaoX, 1)
+    placeWrapAroundShelves(storeHeight, 'x', 180, medShelfDepth, balcaoX, 1)
+    
+    // Top and Bottom limits
+    const topLimit = 0.21
+    const bottomLimit = storeHeight - 0.21
+    const availableHeight = bottomLimit - topLimit
+
+    const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
+
+    // 1. Place Checkout L and Baskets first (if large store)
+    if (isLarge) {
+      const checkoutX = storeWidth - 1.2
+      const checkoutY = Math.max(0.26, storeHeight / 2 - 2.0)
+      if (!collidesWithObstacle(checkoutX, checkoutY + 1.2, 1.2, 1.2, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-131${lineSuffix}`,
+          'Checkout em L',
+          '💳',
+          checkoutX,
+          checkoutY + 1.2,
+          1.2,
+          1.2,
+          '#DBEAFE',
+          '#1D4ED8',
+          { rotation: 270, width: 1.2, height: 1.2 }
+        ))
+      }
+
+      // Baskets Top wall (encostados na parede, rotation 0)
+      for (let offset = 0; offset < 3; offset++) {
+        const bx = storeWidth - 0.80 - offset * 0.45 - 0.40
+        if (!collidesWithObstacle(bx, 0, 0.4, 0.4, 0)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            bx,
+            0,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 0 }
+          ))
+        }
+      }
+      // Baskets Front wall (Right wall, encostados na parede, rotation 270)
+      const maxFrontBaskets = Math.floor((checkoutY - 0.26) / 0.45)
+      for (let offset = 0; offset < maxFrontBaskets; offset++) {
+        const by = 0.26 + offset * 0.45
+        if (!collidesWithObstacle(storeWidth - 0.40, by + 0.40, 0.4, 0.4, 270)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            storeWidth - 0.40,
+            by + 0.40,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 270 }
+          ))
+        }
+      }
+    }
+
+    // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
+    let passageW = 1.20
+    if (availableHeight < 3.20) {
+      passageW = Math.max(0.80, availableHeight - 2.00)
+    }
+    const totalCounterW = availableHeight - passageW
+    const twoGroups = totalCounterW >= 2.00
+
+    if (twoGroups) {
+      const W_top = Math.round((totalCounterW / 2) * 100) / 100
+      const W_bottom = Math.round((totalCounterW - W_top) * 100) / 100
+
+      // Top Group (starts at topLimit)
+      // Lateral Caixa: spans topLimit to topLimit + 0.40. Rotation 90.
+      if (!collidesWithObstacle(balcaoX, topLimit, 0.40, 0.26, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          balcaoX,
+          topLimit,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 90 }
+        ))
+      }
+      // Caixa: spans topLimit + 0.40 to topLimit + 1.00
+      if (!collidesWithObstacle(balcaoX, topLimit + 0.40, 0.60, 0.40, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          balcaoX,
+          topLimit + 0.40,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 90 }
+        ))
+      }
+      // Balcões: span topLimit + 1.00 to topLimit + W_top
+      const W_balcao = W_top - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const by_min = topLimit + 1.00 + i * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(balcaoX, by_min, w_each, 0.40, 90)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              balcaoX,
+              by_min,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 90, width: w_each }
+            ))
+          }
+        }
+      }
+
+      // Bottom Group (ends at bottomLimit)
+      // Lateral Caixa: spans bottomLimit - 0.40 to bottomLimit
+      const latCxY = bottomLimit - 0.40
+      if (!collidesWithObstacle(balcaoX, latCxY, 0.40, 0.26, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          balcaoX,
+          latCxY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 90 }
+        ))
+      }
+      // Caixa: spans bottomLimit - 1.00 to bottomLimit - 0.40
+      const cxY = bottomLimit - 1.00
+      if (!collidesWithObstacle(balcaoX, cxY, 0.60, 0.40, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          balcaoX,
+          cxY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 90 }
+        ))
+      }
+      // Balcões: span bottomLimit - W_bottom to bottomLimit - 1.00
+      const W_balcaoB = W_bottom - 1.00
+      if (W_balcaoB > 0.01) {
+        const N = Math.max(1, Math.round(W_balcaoB / 1.00))
+        const w_each = W_balcaoB / N
+        for (let i = 0; i < N; i++) {
+          const by_min = bottomLimit - 1.00 - (i + 1) * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(balcaoX, by_min, w_each, 0.40, 90)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              balcaoX,
+              by_min,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 90, width: w_each }
+            ))
+          }
+        }
+      }
+    } else {
+      // Single group
+      const W_top = totalCounterW
+      if (!collidesWithObstacle(balcaoX, topLimit, 0.40, 0.26, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          balcaoX,
+          topLimit,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 90 }
+        ))
+      }
+      if (!collidesWithObstacle(balcaoX, topLimit + 0.40, 0.60, 0.40, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          balcaoX,
+          topLimit + 0.40,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 90 }
+        ))
+      }
+      const W_balcao = W_top - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const by_min = topLimit + 1.00 + i * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(balcaoX, by_min, w_each, 0.40, 90)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              balcaoX,
+              by_min,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 90, width: w_each }
+            ))
+          }
+        }
+      }
+    }
+
+    // 3. Place side wall sequences (perfumaria/MIPs)
+    const wallSequenceGap = isLarge ? 2.15 : 0
+    placeWallSequence(0, 'x', 0, storeWidth, balcaoX, -1, wallSequenceGap)
+    placeWallSequence(storeHeight, 'x', 180, storeWidth, balcaoX, -1, 0)
+
+    // 4. Place Central Gondolas
+    placeVerticalLayoutGondolas(balcaoX + minCorridor, storeWidth - minCorridor)
+
+    centralMinX = balcaoX + minCorridor
+    centralMaxX = storeWidth - minCorridor
+  } 
+  else if (rxWall === 'Right') {
+    // Back wall medicines along x = storeWidth
+    const backWallX = storeWidth - medShelfDepth
+    const backWallStart = 0.21
+    const backWallEnd = storeHeight - 0.21
+    let currentY = backWallStart
+
+    while (currentY + 0.5 <= backWallEnd) {
+      const remaining = backWallEnd - currentY
+      let itemId = `catalog-22${lineSuffix}`
+      let w = 0.5
+      if (remaining >= 1.0) {
+        itemId = `catalog-23${lineSuffix}`
+        w = 1.0
+      } else if (remaining >= 0.807) {
+        itemId = `catalog-21${lineSuffix}`
+        w = 0.807
+      }
+      
+      if (!collidesWithObstacle(backWallX, currentY + w, w, medShelfDepth, 270)) {
+        generatedItems.push(makeItem(
+          itemId,
+          'Prateleira Medicamentos',
+          '💊',
+          backWallX,
+          currentY + w,
+          w,
+          medShelfDepth,
+          '#FDF8F0',
+          '#8B7355',
+          { rotation: 270, isWallItem: true }
+        ))
+      }
+      currentY += w
+    }
+
+    const balcaoX = storeWidth - medShelfDepth - operatorSpace - balcaoDepth
+
+    placeWrapAroundShelves(0, 'x', 0, storeWidth - medShelfDepth, balcaoX, -1)
+    placeWrapAroundShelves(storeHeight, 'x', 180, storeWidth - medShelfDepth, balcaoX, -1)
+    
+    // Top and Bottom limits
+    const topLimit = 0.21
+    const bottomLimit = storeHeight - 0.21
+    const availableHeight = bottomLimit - topLimit
+
+    const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
+
+    // 1. Place Checkout L and Baskets first (if large store)
+    if (isLarge) {
+      const checkoutX = 0.26
+      const checkoutY = Math.min(storeHeight - 1.26, storeHeight / 2 + 0.8)
+      if (!collidesWithObstacle(checkoutX + 1.2, checkoutY, 1.2, 1.2, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-131${lineSuffix}`,
+          'Checkout em L',
+          '💳',
+          checkoutX + 1.2,
+          checkoutY,
+          1.2,
+          1.2,
+          '#DBEAFE',
+          '#1D4ED8',
+          { rotation: 90, width: 1.2, height: 1.2 }
+        ))
+      }
+
+      // Baskets Bottom wall (encostados na parede, rotation 180)
+      for (let offset = 0; offset < 3; offset++) {
+        const bx = 0.80 + offset * 0.45
+        if (!collidesWithObstacle(bx + 0.40, storeHeight, 0.4, 0.4, 180)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            bx + 0.40,
+            storeHeight,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 180 }
+          ))
+        }
+      }
+      // Baskets Front wall (Left wall, encostados na parede, rotation 90)
+      const maxFrontBaskets = Math.floor((storeHeight - 1.26 - checkoutY) / 0.45)
+      for (let offset = 0; offset < maxFrontBaskets; offset++) {
+        const by = storeHeight - 0.66 - offset * 0.45
+        if (!collidesWithObstacle(0.40, by, 0.4, 0.4, 90)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`,
+            'Cestão Promocional',
+            '🧺',
+            0.40,
+            by,
+            0.4,
+            0.4,
+            '#FDF8F0',
+            '#8B7355',
+            { rotation: 90 }
+          ))
+        }
+      }
+    }
+
+    // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
+    let passageW = 1.20
+    if (availableHeight < 3.20) {
+      passageW = Math.max(0.80, availableHeight - 2.00)
+    }
+    const totalCounterW = availableHeight - passageW
+    const twoGroups = totalCounterW >= 2.00
+
+    if (twoGroups) {
+      const W_top = Math.round((totalCounterW / 2) * 100) / 100
+      const W_bottom = Math.round((totalCounterW - W_top) * 100) / 100
+
+      // Top Group (starts at topLimit)
+      // Lateral Caixa: spans topLimit to topLimit + 0.40. Rotation 270.
+      const latCxY = topLimit + 0.40
+      if (!collidesWithObstacle(balcaoX, latCxY, 0.40, 0.26, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          balcaoX,
+          latCxY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 270 }
+        ))
+      }
+      // Caixa: spans topLimit + 0.40 to topLimit + 1.00
+      const cxY = topLimit + 1.00
+      if (!collidesWithObstacle(balcaoX, cxY, 0.60, 0.40, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          balcaoX,
+          cxY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 270 }
+        ))
+      }
+      // Balcões: span topLimit + 1.00 to topLimit + W_top
+      const W_balcao = W_top - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const by_max = topLimit + 1.00 + (i + 1) * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(balcaoX, by_max, w_each, 0.40, 270)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              balcaoX,
+              by_max,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 270, width: w_each }
+            ))
+          }
+        }
+      }
+
+      // Bottom Group (ends at bottomLimit)
+      // Lateral Caixa: spans bottomLimit - 0.40 to bottomLimit
+      if (!collidesWithObstacle(balcaoX, bottomLimit, 0.40, 0.26, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          balcaoX,
+          bottomLimit,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 270 }
+        ))
+      }
+      // Caixa: spans bottomLimit - 1.00 to bottomLimit - 0.40
+      const bottomCxY = bottomLimit - 0.40
+      if (!collidesWithObstacle(balcaoX, bottomCxY, 0.60, 0.40, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          balcaoX,
+          bottomCxY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 270 }
+        ))
+      }
+      // Balcões: span bottomLimit - W_bottom to bottomLimit - 1.00
+      const W_balcaoB = W_bottom - 1.00
+      if (W_balcaoB > 0.01) {
+        const N = Math.max(1, Math.round(W_balcaoB / 1.00))
+        const w_each = W_balcaoB / N
+        for (let i = 0; i < N; i++) {
+          const by_max = bottomLimit - 1.00 - i * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(balcaoX, by_max, w_each, 0.40, 270)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              balcaoX,
+              by_max,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 270, width: w_each }
+            ))
+          }
+        }
+      }
+    } else {
+      // Single group
+      const W_top = totalCounterW
+      const latCxY = topLimit + 0.40
+      if (!collidesWithObstacle(balcaoX, latCxY, 0.40, 0.26, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-81${lineSuffix}`,
+          'Lateral Caixa',
+          '📥',
+          balcaoX,
+          latCxY,
+          0.40,
+          0.26,
+          '#EFF6FF',
+          '#2563EB',
+          { rotation: 270 }
+        ))
+      }
+      const cxY = topLimit + 1.00
+      if (!collidesWithObstacle(balcaoX, cxY, 0.60, 0.40, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-61${lineSuffix}`,
+          'Caixa',
+          '💳',
+          balcaoX,
+          cxY,
+          0.60,
+          0.40,
+          '#D1FAE5',
+          '#047857',
+          { rotation: 270 }
+        ))
+      }
+      const W_balcao = W_top - 1.00
+      if (W_balcao > 0.01) {
+        const N = Math.max(1, Math.round(W_balcao / 1.00))
+        const w_each = W_balcao / N
+        for (let i = 0; i < N; i++) {
+          const by_max = topLimit + 1.00 + (i + 1) * w_each
+          const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
+          if (!collidesWithObstacle(balcaoX, by_max, w_each, 0.40, 270)) {
+            generatedItems.push(makeItem(
+              balcaoId,
+              'Balcão de Atendimento',
+              '🏪',
+              balcaoX,
+              by_max,
+              w_each,
+              0.40,
+              '#DBEAFE',
+              '#1D4ED8',
+              { rotation: 270, width: w_each }
+            ))
+          }
+        }
+      }
+    }
+
+    // 3. Place side wall sequences (perfumaria/MIPs)
+    const wallSequenceGap = isLarge ? 2.15 : 0
+    placeWallSequence(0, 'x', 0, 0, balcaoX, 1, 0)
+    placeWallSequence(storeHeight, 'x', 180, 0, balcaoX, 1, wallSequenceGap)
+
+    // 4. Place Central Gondolas
+    placeVerticalLayoutGondolas(minCorridor, balcaoX - minCorridor)
+
+    centralMinX = minCorridor
+    centralMaxX = balcaoX - minCorridor
   }
 
-  // ==========================================
-  // 5. TRATAMENTO DE PILARES E CESTÕES
-  // ==========================================
-  // Se houver pilares estruturais no meio da loja, adicionamos Cestões (catalog-71, 0.4m x 0.4m) ao redor deles
+  // 3.5. LOJAS ACIMA DE 100m²: CHECKOUT EM L E CESTÕES EM L (Already processed in rxWall blocks)
+
+  // 4. TRATAMENTO DE PILARES E CESTÕES
   const pillars = existingObstacles.filter(obs => obs.isPillar)
   
   pillars.forEach(pillar => {
@@ -427,7 +1835,6 @@ export function generateAILayout(
     const pw = pillar.width ?? 0.3
     const ph = pillar.height ?? 0.3
 
-    // Posições candidatas ao redor do pilar para colocar os Cestões (Norte, Sul, Leste, Oeste)
     const candidates = [
       { x: px + (pw - 0.4) / 2, y: py - 0.4 }, // Norte
       { x: px + (pw - 0.4) / 2, y: py + ph },  // Sul
@@ -436,36 +1843,21 @@ export function generateAILayout(
     ]
 
     candidates.forEach(cand => {
-      // Verifica se o cestão fica dentro dos limites internos da farmácia (descontando paredes de 0.26m)
-      const insideX = cand.x >= 0.26 && cand.x + 0.4 <= storeWidth - 0.26
-      const insideY = cand.y >= 1.20 && cand.y + 0.4 <= balcaoY - 0.5
+      const insideX = cand.x >= centralMinX && cand.x + 0.4 <= centralMaxX
+      const insideY = cand.y >= centralMinY && cand.y + 0.4 <= centralMaxY
       
       if (insideX && insideY) {
-        // Verifica se colide com algum item já gerado
         const collides = generatedItems.some(item => {
           const itemX = item.x ?? 0
           const itemY = item.y ?? 0
           const itemW = item.width ?? 0.4
           const itemH = item.height ?? 0.4
-          
-          // Tratamento de rotação para colisão básica
-          const realW = item.rotation === 90 || item.rotation === 270 ? itemH : itemW
-          const realH = item.rotation === 90 || item.rotation === 270 ? itemW : itemH
-          
-          let x1 = itemX
-          let y1 = itemY
-          if (item.rotation === 90) {
-            x1 = itemX - realW
-          } else if (item.rotation === 270) {
-            x1 = itemX
-          }
+          const itemRot = item.rotation ?? 0
 
-          return (
-            cand.x < x1 + realW &&
-            cand.x + 0.4 > x1 &&
-            cand.y < y1 + realH &&
-            cand.y + 0.4 > y1
-          )
+          const boxA = getRotatedBounds(itemX, itemY, itemW, itemH, itemRot)
+          const boxB = { x: cand.x, y: cand.y, width: 0.4, height: 0.4 }
+
+          return checkAABBCollision(boxA, boxB)
         })
 
         if (!collides) {
@@ -502,6 +1894,26 @@ export function generateAILayout(
   }
 }
 
+// Helper para alinhar coordenadas em wrap-around e expositores
+function getPos(currVal: number, w: number, rot: number, sign: number): number {
+  if (rot === 90) {
+    return sign === 1 ? currVal : currVal - w
+  } else if (rot === 270) {
+    return sign === 1 ? currVal + w : currVal
+  } else if (rot === 180) {
+    return sign === 1 ? currVal + w : currVal
+  } else { // rot === 0
+    return sign === 1 ? currVal : currVal - w
+  }
+}
+
+function getBalcaoIdForWidth(w: number, suffix: string): string {
+  if (w >= 0.90) return `catalog-51${suffix}`
+  if (w >= 0.75) return `catalog-52${suffix}`
+  if (w >= 0.65) return `catalog-53${suffix}`
+  return `catalog-54${suffix}`
+}
+
 function makeItem(
   itemId: string,
   name: string,
@@ -520,6 +1932,7 @@ function makeItem(
     itemId,
     name: template?.name ?? name,
     icon: template?.icon ?? icon,
+    category: template?.category ?? 'GONDOLAS',
     x: Math.round(x * 100) / 100,
     y: Math.round(y * 100) / 100,
     width: template?.width ?? Math.round(w * 100) / 100,
@@ -533,6 +1946,13 @@ function makeItem(
     finish: template?.finish,
     code: template?.code,
     height3d: template?.height3d,
+    isDoor: template?.isDoor,
+    isEmergency: template?.isEmergency,
+    isPillar: template?.isPillar,
+    isObstacle: template?.isObstacle,
+    isRoom: template?.isRoom,
+    isWallItem: template?.isWallItem,
+    isRound: template?.isRound,
     ...extra,
   }
 }
@@ -562,85 +1982,6 @@ function validateLayout(
   messages.push(`📐 Taxa de ocupação: ${rate.toFixed(0)}% do espaço total`)
 
   return { valid, messages }
-}
-
-// ─── AI Chat ──────────────────────────────────────────────────────────────────
-
-const AI_RESPONSES: Record<string, string[]> = {
-  greeting: [
-    'Olá! Sou o Assistente de Layout da Projefarma. Como posso ajudar a planejar sua farmácia?',
-    'Oi! Estou aqui para ajudar você a criar o layout ideal para sua farmácia. Pode perguntar!',
-  ],
-  layout: [
-    'Para criar um bom layout de farmácia, considere: 1) Corredor principal de entrada, 2) Medicamentos ao fundo, 3) Produtos de alta rotação na zona quente (entrada).',
-    'O layout ideal segue o fluxo natural do cliente: entrada → produtos de necessidade imediata → produtos complementares → medicamentos no fundo.',
-  ],
-  corredor: [
-    'Segundo normas da ANVISA e acessibilidade (NBR 9050), os corredores de circulação devem ter no mínimo 1,20m de largura. Para farmácias premium, recomendo 1,50m.',
-    'Para atender PCD (pessoas com deficiência), mantenha pelo menos um corredor principal de 1,50m de largura. Isso é exigência de acessibilidade.',
-  ],
-  pilar: [
-    'Pilares podem ser aproveitados estrategicamente! Coloque gôndolas ou expositores adjacentes aos pilares para "escondê-los" e otimizar o espaço.',
-    'Ao identificar pilares no layout, posicione os móveis de forma que os pilares fiquem no limite entre dois equipamentos, não no meio do corredor.',
-  ],
-  popular: [
-    'Para farmácias populares, o foco é eficiência: gôndolas paralelas, balcão ao fundo, caixa próxima à saída. O cliente sabe o que quer e quer encontrar rápido.',
-  ],
-  premium: [
-    'Farmácias premium devem criar uma experiência de compra. Dedique espaço generoso para perfumaria (30-40%), use ilhas para browsing e destaque os consultórios.',
-  ],
-  manipulacao: [
-    'A área de manipulação exige separação física da área de vendas. A RDC 87/2008 da ANVISA regulamenta os requisitos da área técnica.',
-  ],
-  anvisa: [
-    'As principais normas ANVISA para farmácias são: RDC 44/2009 (funcionamento), RDC 87/2008 (manipulação). Recomendo sempre consultar a vigilância sanitária local.',
-  ],
-  export: [
-    'Você pode exportar seu layout como PNG ou PDF com relatório completo! Use o botão "Exportar" no menu superior.',
-  ],
-  default: [
-    'Boa pergunta! Vou analisar o layout da sua loja. Lembre-se: a disposição dos produtos influencia diretamente as vendas. Posso sugerir um layout personalizado com o botão "Gerar Layout com IA"!',
-    'Cada farmácia é única! Me fale mais sobre sua loja: qual o tipo (popular, premium, manipulação)? Quais produtos você quer destacar?',
-    'Para otimizar seu layout, considere o fluxo de clientes, a visibilidade dos produtos e as normas de acessibilidade. Posso gerar uma sugestão automaticamente!',
-  ],
-}
-
-export function getAIResponse(message: string, _context: Partial<AIContext> = {}): string {
-  const lower = message.toLowerCase()
-
-  if (lower.includes('oi') || lower.includes('olá') || lower.includes('bom dia') || lower.includes('boa tarde')) {
-    return randomFrom(AI_RESPONSES.greeting)
-  }
-  if (lower.includes('corredor') || lower.includes('largura') || lower.includes('passagem')) {
-    return randomFrom(AI_RESPONSES.corredor)
-  }
-  if (lower.includes('pilar') || lower.includes('coluna')) {
-    return randomFrom(AI_RESPONSES.pilar)
-  }
-  if (lower.includes('popular') || lower.includes('simples')) {
-    return randomFrom(AI_RESPONSES.popular)
-  }
-  if (lower.includes('premium') || lower.includes('luxo') || lower.includes('alto padrão')) {
-    return randomFrom(AI_RESPONSES.premium)
-  }
-  if (lower.includes('manipulaç') || lower.includes('fórmula')) {
-    return randomFrom(AI_RESPONSES.manipulacao)
-  }
-  if (lower.includes('anvisa') || lower.includes('norma') || lower.includes('legislação') || lower.includes('lei')) {
-    return randomFrom(AI_RESPONSES.anvisa)
-  }
-  if (lower.includes('layout') || lower.includes('planta') || lower.includes('disposição')) {
-    return randomFrom(AI_RESPONSES.layout)
-  }
-  if (lower.includes('export') || lower.includes('pdf') || lower.includes('imprimir')) {
-    return randomFrom(AI_RESPONSES.export)
-  }
-
-  return randomFrom(AI_RESPONSES.default)
-}
-
-function randomFrom(arr: string[]): string {
-  return arr[Math.floor(Math.random() * arr.length)] ?? ''
 }
 
 export { STORE_TYPE_CONFIGS }

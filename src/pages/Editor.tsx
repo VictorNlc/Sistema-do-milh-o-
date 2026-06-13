@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react'
 import type Konva from 'konva'
-import type { ItemCategory, StoreType } from '../types'
+import type { ItemCategory } from '../types'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import CanvasEditor from '../components/canvas/CanvasEditor'
 import ItemLibrary from '../components/canvas/ItemLibrary'
@@ -8,12 +8,12 @@ import AiChat from '../components/ai/AiChat'
 import { useCanvasStore } from '../store/canvasStore'
 import { saveLayout } from '../services/storage'
 import { toast } from '../store/toastStore'
-import { exportLayoutToPDF } from '../services/pdfExport'
-import ThreeDViewer from '../components/canvas/ThreeDViewer'
 import BudgetPanel from '../components/canvas/BudgetPanel'
 import './Editor.css'
 
-const STORE_TYPES = { popular: 'Popular', premium: 'Premium', manipulacao: 'Manipulação', completa: 'Completa' }
+const ThreeDViewer = lazy(() => import('../components/canvas/ThreeDViewer'))
+
+// Linha Premium — único tipo ativo
 
 // Inline SVG icons — no emoji, clean professional
 const I = {
@@ -53,15 +53,16 @@ export default function Editor() {
 
   const [mobilePanel, setMobilePanel] = useState<'library' | 'ai' | null>(null)
   const [showSettings, setShowSettings] = useState(false)
-  const [desktopPanel, setDesktopPanel] = useState<'library' | 'ai' | 'budget'>('library')
+  const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('ai')
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [show3D, setShow3D] = useState(false)
 
   const store = useCanvasStore()
   const {
-    storeWidth, storeHeight, storeType, items, selectedItemId,
+    storeWidth, storeHeight, storeType, layoutDensity, items, selectedItemId,
+    entrance, emergencyExit, pillars,
     snapToGrid, showGrid, showMeasures, scale,
-    setStoreDimensions, setStoreType,
+    setStoreDimensions, setStoreType, setLayoutDensity, setPillars, setEntrance, setEmergencyExit,
     toggleSnapToGrid, toggleGrid, toggleMeasures, setScale,
     deleteSelected, undo, redo, canUndo, canRedo,
     getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas,
@@ -72,10 +73,22 @@ export default function Editor() {
   const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0)
 
   useEffect(() => {
-    const t = searchParams.get('type') as StoreType | null
-    if (t && STORE_TYPES[t]) setStoreType(t)
+    // Sempre garante tipo premium
+    setStoreType('premium')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Prefetch ThreeDViewer in the background when browser is idle to ensure instant opening
+  useEffect(() => {
+    const prefetch = () => {
+      import('../components/canvas/ThreeDViewer').catch(() => {});
+    };
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(prefetch);
+    } else {
+      setTimeout(prefetch, 3000);
+    }
+  }, []);
 
   const handleSave = useCallback(() => {
     let thumbnail = null
@@ -102,8 +115,9 @@ export default function Editor() {
     } catch { toast.error('Erro ao exportar imagem') }
   }
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
+      const { exportLayoutToPDF } = await import('../services/pdfExport')
       const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: store.layoutName || 'Meu Layout' }
       const success = exportLayoutToPDF(layoutData, stageRef)
       if (success) {
@@ -114,7 +128,6 @@ export default function Editor() {
       setShowExportOptions(false)
     } catch { toast.error('Erro ao exportar PDF') }
   }
-
   const toggleMobile = (panel: 'library' | 'ai') => setMobilePanel(p => p === panel ? null : panel)
 
   return (
@@ -122,17 +135,40 @@ export default function Editor() {
 
       {/* ─── TOPBAR ─── */}
       <header className="tb">
-        <button className="tb-brand" onClick={() => navigate('/')} aria-label="Início">
-          <div className="tb-mark">PL</div>
-          <span className="tb-name desktop-only">ProjeLayout</span>
+        <button className="tb-brand" onClick={() => navigate('/')} aria-label="Início" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="tb-mark" style={{ background: 'transparent', boxShadow: 'none', width: 'auto', height: 'auto', display: 'flex', alignItems: 'center' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="5" fill="#107C3F" />
+              <path d="M12 7v10M7 12h10" stroke="#FCD34D" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span className="tb-name" style={{ color: '#FCD34D', fontWeight: 800 }}>Projefarma</span>
         </button>
+
+        <div className="tb-sep desktop-only" />
+
+        <div className="tb-menu desktop-only" style={{ display: 'flex', gap: '16px', marginLeft: '8px' }}>
+          {['File', 'Edit', 'Objects', 'Views', 'Help'].map(m => (
+            <span key={m} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontWeight: 700, cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'white')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.45)')}>
+              {m}
+            </span>
+          ))}
+        </div>
+
+        <div className="tb-sep desktop-only" />
+
+        <div className="tb-title desktop-only" style={{ fontSize: '12px', fontWeight: 700, color: 'white', letterSpacing: '-0.01em' }}>
+          {store.layoutName || 'New Pharmacy Layout'}
+        </div>
 
         <div className="tb-sep desktop-only" />
 
         {/* Store pill */}
         <button id="btn-store" className="tb-store" onClick={() => setShowSettings(s => !s)}>
           <span className="tb-store-val">{storeWidth}×{storeHeight}m</span>
-          <span className="tb-store-label desktop-only">{STORE_TYPES[storeType]}</span>
+          <span className="tb-store-label desktop-only">Farmácia Premium</span>
           <span className="tb-store-arrow">▾</span>
         </button>
 
@@ -157,6 +193,10 @@ export default function Editor() {
 
         {/* Actions */}
         <div className="tb-right">
+          <div className="tb-status desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
+            <span>Project status: Connected</span>
+          </div>
           <div className="tb-export-wrap desktop-only" style={{ position: 'relative' }}>
             <button className="tb-btn" onClick={() => setShowExportOptions(s => !s)}>
               <I.Export /> Exportar ▾
@@ -224,10 +264,19 @@ export default function Editor() {
                     value={storeHeight} onChange={e => setStoreDimensions(storeWidth, +e.target.value || 12)} />
                 </div>
               </div>
+              {/* Tipo premium fixo — não exibe selector */}
               <div className="form-group" style={{ gap: 5 }}>
-                <label className="label" htmlFor="in-type">Tipo de farmácia</label>
-                <select id="in-type" className="input input-sm" value={storeType} onChange={e => setStoreType(e.target.value as StoreType)}>
-                  {Object.entries(STORE_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                <label className="label">Linha</label>
+                <div className="input input-sm" style={{ background: 'var(--surface)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.9em' }}>⭐</span> Farmácia Premium
+                </div>
+              </div>
+              <div className="form-group" style={{ gap: 5 }}>
+                <label className="label" htmlFor="in-density">Fluxo / Densidade</label>
+                <select id="in-density" className="input input-sm" value={layoutDensity} onChange={e => setLayoutDensity(e.target.value as any)}>
+                  <option value="spacious">🍃 Livre / Amplo (1.2m)</option>
+                  <option value="normal">📐 Padrão / Regulamentar (1.0m)</option>
+                  <option value="compact">🛒 Compacto / Apertado (0.8m)</option>
                 </select>
               </div>
               {[
@@ -243,6 +292,101 @@ export default function Editor() {
                   </div>
                 </label>
               ))}
+                {/* Pillars */}
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-pillars">Pilares (x,y por linha)</label>
+                  <textarea id="in-pillars" className="input input-sm" rows={3}
+                    value={pillars.map(p => `${p.x},${p.y}`).join('\n')}
+                    onChange={e => {
+                      const arr = e.target.value.split('\n')
+                        .map(l => l.trim())
+                        .filter(l => l)
+                        .map(l => {
+                          const [x, y] = l.split(',').map(Number)
+                          return { x, y }
+                        })
+                      setPillars(arr)
+                    }}
+                  />
+                </div>
+                {/* Entrance */}
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-entrance-x">Entrada - X (m)</label>
+                  <input id="in-entrance-x" className="input input-sm" type="number" step={0.1}
+                    value={entrance?.x ?? ''}
+                    onChange={e => {
+                      const x = Number(e.target.value)
+                      const cur = entrance || { x: 0, y: 0, orientation: 'N' as const }
+                      setEntrance({ ...cur, x })
+                    }}
+                  />
+                </div>
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-entrance-y">Entrada - Y (m)</label>
+                  <input id="in-entrance-y" className="input input-sm" type="number" step={0.1}
+                    value={entrance?.y ?? ''}
+                    onChange={e => {
+                      const y = Number(e.target.value)
+                      const cur = entrance || { x: 0, y: 0, orientation: 'N' as const }
+                      setEntrance({ ...cur, y })
+                    }}
+                  />
+                </div>
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-entrance-orient">Orientação da Entrada</label>
+                  <select id="in-entrance-orient" className="input input-sm"
+                    value={entrance?.orientation ?? 'N'}
+                    onChange={e => {
+                      const orient = e.target.value as 'N' | 'S' | 'E' | 'W'
+                      const cur = entrance || { x: 0, y: 0, orientation: 'N' as const }
+                      setEntrance({ ...cur, orientation: orient })
+                    }}
+                  >
+                    <option value="N">N</option>
+                    <option value="S">S</option>
+                    <option value="E">E</option>
+                    <option value="W">W</option>
+                  </select>
+                </div>
+                {/* Emergency Exit */}
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-exit-x">Saída de Emergência - X (m)</label>
+                  <input id="in-exit-x" className="input input-sm" type="number" step={0.1}
+                    value={emergencyExit?.x ?? ''}
+                    onChange={e => {
+                      const x = Number(e.target.value)
+                      const cur = emergencyExit || { x: 0, y: 0, orientation: 'N' as const }
+                      setEmergencyExit({ ...cur, x })
+                    }}
+                  />
+                </div>
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-exit-y">Saída de Emergência - Y (m)</label>
+                  <input id="in-exit-y" className="input input-sm" type="number" step={0.1}
+                    value={emergencyExit?.y ?? ''}
+                    onChange={e => {
+                      const y = Number(e.target.value)
+                      const cur = emergencyExit || { x: 0, y: 0, orientation: 'N' as const }
+                      setEmergencyExit({ ...cur, y })
+                    }}
+                  />
+                </div>
+                <div className="form-group" style={{ gap: 5 }}>
+                  <label className="label" htmlFor="in-exit-orient">Orientação da Saída</label>
+                  <select id="in-exit-orient" className="input input-sm"
+                    value={emergencyExit?.orientation ?? 'N'}
+                    onChange={e => {
+                      const orient = e.target.value as 'N' | 'S' | 'E' | 'W'
+                      const cur = emergencyExit || { x: 0, y: 0, orientation: 'N' as const }
+                      setEmergencyExit({ ...cur, orientation: orient })
+                    }}
+                  >
+                    <option value="N">N</option>
+                    <option value="S">S</option>
+                    <option value="E">E</option>
+                    <option value="W">W</option>
+                  </select>
+                </div>
               <div style={{ height: 1, background: 'var(--border-xs)', margin: '15px 0' }} />
               <div className="label" style={{ fontSize: 'var(--fs-xs)', marginBottom: 8 }}>Exportar Planta</div>
               <div className="settings-2col" style={{ gap: 8 }}>
@@ -270,27 +414,29 @@ export default function Editor() {
       {/* ─── EDITOR BODY ─── */}
       <div className="editor-body">
 
-        {/* Desktop sidebar */}
-        <aside className="editor-sidebar desktop-only">
-          <div className="sb-tabs">
-            <button id="tab-lib" className={`sb-tab ${desktopPanel === 'library' ? 'active' : ''}`}
-              onClick={() => setDesktopPanel('library')}>Itens</button>
-            <button id="tab-ai" className={`sb-tab ${desktopPanel === 'ai' ? 'active' : ''}`}
-              onClick={() => setDesktopPanel('ai')}>IA</button>
-            <button id="tab-budget" className={`sb-tab ${desktopPanel === 'budget' ? 'active' : ''}`}
-              onClick={() => setDesktopPanel('budget')}>Orçamento</button>
-          </div>
-          <div className="sb-body">
-            {desktopPanel === 'library' && <ItemLibrary />}
-            {desktopPanel === 'ai' && <AiChat />}
-            {desktopPanel === 'budget' && <BudgetPanel />}
-          </div>
+        {/* Left Sidebar (Catalog) */}
+        <aside className="editor-sidebar-left desktop-only">
+          <ItemLibrary />
         </aside>
 
         {/* Canvas */}
         <main className="editor-canvas">
           <CanvasEditor stageRef={stageRef} />
         </main>
+
+        {/* Right Sidebar (AI Assistant & Budget) */}
+        <aside className="editor-sidebar-right desktop-only">
+          <div className="sb-tabs-right">
+            <button id="tab-ai" className={`sb-tab-right ${rightPanel === 'ai' ? 'active' : ''}`}
+              onClick={() => setRightPanel('ai')}>Assistente IA</button>
+            <button id="tab-budget" className={`sb-tab-right ${rightPanel === 'budget' ? 'active' : ''}`}
+              onClick={() => setRightPanel('budget')}>Orçamento</button>
+          </div>
+          <div className="sb-body-right">
+            {rightPanel === 'ai' && <AiChat />}
+            {rightPanel === 'budget' && <BudgetPanel />}
+          </div>
+        </aside>
 
         {/* Desktop props panel */}
         {selectedItem && (
@@ -515,7 +661,28 @@ export default function Editor() {
         </>
       )}
       
-      {show3D && <ThreeDViewer onClose={() => setShow3D(false)} />}
+      {show3D && (
+        <Suspense fallback={
+          <div className="three-lazy-loading-placeholder" style={{
+            position: 'fixed',
+            inset: 0,
+            background: '#060f0b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            color: 'var(--green-400)',
+            flexDirection: 'column',
+            gap: '12px',
+            fontFamily: 'sans-serif'
+          }}>
+            <div className="spin" style={{ width: 32, height: 32, border: '3px solid var(--green-400)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+            <span>Iniciando motor 3D...</span>
+          </div>
+        }>
+          <ThreeDViewer onClose={() => setShow3D(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }

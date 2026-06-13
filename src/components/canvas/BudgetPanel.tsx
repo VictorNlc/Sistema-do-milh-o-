@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
-import { exportLayoutToPDF } from '../../services/pdfExport'
 import './BudgetPanel.css'
 
 interface GroupedBudgetItem {
@@ -48,8 +47,9 @@ export default function BudgetPanel() {
     return commercialItems.reduce((sum, item) => sum + (item.price || 0), 0)
   }, [commercialItems])
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
+      const { exportLayoutToPDF } = await import('../../services/pdfExport')
       const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
       // Get reference to Konva stage
       // In Vite React, Konva stage is managed via standard references, we can pass null or find stage
@@ -74,6 +74,18 @@ export default function BudgetPanel() {
       console.error(err)
       alert('Erro ao exportar orçamento em PDF')
     }
+  }
+
+  const formatFinish = (finish: string) => {
+    if (!finish) return ''
+    let text = finish.trim()
+    if (text.endsWith('Contem rodapé na cor')) {
+      return text + ' de sua escolha.'
+    }
+    if (text.endsWith('Contem rodapé na cor e fundo adesivado')) {
+      return text.replace('Contem rodapé na cor e fundo adesivado', 'Contem rodapé na cor de sua escolha e fundo adesivado.')
+    }
+    return text
   }
 
   return (
@@ -102,7 +114,7 @@ export default function BudgetPanel() {
                 <span className="budget-card-qty">x{group.qty}</span>
               </div>
               
-              {group.finish && <p className="budget-card-finish">{group.finish}</p>}
+              {group.finish && <p className="budget-card-finish">{formatFinish(group.finish)}</p>}
               
               <div className="budget-card-footer">
                 <span className="budget-card-price">Unit: R$ {group.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>

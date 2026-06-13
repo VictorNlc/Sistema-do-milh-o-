@@ -3,6 +3,7 @@
 // Bug Fix: sort usa .getTime() para evitar NaN
 // ============================================
 
+import { v4 as uuidv4 } from 'uuid'
 import type { SavedLayout, Appointment, AppointmentStatus, CanvasItem } from '../types'
 
 const LAYOUTS_KEY = 'projelayout_layouts'
@@ -24,8 +25,8 @@ type LayoutInput = {
 }
 
 export function saveLayout(layoutData: LayoutInput): SavedLayout | null {
-  const id = layoutData.id || `layout_${Date.now()}`
-  const shareToken = layoutData.shareToken || `share_${Math.random().toString(36).substring(2, 14)}`
+  const id = layoutData.id || uuidv4()
+  const shareToken = layoutData.shareToken || `share_${uuidv4()}`
   const saved: SavedLayout = {
     ...(layoutData as SavedLayout),
     id,

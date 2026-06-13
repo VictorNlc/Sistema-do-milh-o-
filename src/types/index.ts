@@ -7,6 +7,8 @@
 
 export type StoreType = 'popular' | 'premium' | 'manipulacao' | 'completa'
 
+export type LayoutDensity = 'spacious' | 'normal' | 'compact'
+
 export type ToastType = 'success' | 'error' | 'info'
 
 export type ItemCategory =
@@ -98,6 +100,7 @@ export interface SavedLayout {
   storeWidth: number
   storeHeight: number
   storeType: StoreType
+  layoutDensity?: LayoutDensity
   items: CanvasItem[]
   shareToken: string
   thumbnail: string | null
@@ -190,4 +193,50 @@ export interface AIContext {
   storeHeight: number
   storeType: StoreType
   itemCount: number
+}
+
+// ─── SketchUp Import / Layouts de Referência ────────────────────────────────
+
+/** Item detectado pela IA na imagem do SketchUp */
+export interface DetectedItem {
+  /** Nome detectado pela IA */
+  detectedName: string
+  /** ID do catálogo mapeado */
+  catalogId: string
+  /** Posição X em metros */
+  x: number
+  /** Posição Y em metros */
+  y: number
+  /** Largura em metros */
+  width: number
+  /** Altura/profundidade em metros */
+  height: number
+  /** Rotação em graus */
+  rotation: number
+  /** Confiança do mapeamento (0-1) */
+  confidence: number
+}
+
+/** Resultado da análise de visão computacional */
+export interface VisionAnalysisResult {
+  success: boolean
+  items: DetectedItem[]
+  storeWidth: number
+  storeHeight: number
+  error?: string
+}
+
+/** Layout de referência salvo localmente (aprendido de um modelo do projetista) */
+export interface ReferenceLayout {
+  id: string
+  name: string
+  storeType: StoreType
+  storeWidth: number
+  storeHeight: number
+  items: CanvasItem[]
+  sourceImageBase64?: string
+  notes?: string
+  approved: boolean
+  createdAt: string
+  updatedAt: string
 }

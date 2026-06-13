@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAllLayoutsList, getAllAppointmentsList, updateAppointmentStatus } from '../services/storage'
 import { toast } from '../store/toastStore'
 import type { SavedLayout, Appointment, AppointmentStatus } from '../types'
+import SketchupImporter from '../components/admin/SketchupImporter'
 import './Admin.css'
 
 const ADMIN_PASSWORD = 'projefarma2025'
@@ -23,7 +24,8 @@ const I = {
   City: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><line x1="9" y1="22" x2="9" y2="16" /><line x1="15" y1="22" x2="15" y2="16" /><line x1="9" y1="16" x2="15" y2="16" /><path d="M8 6h2v2H8zm6 0h2v2h-2zm-6 4h2v2H8zm6 0h2v2h-2z" /></svg>,
   Store: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>,
   Layout: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /></svg>,
-  Notes: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+  Notes: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>,
+  Sketchup: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" /><path d="m7 6 2-2 2 2" /></svg>,
 }
 
 export default function Admin() {
@@ -142,6 +144,13 @@ export default function Admin() {
             onClick={() => setActiveTab('layouts')}
           >
             <I.Map /> Layouts ({layouts.length})
+          </button>
+          <button
+            id="admin-tab-sketchup"
+            className={`admin-tab ${activeTab === 'sketchup' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sketchup')}
+          >
+            <I.Sketchup /> Modelos SketchUp
           </button>
         </div>
       </div>
@@ -281,6 +290,21 @@ export default function Admin() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+        {/* SKETCHUP TAB */}
+        {activeTab === 'sketchup' && (
+          <div className="admin-section">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)', marginBottom: '0.5rem' }}>
+                📥 Importar Modelos do SketchUp
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+                Faça upload do print de cima dos layouts criados pelos seus projetistas no SketchUp.
+                A IA analisará a imagem, detectará os móveis e aprenderá os padrões para usar nos próximos projetos.
+              </p>
+            </div>
+            <SketchupImporter />
           </div>
         )}
       </div>

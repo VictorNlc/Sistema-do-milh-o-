@@ -1,14 +1,15 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { Stage, Layer, Rect, Text, Line } from 'react-konva'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { Stage, Layer, Rect, Text, Line, Group } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
+import { getRotatedBounds } from '../../utils/geometry'
 import CanvasItem from './CanvasItem'
 import type Konva from 'konva'
 import './CanvasEditor.css'
 
-const WALL_COLOR = '#1A2E1E'
-const WALL_THICKNESS = 8
-const FLOOR_COLOR = '#F5FBF7'
-const FLOOR_SHADOW = 'rgba(0,0,0,0.10)'
+const WALL_COLOR = '#71717A' // Lighter grey structural walls
+const WALL_THICKNESS = 10
+const FLOOR_COLOR = '#070F0B'  // Deep dark blueprint green-charcoal
+const FLOOR_SHADOW = 'rgba(0,0,0,0.40)'
 
 interface CanvasEditorProps {
   onItemSelect?: (id: string | null) => void
@@ -39,14 +40,33 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const lastDist = useRef(0)
   const lastCenter = useRef<Point | null>(null)
 
-  const {
-    storeWidth, storeHeight,
-    items, selectedItemId, showGrid, showMeasures,
-    scale, stageX, stageY,
-    activeTool, snapToGrid: _snapToGrid, gridSize,
-    setSelectedItem, setScale, setStagePosition,
-    updateItemPosition, addItem, deleteSelected,
-  } = useCanvasStore()
+  // Specific state selectors to prevent unnecessary re-renders
+  const storeWidth = useCanvasStore(state => state.storeWidth)
+  const storeHeight = useCanvasStore(state => state.storeHeight)
+  const items = useCanvasStore(state => state.items)
+  const selectedItemId = useCanvasStore(state => state.selectedItemId)
+  const showGrid = useCanvasStore(state => state.showGrid)
+  const showMeasures = useCanvasStore(state => state.showMeasures)
+  const scale = useCanvasStore(state => state.scale)
+  const stageX = useCanvasStore(state => state.stageX)
+  const stageY = useCanvasStore(state => state.stageY)
+  const gridSize = useCanvasStore(state => state.gridSize)
+  const activeTool = useCanvasStore(state => state.activeTool)
+  
+  const setSelectedItem = useCanvasStore(state => state.setSelectedItem)
+  const setScale = useCanvasStore(state => state.setScale)
+  const setStagePosition = useCanvasStore(state => state.setStagePosition)
+  const updateItemPosition = useCanvasStore(state => state.updateItemPosition)
+  const deleteSelected = useCanvasStore(state => state.deleteSelected)
+  const addItem = useCanvasStore(state => state.addItem)
+
+  const handleItemSelect = useCallback((id: string | null) => {
+    setSelectedItem(id)
+  }, [setSelectedItem])
+
+  const handleItemDragEnd = useCallback((id: string, x: number, y: number) => {
+    updateItemPosition(id, x, y)
+  }, [updateItemPosition])
 
   const canvasW = storeWidth * PIXELS_PER_METER
   const canvasH = storeHeight * PIXELS_PER_METER
@@ -195,9 +215,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         <Line
           key={`v${x}`}
           points={[x, 0, x, canvasH]}
-          stroke="rgba(16, 124, 63, 0.08)"
+          stroke="rgba(58, 230, 160, 0.12)"
           strokeWidth={0.7}
-          dash={[2, 6]}
         />
       )
     for (let y = 0; y <= canvasH; y += step)
@@ -205,9 +224,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         <Line
           key={`h${y}`}
           points={[0, y, canvasW, y]}
-          stroke="rgba(16, 124, 63, 0.08)"
+          stroke="rgba(58, 230, 160, 0.12)"
           strokeWidth={0.7}
-          dash={[2, 6]}
         />
       )
     return lines
@@ -218,10 +236,183 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     if (!showMeasures) return []
     const marks = []
     for (let x = 0; x <= storeWidth; x++)
-      marks.push(<Text key={`rx${x}`} x={x * PIXELS_PER_METER - 8} y={-18} text={`${x}`} fontSize={8} fill={WALL_COLOR} opacity={0.4} />)
+      marks.push(<Text key={`rx${x}`} x={x * PIXELS_PER_METER - 8} y={-18} text={`${x}`} fontSize={8} fill="rgba(58, 230, 160, 0.75)" fontStyle="600" />)
     for (let y = 0; y <= storeHeight; y++)
-      marks.push(<Text key={`ry${y}`} x={-22} y={y * PIXELS_PER_METER - 5} text={`${y}`} fontSize={8} fill={WALL_COLOR} opacity={0.4} />)
+      marks.push(<Text key={`ry${y}`} x={-22} y={y * PIXELS_PER_METER - 5} text={`${y}`} fontSize={8} fill="rgba(58, 230, 160, 0.75)" fontStyle="600" />)
     return marks
+  }
+
+  // Draw measurements between gondolas/shelves on the floor
+  const renderCorridorMeasures = () => {
+    if (!showMeasures || items.length === 0) return null
+
+    // 1. Horizontal Gaps (Vertical Corridors along X)
+    const xIntervals: { start: number; end: number }[] = []
+    let leftLimit = 0
+    let rightLimit = storeWidth
+    
+    items.forEach(item => {
+      const bounds = getRotatedBounds(item.x, item.y, item.width, item.height, item.rotation)
+      const realW = bounds.width
+      const realH = bounds.height
+      const x1 = bounds.x
+      const y1 = bounds.y
+
+      // Determine if item is placed against any wall (within 0.5m)
+      const isWall = !!item.isWallItem || x1 < 0.5 || (x1 + realW) > storeWidth - 0.5 || y1 < 0.5 || (y1 + realH) > storeHeight - 0.5
+      
+      if (isWall || item.category === 'PERFUMARIA') {
+        if (x1 < 0.8) {
+          leftLimit = Math.max(leftLimit, x1 + realW)
+        }
+        if (x1 + realW > storeWidth - 0.8) {
+          rightLimit = Math.min(rightLimit, x1)
+        }
+      }
+      
+      if (item.category === 'GONDOLAS' && !item.isPillar && !item.isObstacle && !isWall) {
+        xIntervals.push({ start: x1, end: x1 + realW })
+      }
+    })
+    
+    xIntervals.sort((a, b) => a.start - b.start)
+    
+    const mergedX: { start: number; end: number }[] = []
+    xIntervals.forEach(curr => {
+      if (mergedX.length === 0) {
+        mergedX.push(curr)
+      } else {
+        const prev = mergedX[mergedX.length - 1]
+        if (curr.start <= prev.end + 0.1) {
+          prev.end = Math.max(prev.end, curr.end)
+        } else {
+          mergedX.push(curr)
+        }
+      }
+    })
+    
+    const xGaps: { start: number; end: number }[] = []
+    let lastX = leftLimit
+    mergedX.forEach(idx => {
+      if (idx.start > lastX + 0.1) {
+        xGaps.push({ start: lastX, end: idx.start })
+      }
+      lastX = idx.end
+    })
+    if (rightLimit > lastX + 0.1) {
+      xGaps.push({ start: lastX, end: rightLimit })
+    }
+    
+    // 2. Vertical Gaps (Horizontal Corridors along Y)
+    const yIntervals: { start: number; end: number }[] = []
+    let topLimit = 0
+    let bottomLimit = storeHeight
+    
+    items.forEach(item => {
+      const bounds = getRotatedBounds(item.x, item.y, item.width, item.height, item.rotation)
+      const realW = bounds.width
+      const realH = bounds.height
+      const x1 = bounds.x
+      const y1 = bounds.y
+
+      // Determine if item is placed against any wall (within 0.5m)
+      const isWall = !!item.isWallItem || x1 < 0.5 || (x1 + realW) > storeWidth - 0.5 || y1 < 0.5 || (y1 + realH) > storeHeight - 0.5
+      
+      if (item.category === 'BALCOES' || isWall) {
+        if (y1 < 3.0) {
+          topLimit = Math.max(topLimit, y1 + realH)
+        }
+        if (y1 + realH > storeHeight - 2.0) {
+          bottomLimit = Math.min(bottomLimit, y1)
+        }
+      }
+      
+      if (item.category === 'GONDOLAS' && !item.isPillar && !item.isObstacle && !isWall) {
+        yIntervals.push({ start: y1, end: y1 + realH })
+      }
+    })
+    
+    yIntervals.sort((a, b) => a.start - b.start)
+    
+    const mergedY: { start: number; end: number }[] = []
+    yIntervals.forEach(curr => {
+      if (mergedY.length === 0) {
+        mergedY.push(curr)
+      } else {
+        const prev = mergedY[mergedY.length - 1]
+        if (curr.start <= prev.end + 0.1) {
+          prev.end = Math.max(prev.end, curr.end)
+        } else {
+          mergedY.push(curr)
+        }
+      }
+    })
+    
+    const yGaps: { start: number; end: number }[] = []
+    let lastY = topLimit
+    mergedY.forEach(idx => {
+      if (idx.start > lastY + 0.1) {
+        yGaps.push({ start: lastY, end: idx.start })
+      }
+      lastY = idx.end
+    })
+    if (bottomLimit > lastY + 0.1) {
+      yGaps.push({ start: lastY, end: bottomLimit })
+    }
+    
+    const elements: React.ReactNode[] = []
+    
+    // Draw horizontal dimension lines
+    xGaps.forEach((gap, idx) => {
+      const dist = gap.end - gap.start
+      if (dist < 0.4 || dist > 4.0) return
+      
+      const yPositions = [storeHeight * 0.35, storeHeight * 0.7]
+      yPositions.forEach((yVal, yIdx) => {
+        const key = `corridor-x-${idx}-${yIdx}`
+        const pX1 = gap.start * PIXELS_PER_METER
+        const pX2 = gap.end * PIXELS_PER_METER
+        const pY = yVal * PIXELS_PER_METER
+        const midX = (pX1 + pX2) / 2
+        
+        elements.push(
+          <Group key={key}>
+            <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
+            <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+            <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+            <Rect x={midX - 20} y={pY - 6} width={40} height={12} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
+            <Text x={midX - 20} y={pY - 4.5} width={40} text={`${dist.toFixed(2)}m`} fontSize={8} fontStyle="bold" fill="#10B981" align="center" />
+          </Group>
+        )
+      })
+    })
+    
+    // Draw vertical dimension lines
+    yGaps.forEach((gap, idx) => {
+      const dist = gap.end - gap.start
+      if (dist < 0.4 || dist > 4.0) return
+      
+      const xPositions = [storeWidth * 0.3, storeWidth * 0.7]
+      xPositions.forEach((xVal, xIdx) => {
+        const key = `corridor-y-${idx}-${xIdx}`
+        const pY1 = gap.start * PIXELS_PER_METER
+        const pY2 = gap.end * PIXELS_PER_METER
+        const pX = xVal * PIXELS_PER_METER
+        const midY = (pY1 + pY2) / 2
+        
+        elements.push(
+          <Group key={key}>
+            <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
+            <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+            <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+            <Rect x={pX - 20} y={midY - 6} width={40} height={12} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
+            <Text x={pX - 20} y={midY - 4.5} width={40} text={`${dist.toFixed(2)}m`} fontSize={8} fontStyle="bold" fill="#10B981" align="center" />
+          </Group>
+        )
+      })
+    })
+    
+    return elements
   }
 
   // Unused but left for future: activeTool reference
@@ -270,29 +461,32 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           {/* Grid */}
           {renderGrid()}
 
+          {/* Corridor Measures */}
+          {renderCorridorMeasures()}
+
           {/* Ruler */}
           {renderRuler()}
 
           {/* Walls */}
-          <Rect x={0} y={0} width={canvasW} height={WALL_THICKNESS} fill={WALL_COLOR} />
-          <Rect x={0} y={canvasH - WALL_THICKNESS} width={canvasW} height={WALL_THICKNESS} fill={WALL_COLOR} />
-          <Rect x={0} y={0} width={WALL_THICKNESS} height={canvasH} fill={WALL_COLOR} />
-          <Rect x={canvasW - WALL_THICKNESS} y={0} width={WALL_THICKNESS} height={canvasH} fill={WALL_COLOR} />
+          <Rect x={-WALL_THICKNESS} y={-WALL_THICKNESS} width={canvasW + 2 * WALL_THICKNESS} height={WALL_THICKNESS} fill={WALL_COLOR} />
+          <Rect x={-WALL_THICKNESS} y={canvasH} width={canvasW + 2 * WALL_THICKNESS} height={WALL_THICKNESS} fill={WALL_COLOR} />
+          <Rect x={-WALL_THICKNESS} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
+          <Rect x={canvasW} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
 
           {/* Dimension labels */}
           <Text
             x={canvasW / 2 - 50} y={canvasH + 10}
-            text={`${storeWidth}m`} fontSize={11} fontStyle="600"
-            fill={WALL_COLOR} opacity={0.6}
+            text={`${storeWidth}m`} fontSize={11} fontStyle="700"
+            fill="rgba(58, 230, 160, 0.85)"
           />
           <Text
             x={canvasW + 10} y={canvasH / 2 - 15}
-            text={`${storeHeight}m`} fontSize={11} fontStyle="600"
-            fill={WALL_COLOR} opacity={0.6} rotation={90}
+            text={`${storeHeight}m`} fontSize={11} fontStyle="700"
+            fill="rgba(58, 230, 160, 0.85)" rotation={90}
           />
 
           {/* North indicator */}
-          <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill={WALL_COLOR} opacity={0.4} fontStyle="bold" />
+          <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(255, 255, 255, 0.45)" fontStyle="bold" />
         </Layer>
 
         <Layer>
@@ -302,8 +496,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               item={item}
               isSelected={selectedItemId === item.id}
               isDraggable={selectedItemId === item.id}
-              onSelect={() => setSelectedItem(item.id)}
-              onDragEnd={(x, y) => updateItemPosition(item.id, x, y)}
+              onSelect={handleItemSelect}
+              onDragEnd={handleItemDragEnd}
             />
           ))}
         </Layer>

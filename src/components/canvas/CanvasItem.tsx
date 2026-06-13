@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState, memo } from 'react'
 import { Group, Rect, Text, Circle, Line } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
 import type { CanvasItem as CanvasItemType } from '../../types'
@@ -7,33 +7,119 @@ interface CanvasItemProps {
   item: CanvasItemType
   isSelected: boolean
   isDraggable: boolean
-  onSelect: () => void
-  onDragEnd: (x: number, y: number) => void
+  onSelect: (id: string) => void
+  onDragEnd: (id: string, x: number, y: number) => void
 }
 
-export default function CanvasItem({ item, isSelected, isDraggable, onSelect, onDragEnd }: CanvasItemProps) {
-  const groupRef = useRef(null)
-  const { snapToGrid, gridSize } = useCanvasStore()
+const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onSelect, onDragEnd }: CanvasItemProps) {
+  const groupRef = useRef<any>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Use selectors to prevent unnecessary re-renders when other state changes
+  const snapToGrid = useCanvasStore(state => state.snapToGrid)
+  const gridSize = useCanvasStore(state => state.gridSize)
+  const storeWidth = useCanvasStore(state => state.storeWidth)
+  const storeHeight = useCanvasStore(state => state.storeHeight)
+
+  const getDisplayLabel = () => {
+    if (item.label && item.label !== item.name && !item.label.startsWith('[Premium]') && !item.label.startsWith('[Especial]')) {
+      return item.label
+    }
+
+    const name = item.name || ''
+    const nameUpper = name.toUpperCase()
+    const widthMm = Math.round((item.width ?? 0.807) * 1000)
+
+    if (item.isPillar) return 'PILAR'
+    if (item.isEmergency) return 'S. EMERGÊNCIA'
+    if (item.isDoor) return nameUpper.includes('ENTRADA') ? 'P. ENTRADA' : 'P. SAÍDA'
+
+    let prefix = 'MÓVEL'
+    if (nameUpper.includes('MED DUPLO')) prefix = 'MED D.'
+    else if (nameUpper.includes('MED')) prefix = 'MED'
+    else if (nameUpper.includes('MIP')) prefix = 'MIP'
+    else if (nameUpper.includes('PF CANAL')) prefix = 'PF CANAL.'
+    else if (nameUpper.includes('PF')) prefix = 'PF'
+    else if (nameUpper.includes('GOND')) prefix = 'GOND'
+    else if (nameUpper.includes('LAT CX') || nameUpper.includes('LAT. CAIXA') || nameUpper.includes('LATERAL CAIXA') || nameUpper.includes('LAT.CAIXA')) prefix = 'LAT. CX'
+    else if (nameUpper.includes('CAIXA') || nameUpper.includes('CX')) prefix = 'CAIXA'
+    else if (nameUpper.includes('BA VD')) prefix = 'BA VIDRO'
+    else if (nameUpper.includes('BA POMBAL')) prefix = 'BA POMBAL'
+    else if (nameUpper.includes('BA')) prefix = 'BA'
+    else if (nameUpper.includes('MAQ')) prefix = 'MAQ'
+    else if (nameUpper.includes('ESM')) prefix = 'ESMALTES'
+    else if (nameUpper.includes('DERMO')) prefix = 'DERMO'
+    else if (nameUpper.includes('CTRL') || nameUpper.includes('CONTROLADO')) prefix = 'CTRL.'
+    else if (nameUpper.includes('FREEZER') || nameUpper.includes('GELADEIRA')) prefix = 'GELADEIRA'
+    else {
+      if (item.category === 'GONDOLAS') prefix = 'GOND'
+      else if (item.category === 'BALCOES') prefix = 'BA'
+      else if (item.category === 'PERFUMARIA') prefix = 'PF'
+      else prefix = item.name
+    }
+
+    return `${prefix} ${widthMm}mm`
+  }
 
   const x = item.x * PIXELS_PER_METER
   const y = item.y * PIXELS_PER_METER
   const w = item.width * PIXELS_PER_METER
   const h = item.height * PIXELS_PER_METER
 
-  const handleDragEnd = useCallback((e: { target: { x: () => number; y: () => number } }) => {
+  const handleSelect = useCallback(() => {
+    onSelect(item.id)
+  }, [item.id, onSelect])
+
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true)
+  }, [])
+
+  const handleDragEnd = useCallback((e: any) => {
+    setIsDragging(false)
     const node = e.target
     const newX = node.x() / PIXELS_PER_METER
     const newY = node.y() / PIXELS_PER_METER
-    onDragEnd(newX, newY)
-  }, [onDragEnd])
+    onDragEnd(item.id, newX, newY)
+  }, [item.id, onDragEnd])
 
-  const handleDragMove = useCallback((e: { target: { x: (v?: number) => number; y: (v?: number) => number } }) => {
-    if (!snapToGrid) return
-    const node = e.target
-    const snap = gridSize * PIXELS_PER_METER
-    node.x(Math.round(node.x() / snap) * snap)
-    node.y(Math.round(node.y() / snap) * snap)
-  }, [snapToGrid, gridSize])
+  const dragBoundFunc = useCallback((pos: { x: number; y: number }) => {
+    const node = groupRef.current
+    if (!node) return pos
+
+    const stage = node.getStage()
+    if (!stage) return pos
+
+    const sScale = stage.scaleX()
+    const sX = stage.x()
+    const sY = stage.y()
+
+    // Convert absolute screen position back to local coordinates
+    const localX = (pos.x - sX) / sScale
+    const localY = (pos.y - sY) / sScale
+    
+    let targetLocalX = localX
+    let targetLocalY = localY
+    
+    // Snap to grid if enabled
+    if (snapToGrid) {
+      const snap = gridSize * PIXELS_PER_METER
+      targetLocalX = Math.round(localX / snap) * snap
+      targetLocalY = Math.round(localY / snap) * snap
+    }
+    
+    // Clamp within store boundaries (in pixels)
+    const maxLocalX = (storeWidth - item.width) * PIXELS_PER_METER
+    const maxLocalY = (storeHeight - item.height) * PIXELS_PER_METER
+    
+    targetLocalX = Math.max(0, Math.min(targetLocalX, maxLocalX))
+    targetLocalY = Math.max(0, Math.min(targetLocalY, maxLocalY))
+    
+    // Convert back to absolute screen coordinates
+    return {
+      x: targetLocalX * sScale + sX,
+      y: targetLocalY * sScale + sY,
+    }
+  }, [snapToGrid, gridSize, storeWidth, storeHeight, item.width, item.height])
 
   const isSmall = w < 25 || h < 25
   const isPillar = item.isPillar ?? item.id?.includes('pilar')
@@ -48,10 +134,11 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
         ref={groupRef}
         x={x} y={y}
         draggable={isDraggable}
-        onClick={onSelect}
-        onTap={onSelect}
+        onClick={handleSelect}
+        onTap={handleSelect}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragMove={handleDragMove}
+        dragBoundFunc={dragBoundFunc}
         rotation={item.rotation || 0}
       >
         <Rect
@@ -60,6 +147,7 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
           stroke={isSelected ? '#10B981' : '#0F172A'}
           strokeWidth={isSelected ? 2 : 1.5}
           cornerRadius={1}
+          shadowEnabled={!isDragging}
           shadowBlur={isSelected ? 8 : 1}
           shadowColor={isSelected ? '#10B981' : 'rgba(0,0,0,0.1)'}
         />
@@ -78,17 +166,8 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
     )
   }
 
-  // 2. DOOR
+  // 2. DOOR (Sliding Door Style)
   if (isDoor) {
-    const swingPoints: number[] = []
-    const steps = 16
-    for (let i = 0; i <= steps; i++) {
-      const angle = (Math.PI / 2) * (i / steps)
-      const px = w * Math.sin(angle)
-      const py = -w * Math.cos(angle)
-      swingPoints.push(px, py)
-    }
-
     const strokeColor = item.isEmergency ? '#EF4444' : (item.strokeColor || '#059669')
 
     return (
@@ -96,21 +175,33 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
         ref={groupRef}
         x={x} y={y}
         draggable={isDraggable}
-        onClick={onSelect}
-        onTap={onSelect}
+        onClick={handleSelect}
+        onTap={handleSelect}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragMove={handleDragMove}
+        dragBoundFunc={dragBoundFunc}
         rotation={item.rotation || 0}
       >
-        <Line points={[0, 0, w, 0]} stroke="#CBD5E1" strokeWidth={1} dash={[3, 3]} />
-        <Line points={[0, 0, 0, -w]} stroke={strokeColor} strokeWidth={2.5} />
-        <Line points={swingPoints} stroke={strokeColor} strokeWidth={1} dash={[2, 3]} opacity={0.8} />
-        <Circle x={0} y={0} radius={2.5} fill={strokeColor} />
+        {/* Door opening line */}
+        <Line points={[0, 0, w, 0]} stroke="#CBD5E1" strokeWidth={1.5} dash={[3, 3]} />
+        
+        {/* Sliding panels */}
+        <Line points={[0, -2.5, w / 2, -2.5]} stroke={strokeColor} strokeWidth={3.5} lineCap="round" />
+        <Line points={[w / 2, 2.5, w, 2.5]} stroke={strokeColor} strokeWidth={3.5} lineCap="round" />
+        
+        {/* Door stops */}
+        <Line points={[0, -5, 0, 5]} stroke={strokeColor} strokeWidth={2} />
+        <Line points={[w, -5, w, 5]} stroke={strokeColor} strokeWidth={2} />
+        
+        {/* Direction indicators */}
+        <Line points={[w / 4 - 4, -5.5, w / 4, -2.5, w / 4 - 4, 0.5]} stroke={strokeColor} strokeWidth={1} opacity={0.7} />
+        <Line points={[3 * w / 4 + 4, 5.5, 3 * w / 4, 2.5, 3 * w / 4 + 4, -0.5]} stroke={strokeColor} strokeWidth={1} opacity={0.7} />
+
         <Text
           x={w * 0.1}
-          y={-w * 0.7}
+          y={-18}
           width={w * 0.8}
-          text={item.isEmergency ? `⚠️ EMERGÊNCIA` : item.label || item.name}
+          text={item.isEmergency ? `⚠️ EMERGÊNCIA` : getDisplayLabel()}
           fontSize={8}
           fontStyle="600"
           fill={strokeColor}
@@ -129,6 +220,95 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
     )
   }
 
+  // 2.5. CHECKOUT L (L-shaped checkout)
+  const isCheckoutL = item.itemId?.includes('catalog-131') || item.name?.toLowerCase().includes('checkout em l') || item.name?.toLowerCase().includes('checkout l')
+  if (isCheckoutL) {
+    const strokeBorderColor = isSelected ? '#10B981' : (item.strokeColor || '#2563EB')
+    const strokeBorderWidth = isSelected ? 2 : 1.2
+    const fill = item.fillColor || '#DBEAFE'
+    const t = 0.4 * PIXELS_PER_METER
+
+    // Points for L-shape polygon
+    // Corner is at (0, 0)
+    // Horizontal part: w wide, t high
+    // Vertical part: t wide, h high
+    const points = [
+      0, 0,
+      w, 0,
+      w, t,
+      t, t,
+      t, h,
+      0, h
+    ]
+
+    return (
+      <Group
+        ref={groupRef}
+        x={x} y={y}
+        draggable={isDraggable}
+        onClick={handleSelect}
+        onTap={handleSelect}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        dragBoundFunc={dragBoundFunc}
+        rotation={item.rotation || 0}
+      >
+        <Line
+          points={points}
+          closed={true}
+          fill={fill}
+          stroke={strokeBorderColor}
+          strokeWidth={strokeBorderWidth}
+          shadowEnabled={!isDragging}
+          shadowBlur={isSelected ? 12 : 2}
+          shadowColor={isSelected ? '#10B981' : 'rgba(15, 23, 42, 0.05)'}
+          shadowOffsetY={isSelected ? 2 : 1}
+        />
+
+        {/* Outer label */}
+        <Text
+          x={2}
+          y={t / 2 - 4.5}
+          width={w - 4}
+          text={getDisplayLabel()}
+          fontSize={8.5}
+          fontStyle="700"
+          fill={item.strokeColor || '#1E293B'}
+          align="center"
+          verticalAlign="middle"
+          ellipsis={true}
+          wrap="none"
+        />
+
+        {/* Selected overlay */}
+        {isSelected && (
+          <Text
+            x={w / 2 - 25}
+            y={h + 6}
+            width={50}
+            text={`${item.width}m × ${item.height}m`}
+            fontSize={8.5}
+            fontStyle="700"
+            fill="#065F46"
+            align="center"
+          />
+        )}
+
+        {/* Selection handles */}
+        {isSelected && (
+          <>
+            <Circle x={0} y={0} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+            <Circle x={w} y={0} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+            <Circle x={w} y={t} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+            <Circle x={t} y={t} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+            <Circle x={t} y={h} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+            <Circle x={0} y={h} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+          </>
+        )}
+      </Group>
+    )
+  }
+
   // 3. GENERAL RETAIL ITEMS
   const strokeBorderColor = isSelected ? '#10B981' : (item.strokeColor || '#475569')
   const strokeBorderWidth = isSelected ? 2 : 1.2
@@ -139,10 +319,11 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
       ref={groupRef}
       x={x} y={y}
       draggable={isDraggable}
-      onClick={onSelect}
-      onTap={onSelect}
+      onClick={handleSelect}
+      onTap={handleSelect}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragMove={handleDragMove}
+      dragBoundFunc={dragBoundFunc}
       rotation={item.rotation || 0}
     >
       <Rect
@@ -151,6 +332,7 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
         stroke={strokeBorderColor}
         strokeWidth={strokeBorderWidth}
         cornerRadius={cRadius}
+        shadowEnabled={!isDragging}
         shadowBlur={isSelected ? 12 : 2}
         shadowColor={isSelected ? '#10B981' : 'rgba(15, 23, 42, 0.05)'}
         shadowOffsetY={isSelected ? 2 : 1}
@@ -218,21 +400,19 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
       )}
 
       {/* Label */}
-      {!isSmall && (
-        <Text
-          x={6}
-          y={h / 2 - 6}
-          width={w - 12}
-          text={item.label || item.name}
-          fontSize={w > 65 ? 10 : 8.5}
-          fontStyle="600"
-          fill={item.strokeColor || '#1E293B'}
-          align="center"
-          verticalAlign="middle"
-          ellipsis={true}
-          wrap="none"
-        />
-      )}
+      <Text
+        x={2}
+        y={Math.max(1, h / 2 - 4.5)}
+        width={Math.max(10, w - 4)}
+        text={getDisplayLabel()}
+        fontSize={w > 120 ? 9.5 : (w > 65 ? 8.5 : (w > 45 ? 7 : 6))}
+        fontStyle="700"
+        fill={item.strokeColor || '#1E293B'}
+        align="center"
+        verticalAlign="middle"
+        ellipsis={true}
+        wrap="none"
+      />
 
       {/* Dimension overlay when selected */}
       {isSelected && (
@@ -259,4 +439,6 @@ export default function CanvasItem({ item, isSelected, isDraggable, onSelect, on
       )}
     </Group>
   )
-}
+})
+
+export default CanvasItem
