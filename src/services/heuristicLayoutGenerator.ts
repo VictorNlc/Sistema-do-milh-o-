@@ -555,9 +555,9 @@ export async function generateAILayout(
     endVal: number,
     sign: number
   ) => {
-    const totalDist = Math.abs(endVal - startVal)
-    let currentVal = endVal
     const oppSign = -sign
+    const totalDist = Math.max(0, Math.abs(endVal - startVal) - 0.40)
+    let currentVal = endVal + oppSign * 0.40
 
     // We want to force MED 807 (catalog-21) and MED 500 (catalog-22) next to the counter
     const hasSpaceForForced = totalDist >= 1.307
