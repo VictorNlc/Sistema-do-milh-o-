@@ -239,6 +239,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const [shadowsEnabled, setShadowsEnabled] = useState(true)
   const [pharmacyName, setPharmacyName] = useState('FARMÁCIA PROJEFARMA')
   const frontFacadeGroupRef = useRef<THREE.Group | null>(null)
+  const urbanContextGroupRef = useRef<THREE.Group | null>(null)
   const [loadedModelsCount, setLoadedModelsCount] = useState(0)
   const cestaoModelRef = useRef<THREE.Group | null>(null)
   const controladoModelRef = useRef<THREE.Group | null>(null)
@@ -346,8 +347,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
       
       const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x060f0b)
-      scene.fog = new THREE.FogExp2(0x060f0b, 0.012) // much less dense, brighter depth
+      scene.background = new THREE.Color(0xdbeafe) // clean daylight sky
+      scene.fog = new THREE.FogExp2(0xdbeafe, 0.008) // subtle sky haze
       sceneRef.current = scene
 
       // Camera
@@ -380,8 +381,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       hemisphereLight.position.set(0, 10, 0)
       scene.add(hemisphereLight)
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-      directionalLight.position.set(5, 8, 5)
+      const directionalLight = new THREE.DirectionalLight(0xfffaf0, 1.2) // warm sunlight
+      directionalLight.position.set(15, 20, 15) // high angle diagonal sunlight
       directionalLight.castShadow = true
       directionalLight.shadow.camera.left = -15
       directionalLight.shadow.camera.right = 15
@@ -458,6 +459,11 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const frontFacadeGroup = new THREE.Group()
       scene.add(frontFacadeGroup)
       frontFacadeGroupRef.current = frontFacadeGroup
+
+      // Grupo para contexto urbano
+      const urbanContextGroup = new THREE.Group()
+      scene.add(urbanContextGroup)
+      urbanContextGroupRef.current = urbanContextGroup
 
       // Sinalização inicial vazia (preenchida no Effect 2)
       const signageGroup = new THREE.Group()
@@ -1069,6 +1075,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         sceneRef.current = null
         furnitureGroupRef.current = null
         lightsGroupRef.current = null
+        frontFacadeGroupRef.current = null
+        urbanContextGroupRef.current = null
         
         floorGeo.dispose()
         floorMat.dispose()
@@ -1287,6 +1295,244 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     }
   }
 
+  const rebuildUrbanContext = (widthVal: number, heightVal: number) => {
+    const urbanContextGroup = urbanContextGroupRef.current
+    if (!urbanContextGroup) return
+
+    // Clear old children
+    while (urbanContextGroup.children.length > 0) {
+      const child = urbanContextGroup.children[0]
+      urbanContextGroup.remove(child)
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose()
+        if (Array.isArray(child.material)) {
+          child.material.forEach(m => m.dispose())
+        } else {
+          child.material.dispose()
+        }
+      } else if (child instanceof THREE.Light) {
+        child.dispose()
+      }
+    }
+
+    const facadeZ = heightVal / 2
+    const curbZ = facadeZ + 3.0
+    const streetMaxZ = facadeZ + 15.0
+
+    // Materials
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x8c8c8c, roughness: 0.85, metalness: 0.1 })
+    const curbMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, roughness: 0.8 })
+    const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x1f242e, roughness: 0.9 })
+    const roadMarkMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.6 }) // yellow
+    const paintWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }) // white
+    const buildingLeftMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.75 }) // slate gray
+    const buildingRightMat = new THREE.MeshStandardMaterial({ color: 0xa1a1aa, roughness: 0.7 }) // cool gray
+    const buildingFrameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 }) // dark metal
+    const buildingGlassMat = new THREE.MeshStandardMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.2, roughness: 0.1, metalness: 0.9 })
+    const streetlightPoleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.8 })
+    const streetlightFixtureMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 })
+
+    // 1. Calçada (Sidewalk) - Plane
+    const sidewalkGeo = new THREE.PlaneGeometry(120, 3.0)
+    const sidewalkMesh = new THREE.Mesh(sidewalkGeo, sidewalkMat)
+    sidewalkMesh.rotation.x = -Math.PI / 2
+    sidewalkMesh.position.set(0, 0, facadeZ + 1.5)
+    sidewalkMesh.receiveShadow = true
+    urbanContextGroup.add(sidewalkMesh)
+
+    // Sidewalk procedural joint lines
+    for (let x = -60; x <= 60; x += 2) {
+      if (Math.abs(x) < widthVal / 2 - 0.1 || Math.abs(x) > widthVal / 2 + 0.1) {
+        const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
+        const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+        jointMesh.position.set(x, 0.001, facadeZ + 1.5)
+        urbanContextGroup.add(jointMesh)
+      }
+    }
+    const longJointGeo = new THREE.BoxGeometry(120, 0.002, 0.015)
+    const longJointMesh = new THREE.Mesh(longJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+    longJointMesh.position.set(0, 0.001, facadeZ + 1.5)
+    urbanContextGroup.add(longJointMesh)
+
+    // 2. Meio-fio (Curb) - Box
+    const curbGeo = new THREE.BoxGeometry(120, 0.15, 0.12)
+    const curbMesh = new THREE.Mesh(curbGeo, curbMat)
+    curbMesh.position.set(0, -0.075, curbZ - 0.06)
+    curbMesh.receiveShadow = true
+    urbanContextGroup.add(curbMesh)
+
+    // 3. Rua Asfaltada (Asphalt Road) - Plane
+    const roadGeo = new THREE.PlaneGeometry(120, 12.0)
+    const roadMesh = new THREE.Mesh(roadGeo, asphaltMat)
+    roadMesh.rotation.x = -Math.PI / 2
+    roadMesh.position.set(0, -0.15, curbZ + 6.0)
+    roadMesh.receiveShadow = true
+    urbanContextGroup.add(roadMesh)
+
+    // Road Painted Markings
+    const yellowLineLeft = new THREE.Mesh(new THREE.BoxGeometry(120, 0.002, 0.08), roadMarkMat)
+    yellowLineLeft.position.set(0, -0.148, curbZ + 5.90)
+    urbanContextGroup.add(yellowLineLeft)
+
+    const yellowLineRight = new THREE.Mesh(new THREE.BoxGeometry(120, 0.002, 0.08), roadMarkMat)
+    yellowLineRight.position.set(0, -0.148, curbZ + 6.10)
+    urbanContextGroup.add(yellowLineRight)
+
+    // Pedestrian Zebra Crossing (Faixa de pedestres)
+    const doorItem = items.find(item => 
+      item.isDoor || 
+      item.itemId?.includes('door') || 
+      item.itemId?.includes('porta')
+    )
+    const doorW = doorItem?.width ?? 1.2
+    const doorX2d = doorItem?.x ?? (storeWidth / 2 - doorW / 2)
+    const doorX3d = doorX2d + doorW / 2 - widthVal / 2
+
+    const numStripes = 6
+    const stripeW = 0.5
+    const stripeD = 4.5
+    const stripeSpacing = 0.5
+    const crosswalkXStart = doorX3d - ((numStripes - 1) * (stripeW + stripeSpacing)) / 2
+
+    for (let s = 0; s < numStripes; s++) {
+      const sx = crosswalkXStart + s * (stripeW + stripeSpacing)
+      const stripeGeo = new THREE.BoxGeometry(stripeW, 0.002, stripeD)
+      const stripeMesh = new THREE.Mesh(stripeGeo, paintWhiteMat)
+      stripeMesh.position.set(sx, -0.148, curbZ + 2.5)
+      urbanContextGroup.add(stripeMesh)
+    }
+
+    // 4. Neighboring Buildings (Left & Right)
+    const leftBuildW = 30
+    const leftBuildH = 9.0
+    const leftBuildX = -widthVal / 2 - leftBuildW / 2
+    
+    const leftBuildGeo = new THREE.BoxGeometry(leftBuildW, leftBuildH, heightVal)
+    const leftBuildMesh = new THREE.Mesh(leftBuildGeo, buildingLeftMat)
+    leftBuildMesh.position.set(leftBuildX, leftBuildH / 2, 0)
+    leftBuildMesh.castShadow = true
+    leftBuildMesh.receiveShadow = true
+    urbanContextGroup.add(leftBuildMesh)
+
+    const leftStoreW = 12.0
+    const leftStoreH = 2.6
+    const leftStoreX = -widthVal / 2 - 8.0
+    
+    const leftStoreGlass = new THREE.Mesh(new THREE.BoxGeometry(leftStoreW, leftStoreH, 0.02), buildingGlassMat)
+    leftStoreGlass.position.set(leftStoreX, leftStoreH / 2, facadeZ + 0.01)
+    urbanContextGroup.add(leftStoreGlass)
+
+    const leftStoreFrameB = new THREE.Mesh(new THREE.BoxGeometry(leftStoreW, 0.08, 0.08), buildingFrameMat)
+    leftStoreFrameB.position.set(leftStoreX, 0.04, facadeZ + 0.01)
+    urbanContextGroup.add(leftStoreFrameB)
+
+    const leftStoreFrameT = new THREE.Mesh(new THREE.BoxGeometry(leftStoreW, 0.06, 0.08), buildingFrameMat)
+    leftStoreFrameT.position.set(leftStoreX, leftStoreH - 0.03, facadeZ + 0.01)
+    urbanContextGroup.add(leftStoreFrameT)
+
+    const winW = 1.4
+    const winH = 1.6
+    for (let f = 0; f < 2; f++) {
+      const wy = 4.5 + f * 2.5
+      for (let w = 0; w < 3; w++) {
+        const wx = -widthVal / 2 - 5.0 - w * 4.0
+        const winFrame = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.1, winH + 0.1, 0.06), buildingFrameMat)
+        winFrame.position.set(wx, wy, facadeZ + 0.01)
+        urbanContextGroup.add(winFrame)
+        const winGlass = new THREE.Mesh(new THREE.BoxGeometry(winW, winH, 0.02), buildingGlassMat)
+        winGlass.position.set(wx, wy, facadeZ + 0.02)
+        urbanContextGroup.add(winGlass)
+      }
+    }
+
+    const rightBuildW = 30
+    const rightBuildH = 12.0
+    const rightBuildX = widthVal / 2 + rightBuildW / 2
+    
+    const rightBuildGeo = new THREE.BoxGeometry(rightBuildW, rightBuildH, heightVal)
+    const rightBuildMesh = new THREE.Mesh(rightBuildGeo, buildingRightMat)
+    rightBuildMesh.position.set(rightBuildX, rightBuildH / 2, 0)
+    rightBuildMesh.castShadow = true
+    rightBuildMesh.receiveShadow = true
+    urbanContextGroup.add(rightBuildMesh)
+
+    const rightStoreW = 14.0
+    const rightStoreH = 2.6
+    const rightStoreX = widthVal / 2 + 9.0
+    
+    const rightStoreGlass = new THREE.Mesh(new THREE.BoxGeometry(rightStoreW, rightStoreH, 0.02), buildingGlassMat)
+    rightStoreGlass.position.set(rightStoreX, rightStoreH / 2, facadeZ + 0.01)
+    urbanContextGroup.add(rightStoreGlass)
+
+    const rightStoreFrameB = new THREE.Mesh(new THREE.BoxGeometry(rightStoreW, 0.08, 0.08), buildingFrameMat)
+    rightStoreFrameB.position.set(rightStoreX, 0.04, facadeZ + 0.01)
+    urbanContextGroup.add(rightStoreFrameB)
+
+    const rightStoreFrameT = new THREE.Mesh(new THREE.BoxGeometry(rightStoreW, 0.06, 0.08), buildingFrameMat)
+    rightStoreFrameT.position.set(rightStoreX, rightStoreH - 0.03, facadeZ + 0.01)
+    urbanContextGroup.add(rightStoreFrameT)
+
+    for (let f = 0; f < 3; f++) {
+      const wy = 4.5 + f * 2.8
+      for (let w = 0; w < 3; w++) {
+        const wx = widthVal / 2 + 5.0 + w * 4.5
+        const winFrame = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.1, winH + 0.1, 0.06), buildingFrameMat)
+        winFrame.position.set(wx, wy, facadeZ + 0.01)
+        urbanContextGroup.add(winFrame)
+        const winGlass = new THREE.Mesh(new THREE.BoxGeometry(winW, winH, 0.02), buildingGlassMat)
+        winGlass.position.set(wx, wy, facadeZ + 0.02)
+        urbanContextGroup.add(winGlass)
+      }
+    }
+
+    // 5. Postes de Iluminação Pública (Streetlights)
+    const streetlightPositions = [
+      { x: -widthVal / 2 - 2, z: curbZ - 0.3 },
+      { x: widthVal / 2 + 2, z: curbZ - 0.3 }
+    ]
+
+    streetlightPositions.forEach((pos, idx) => {
+      const streetlightGroup = new THREE.Group()
+      streetlightGroup.position.set(pos.x, 0, pos.z)
+      
+      const poleGeo = new THREE.CylinderGeometry(0.05, 0.08, 5.0, 8)
+      const poleMesh = new THREE.Mesh(poleGeo, streetlightPoleMat)
+      poleMesh.position.y = 2.5
+      poleMesh.castShadow = true
+      poleMesh.receiveShadow = true
+      streetlightGroup.add(poleMesh)
+
+      const armGeo = new THREE.BoxGeometry(0.06, 0.06, 1.2)
+      const armMesh = new THREE.Mesh(armGeo, streetlightPoleMat)
+      armMesh.position.set(0, 5.0, 0.5)
+      armMesh.castShadow = true
+      streetlightGroup.add(armMesh)
+
+      const headGeo = new THREE.BoxGeometry(0.15, 0.08, 0.3)
+      const headMesh = new THREE.Mesh(headGeo, streetlightFixtureMat)
+      headMesh.position.set(0, 4.96, 1.1)
+      headMesh.castShadow = true
+      streetlightGroup.add(headMesh)
+
+      const lensGeo = new THREE.BoxGeometry(0.12, 0.01, 0.24)
+      const lensMesh = new THREE.Mesh(lensGeo, new THREE.MeshBasicMaterial({ color: 0xffe885 }))
+      lensMesh.position.set(0, 4.915, 1.1)
+      streetlightGroup.add(lensMesh)
+
+      const light = new THREE.SpotLight(0xffd8a8, 1.5, 16.0, Math.PI / 4, 0.6, 1.0)
+      light.position.set(0, 4.9, 1.1)
+      light.target.position.set(0, 0, 1.1)
+      light.castShadow = shadowsEnabled
+      light.shadow.bias = -0.001
+      light.shadow.mapSize.width = 512
+      light.shadow.mapSize.height = 512
+      streetlightGroup.add(light)
+      streetlightGroup.add(light.target)
+
+      urbanContextGroup.add(streetlightGroup)
+    })
+  }
+
   // --- Effect 2: Atualização de Dimensões (Paredes, Piso, Teto, Spawn) ---
   useEffect(() => {
     if (!initializedRef.current) return
@@ -1296,7 +1542,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     const heightVal = Math.max(4, Number(storeHeight) || 12)
 
     // Set camera default orbit look angle to be directly in front of the entrance showing the facade and part of the interior
-    orbitDistanceRef.current = Math.max(widthVal, heightVal) * 1.2
+    orbitDistanceRef.current = Math.max(widthVal, heightVal) * 1.35
     orbitYawRef.current = 0.12 // slightly offset for architectural depth
     orbitPitchRef.current = 0.18 // eye-level perspective looking slightly down
     orbitTargetRef.current.set(0, 0.5, 0)
@@ -1369,6 +1615,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
     // Atualizar a fachada frontal realista
     rebuildFrontFacade(widthVal, heightVal)
+
+    // Atualizar o contexto urbano realista
+    rebuildUrbanContext(widthVal, heightVal)
 
     // 5. Atualizar Placas de Setorização
     const signageGroup = signageGroupRef.current
