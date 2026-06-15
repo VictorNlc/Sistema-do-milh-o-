@@ -155,6 +155,107 @@ const configureMeshShadows = (object: THREE.Object3D) => {
   })
 }
 
+// Helper to generate a stylistic low-poly tree mesh
+const createTreeMesh = (): THREE.Group => {
+  const treeGroup = new THREE.Group()
+  
+  // Trunk
+  const trunkGeo = new THREE.CylinderGeometry(0.1, 0.15, 1.6, 8)
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
+  const trunkMesh = new THREE.Mesh(trunkGeo, trunkMat)
+  trunkMesh.position.y = 0.8
+  trunkMesh.castShadow = true
+  trunkMesh.receiveShadow = true
+  treeGroup.add(trunkMesh)
+  
+  // Foliage (modern blocky low-poly style)
+  const folMat = new THREE.MeshStandardMaterial({ color: 0x16803d, roughness: 0.8 })
+  
+  const folGeo1 = new THREE.BoxGeometry(1.4, 1.8, 1.4)
+  const folMesh1 = new THREE.Mesh(folGeo1, folMat)
+  folMesh1.position.y = 2.2
+  folMesh1.castShadow = true
+  folMesh1.receiveShadow = true
+  treeGroup.add(folMesh1)
+  
+  const folGeo2 = new THREE.BoxGeometry(1.0, 0.9, 1.0)
+  const folMesh2 = new THREE.Mesh(folGeo2, folMat)
+  folMesh2.position.y = 3.25
+  folMesh2.castShadow = true
+  treeGroup.add(folMesh2)
+  
+  return treeGroup
+}
+
+// Helper to generate a stylistic low-poly car mesh
+const createCarMesh = (color: number): THREE.Group => {
+  const carGroup = new THREE.Group()
+  
+  // Chassis/Body
+  const bodyGeo = new THREE.BoxGeometry(3.6, 0.65, 1.6)
+  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.2, metalness: 0.1 })
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat)
+  bodyMesh.position.y = 0.525
+  bodyMesh.castShadow = true
+  bodyMesh.receiveShadow = true
+  carGroup.add(bodyMesh)
+  
+  // Cabin
+  const cabinGeo = new THREE.BoxGeometry(1.9, 0.55, 1.4)
+  const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 })
+  const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat)
+  cabinMesh.position.set(-0.2, 1.05, 0)
+  cabinMesh.castShadow = true
+  cabinMesh.receiveShadow = true
+  carGroup.add(cabinMesh)
+  
+  // Wheels
+  const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.3, 8)
+  wheelGeo.rotateX(Math.PI / 2) // Orient axle along Z
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 })
+  
+  const wheelFL = new THREE.Mesh(wheelGeo, wheelMat)
+  wheelFL.position.set(1.0, 0.28, 0.75)
+  carGroup.add(wheelFL)
+  
+  const wheelFR = new THREE.Mesh(wheelGeo, wheelMat)
+  wheelFR.position.set(1.0, 0.28, -0.75)
+  carGroup.add(wheelFR)
+  
+  const wheelRL = new THREE.Mesh(wheelGeo, wheelMat)
+  wheelRL.position.set(-1.0, 0.28, 0.75)
+  carGroup.add(wheelRL)
+  
+  const wheelRR = new THREE.Mesh(wheelGeo, wheelMat)
+  wheelRR.position.set(-1.0, 0.28, -0.75)
+  carGroup.add(wheelRR)
+  
+  // Headlights
+  const lightGeo = new THREE.BoxGeometry(0.08, 0.1, 0.25)
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfffee0 })
+  
+  const hlL = new THREE.Mesh(lightGeo, lightMat)
+  hlL.position.set(1.8, 0.525, 0.55)
+  carGroup.add(hlL)
+  
+  const hlR = new THREE.Mesh(lightGeo, lightMat)
+  hlR.position.set(1.8, 0.525, -0.55)
+  carGroup.add(hlR)
+  
+  // Taillights
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xef4444 })
+  
+  const tlL = new THREE.Mesh(lightGeo, tailMat)
+  tlL.position.set(-1.8, 0.525, 0.55)
+  carGroup.add(tlL)
+  
+  const tlR = new THREE.Mesh(lightGeo, tailMat)
+  tlR.position.set(-1.8, 0.525, -0.55)
+  carGroup.add(tlR)
+  
+  return carGroup
+}
+
 // Global cache for loaded GLTF models to avoid reloading on every component mount
 const modelCache: Record<string, THREE.Group | undefined> = {}
 const loadingPromises: Record<string, Promise<THREE.Group> | undefined> = {}
@@ -240,6 +341,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const [pharmacyName, setPharmacyName] = useState('FARMÁCIA PROJEFARMA')
   const frontFacadeGroupRef = useRef<THREE.Group | null>(null)
   const urbanContextGroupRef = useRef<THREE.Group | null>(null)
+  const carsRef = useRef<{ mesh: THREE.Group; speed: number; dir: number }[]>([])
   const [loadedModelsCount, setLoadedModelsCount] = useState(0)
   const cestaoModelRef = useRef<THREE.Group | null>(null)
   const controladoModelRef = useRef<THREE.Group | null>(null)
@@ -873,6 +975,24 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             deltaTime = 0.1
           }
 
+          // Animate procedural cars on the street
+          if (carsRef.current) {
+            const boundaryX = 60.0
+            for (let i = 0; i < carsRef.current.length; i++) {
+              const car = carsRef.current[i]
+              if (car && car.mesh) {
+                car.mesh.position.x += car.speed * deltaTime * car.dir
+                
+                // Wrap around
+                if (car.dir === 1 && car.mesh.position.x > boundaryX) {
+                  car.mesh.position.x = -boundaryX
+                } else if (car.dir === -1 && car.mesh.position.x < -boundaryX) {
+                  car.mesh.position.x = boundaryX
+                }
+              }
+            }
+          }
+
           if (mode === 'first-person') {
             const moveSpeed = 3.0
             cam.getWorldDirection(cameraDirection)
@@ -1142,7 +1262,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
     // Materials
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.8 })
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.15, metalness: 0.9, roughness: 0.1 })
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xa5f3fc, transparent: true, opacity: 0.18, metalness: 0.95, roughness: 0.05 })
     const wallColorHex = WALL_COLORS[wallColor as keyof typeof WALL_COLORS] || WALL_COLORS.mint
     const canopyMat = new THREE.MeshStandardMaterial({ color: wallColorHex, roughness: 0.5 })
 
@@ -1332,7 +1452,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     const streetlightPoleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.8 })
     const streetlightFixtureMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 })
 
-    // 1. Calçada (Sidewalk) - Plane
+    // 1. Calçada Proxima (Sidewalk Near) - Plane
     const sidewalkGeo = new THREE.PlaneGeometry(120, 3.0)
     const sidewalkMesh = new THREE.Mesh(sidewalkGeo, sidewalkMat)
     sidewalkMesh.rotation.x = -Math.PI / 2
@@ -1340,7 +1460,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     sidewalkMesh.receiveShadow = true
     urbanContextGroup.add(sidewalkMesh)
 
-    // Sidewalk procedural joint lines
+    // Sidewalk joint lines
     for (let x = -60; x <= 60; x += 2) {
       if (Math.abs(x) < widthVal / 2 - 0.1 || Math.abs(x) > widthVal / 2 + 0.1) {
         const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
@@ -1354,7 +1474,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     longJointMesh.position.set(0, 0.001, facadeZ + 1.5)
     urbanContextGroup.add(longJointMesh)
 
-    // 2. Meio-fio (Curb) - Box
+    // 2. Meio-fio Proximo (Curb Near) - Box
     const curbGeo = new THREE.BoxGeometry(120, 0.15, 0.12)
     const curbMesh = new THREE.Mesh(curbGeo, curbMat)
     curbMesh.position.set(0, -0.075, curbZ - 0.06)
@@ -1430,8 +1550,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     leftStoreFrameT.position.set(leftStoreX, leftStoreH - 0.03, facadeZ + 0.01)
     urbanContextGroup.add(leftStoreFrameT)
 
+    // Window config
     const winW = 1.4
     const winH = 1.6
+
     for (let f = 0; f < 2; f++) {
       const wy = 4.5 + f * 2.5
       for (let w = 0; w < 3; w++) {
@@ -1485,15 +1607,133 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
     }
 
-    // 5. Postes de Iluminação Pública (Streetlights)
-    const streetlightPositions = [
-      { x: -widthVal / 2 - 2, z: curbZ - 0.3 },
-      { x: widthVal / 2 + 2, z: curbZ - 0.3 }
+    // 5. Calçada do Lado Oposto (Opposite Sidewalk)
+    const oppCurbZ = facadeZ + 15.0
+    const oppSidewalkZ = facadeZ + 16.5
+
+    const oppCurbGeo = new THREE.BoxGeometry(120, 0.15, 0.12)
+    const oppCurbMesh = new THREE.Mesh(oppCurbGeo, curbMat)
+    oppCurbMesh.position.set(0, -0.075, oppCurbZ + 0.06)
+    oppCurbMesh.receiveShadow = true
+    urbanContextGroup.add(oppCurbMesh)
+
+    const oppSidewalkGeo = new THREE.PlaneGeometry(120, 3.0)
+    const oppSidewalkMesh = new THREE.Mesh(oppSidewalkGeo, sidewalkMat)
+    oppSidewalkMesh.rotation.x = -Math.PI / 2
+    oppSidewalkMesh.position.set(0, 0, oppSidewalkZ)
+    oppSidewalkMesh.receiveShadow = true
+    urbanContextGroup.add(oppSidewalkMesh)
+
+    // Joints for opposite sidewalk
+    for (let x = -60; x <= 60; x += 2) {
+      const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
+      const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+      jointMesh.position.set(x, 0.001, oppSidewalkZ)
+      urbanContextGroup.add(jointMesh)
+    }
+    const oppLongJointGeo = new THREE.BoxGeometry(120, 0.002, 0.015)
+    const oppLongJointMesh = new THREE.Mesh(oppLongJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+    oppLongJointMesh.position.set(0, 0.001, oppSidewalkZ)
+    urbanContextGroup.add(oppLongJointMesh)
+
+    // 6. Prédios do Lado Oposto (Opposite Buildings)
+    const oppBuildZ = facadeZ + 18.0
+    const buildDepth = 10.0
+    const buildCenterZ = oppBuildZ + buildDepth / 2
+
+    const buildingsConfig = [
+      { width: 18, height: 11, color: 0x475569, x: -35, sign: "PADARIA BELA VISTA" },
+      { width: 14, height: 8, color: 0x5b21b6, x: -18, sign: "LIVRARIA CULTURAL" },
+      { width: 16, height: 14, color: 0x1e3a8a, x: -2, sign: "BANCO NACIONAL" },
+      { width: 12, height: 9, color: 0xb45309, x: 13, sign: "CAFÉ GOURMET" },
+      { width: 20, height: 12, color: 0x374151, x: 30, sign: "BOUTIQUE MODA" }
     ]
 
-    streetlightPositions.forEach((pos, idx) => {
+    buildingsConfig.forEach(cfg => {
+      // Main block mesh
+      const buildGeo = new THREE.BoxGeometry(cfg.width, cfg.height, buildDepth)
+      const buildMat = new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.7 })
+      const buildMesh = new THREE.Mesh(buildGeo, buildMat)
+      buildMesh.position.set(cfg.x, cfg.height / 2, buildCenterZ)
+      buildMesh.castShadow = true
+      buildMesh.receiveShadow = true
+      urbanContextGroup.add(buildMesh)
+
+      // Storefront glass on ground floor
+      const storeW = cfg.width - 2.0
+      const storeH = 2.6
+      const glassGeo = new THREE.BoxGeometry(storeW, storeH, 0.02)
+      const glassMesh = new THREE.Mesh(glassGeo, buildingGlassMat)
+      glassMesh.position.set(cfg.x, storeH / 2, oppBuildZ - 0.01)
+      urbanContextGroup.add(glassMesh)
+
+      // Storefront frame
+      const frameB = new THREE.Mesh(new THREE.BoxGeometry(storeW, 0.08, 0.08), buildingFrameMat)
+      frameB.position.set(cfg.x, 0.04, oppBuildZ - 0.01)
+      urbanContextGroup.add(frameB)
+
+      const frameT = new THREE.Mesh(new THREE.BoxGeometry(storeW, 0.06, 0.08), buildingFrameMat)
+      frameT.position.set(cfg.x, storeH - 0.03, oppBuildZ - 0.01)
+      urbanContextGroup.add(frameT)
+
+      // Letreiro comercial
+      const signTex = createSignageTexture(cfg.sign, '#1f2937', '#ffffff')
+      const signMat = new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.2, emissive: 0xffffff, emissiveIntensity: 0.1 })
+      const signGeo = new THREE.BoxGeometry(storeW * 0.7, 0.45, 0.04)
+      const signMesh = new THREE.Mesh(signGeo, signMat)
+      signMesh.position.set(cfg.x, storeH + 0.3, oppBuildZ - 0.02)
+      urbanContextGroup.add(signMesh)
+
+      // Upper floor windows
+      const floors = Math.floor(cfg.height / 3.0)
+      for (let f = 1; f < floors; f++) {
+        const wy = 3.8 + (f - 1) * 2.8
+        const winCount = Math.floor(cfg.width / 4.0)
+        for (let w = 0; w < winCount; w++) {
+          const wx = cfg.x - cfg.width / 2 + (cfg.width / (winCount + 1)) * (w + 1)
+          const winFrame = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.1, winH + 0.1, 0.06), buildingFrameMat)
+          winFrame.position.set(wx, wy, oppBuildZ - 0.01)
+          urbanContextGroup.add(winFrame)
+          const winGlass = new THREE.Mesh(new THREE.BoxGeometry(winW, winH, 0.02), buildingGlassMat)
+          winGlass.position.set(wx, wy, oppBuildZ - 0.01 + 0.01)
+          urbanContextGroup.add(winGlass)
+        }
+      }
+    })
+
+    // 7. Vegetação (Trees along both sidewalks)
+    const treePositions = [
+      // Near sidewalk
+      { x: -16.0, z: curbZ - 0.3 },
+      { x: 16.0, z: curbZ - 0.3 },
+      // Opposite sidewalk
+      { x: -24.0, z: oppCurbZ + 1.2 },
+      { x: 0.0, z: oppCurbZ + 1.2 },
+      { x: 24.0, z: oppCurbZ + 1.2 }
+    ]
+
+    treePositions.forEach(pos => {
+      const tree = createTreeMesh()
+      tree.position.set(pos.x, 0, pos.z)
+      urbanContextGroup.add(tree)
+    })
+
+    // 8. Postes de Iluminação Pública (Streetlights)
+    const streetlightPositions = [
+      { x: -widthVal / 2 - 2, z: curbZ - 0.3, rotY: 0 },
+      { x: widthVal / 2 + 2, z: curbZ - 0.3, rotY: 0 },
+      // Opposite side (pointing back to street)
+      { x: -widthVal / 2 - 10, z: oppCurbZ + 1.2, rotY: Math.PI },
+      { x: 0, z: oppCurbZ + 1.2, rotY: Math.PI },
+      { x: widthVal / 2 + 10, z: oppCurbZ + 1.2, rotY: Math.PI }
+    ]
+
+    streetlightPositions.forEach((pos) => {
       const streetlightGroup = new THREE.Group()
       streetlightGroup.position.set(pos.x, 0, pos.z)
+      if (pos.rotY) {
+        streetlightGroup.rotation.y = pos.rotY
+      }
       
       const poleGeo = new THREE.CylinderGeometry(0.05, 0.08, 5.0, 8)
       const poleMesh = new THREE.Mesh(poleGeo, streetlightPoleMat)
@@ -1530,6 +1770,32 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       streetlightGroup.add(light.target)
 
       urbanContextGroup.add(streetlightGroup)
+    })
+
+    // 9. Procedural Animated Cars
+    // Clear old cars
+    carsRef.current = []
+
+    const carColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0xfafafa, 0x10b981, 0x111827]
+    const carSpawns = [
+      { laneZ: curbZ + 3.5, speed: 8.5, dir: -1, startX: -30, color: carColors[0] },
+      { laneZ: curbZ + 4.2, speed: 10.5, dir: -1, startX: 20, color: carColors[1] },
+      { laneZ: curbZ + 7.8, speed: 9.0, dir: 1, startX: -10, color: carColors[2] },
+      { laneZ: curbZ + 8.5, speed: 11.5, dir: 1, startX: 40, color: carColors[3] }
+    ]
+
+    carSpawns.forEach(spawn => {
+      const carGroup = createCarMesh(spawn.color)
+      carGroup.position.set(spawn.startX, -0.15, spawn.laneZ)
+      if (spawn.dir === -1) {
+        carGroup.rotation.y = Math.PI // Face negative X
+      }
+      urbanContextGroup.add(carGroup)
+      carsRef.current.push({
+        mesh: carGroup,
+        speed: spawn.speed,
+        dir: spawn.dir
+      })
     })
   }
 
