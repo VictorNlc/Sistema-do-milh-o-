@@ -85,11 +85,26 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     return () => ro.disconnect()
   }, [])
 
-  // Center stage when dimensions change — Bug Fix: all deps included
+  const hasCentered = useRef(false)
+  const lastDimensions = useRef({ w: 0, h: 0 })
+
+  // Center stage when dimensions change — Bug Fix: only center initially or when store layout dimensions change
   useEffect(() => {
-    const cx = (containerSize.width - canvasW * scale) / 2
-    const cy = (containerSize.height - canvasH * scale) / 2
-    setStagePosition(Math.max(20, cx), Math.max(20, cy))
+    if (containerSize.width === 600 && containerSize.height === 500) {
+      // Wait for the ResizeObserver to get the actual container size
+      return
+    }
+
+    const dimChanged = lastDimensions.current.w !== storeWidth || lastDimensions.current.h !== storeHeight
+    const shouldCenter = !hasCentered.current || dimChanged
+
+    if (shouldCenter) {
+      hasCentered.current = true
+      lastDimensions.current = { w: storeWidth, h: storeHeight }
+      const cx = (containerSize.width - canvasW * scale) / 2
+      const cy = (containerSize.height - canvasH * scale) / 2
+      setStagePosition(cx, cy)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeWidth, storeHeight, containerSize.width, containerSize.height])
 
@@ -108,8 +123,10 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
 
   // Stage drag end (pan)
   const handleStageDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    setStagePosition(e.target.x(), e.target.y())
-  }, [setStagePosition])
+    if (e.target === stageRef.current) {
+      setStagePosition(e.target.x(), e.target.y())
+    }
+  }, [setStagePosition, stageRef])
 
   // Wheel zoom (desktop)
   const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
