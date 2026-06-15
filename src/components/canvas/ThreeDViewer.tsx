@@ -236,7 +236,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   // Customization & Physics States
   const [floorStyle, setFloorStyle] = useState('grid') 
   const [wallColor, setWallColor] = useState('mint') 
-  const [shadowsEnabled, setShadowsEnabled] = useState(false)
+  const [shadowsEnabled, setShadowsEnabled] = useState(true)
+  const [pharmacyName, setPharmacyName] = useState('FARMÁCIA PROJEFARMA')
+  const frontFacadeGroupRef = useRef<THREE.Group | null>(null)
   const [loadedModelsCount, setLoadedModelsCount] = useState(0)
   const cestaoModelRef = useRef<THREE.Group | null>(null)
   const controladoModelRef = useRef<THREE.Group | null>(null)
@@ -440,10 +442,6 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       wBack.receiveShadow = true
       scene.add(wBack)
 
-      const wFront = new THREE.Mesh(wallGeo, wallMat)
-      wFront.receiveShadow = true
-      scene.add(wFront)
-
       const wLeft = new THREE.Mesh(wallSideGeo, wallMat)
       wLeft.rotation.y = Math.PI / 2
       wLeft.receiveShadow = true
@@ -454,7 +452,12 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       wRight.receiveShadow = true
       scene.add(wRight)
 
-      wallsRef.current = [wBack, wFront, wLeft, wRight]
+      wallsRef.current = [wBack, wLeft, wRight]
+
+      // Grupo para fachada frontal de vidro/marquise
+      const frontFacadeGroup = new THREE.Group()
+      scene.add(frontFacadeGroup)
+      frontFacadeGroupRef.current = frontFacadeGroup
 
       // Sinalização inicial vazia (preenchida no Effect 2)
       const signageGroup = new THREE.Group()
@@ -1088,6 +1091,183 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     }
   }, [initialized, loadedModelsCount, requiredKeys])
 
+  const rebuildFrontFacade = (widthVal: number, heightVal: number) => {
+    const frontFacadeGroup = frontFacadeGroupRef.current
+    if (!frontFacadeGroup) return
+
+    // Clear old children
+    while (frontFacadeGroup.children.length > 0) {
+      const child = frontFacadeGroup.children[0]
+      frontFacadeGroup.remove(child)
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose()
+        if (Array.isArray(child.material)) {
+          child.material.forEach(m => m.dispose())
+        } else {
+          child.material.dispose()
+        }
+      } else if (child instanceof THREE.Light) {
+        child.dispose()
+      }
+    }
+
+    // Find the door item
+    const doorItem = items.find(item => 
+      item.isDoor || 
+      item.itemId?.includes('door') || 
+      item.itemId?.includes('porta')
+    )
+
+    const doorW = doorItem?.width ?? 1.2
+    const doorX2d = doorItem?.x ?? (storeWidth / 2 - doorW / 2)
+    // Convert 2D X to 3D X
+    const doorX3d = doorX2d + doorW / 2 - widthVal / 2
+
+    const doorLeftX = doorX3d - doorW / 2
+    const doorRightX = doorX3d + doorW / 2
+
+    // Facade height properties
+    const facadeZ = heightVal / 2
+    const doorHeight = 2.2
+    const canopyMinY = 2.3
+    const canopyHeight = 0.9 // up to y = 3.2
+
+    // Materials
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.8 })
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.15, metalness: 0.9, roughness: 0.1 })
+    const wallColorHex = WALL_COLORS[wallColor as keyof typeof WALL_COLORS] || WALL_COLORS.mint
+    const canopyMat = new THREE.MeshStandardMaterial({ color: wallColorHex, roughness: 0.5 })
+
+    // 1. Left Glass Panel (from -widthVal / 2 to doorLeftX)
+    const leftPanelW = doorLeftX - (-widthVal / 2)
+    if (leftPanelW > 0.05) {
+      const leftPanelX = -widthVal / 2 + leftPanelW / 2
+      // Glass
+      const glassGeo = new THREE.BoxGeometry(leftPanelW, canopyMinY, 0.02)
+      const glassMesh = new THREE.Mesh(glassGeo, glassMat)
+      glassMesh.position.set(leftPanelX, canopyMinY / 2, facadeZ)
+      frontFacadeGroup.add(glassMesh)
+
+      // Metal Frame (top, bottom)
+      // Bottom sill
+      const sillGeo = new THREE.BoxGeometry(leftPanelW, 0.08, 0.08)
+      const sillMesh = new THREE.Mesh(sillGeo, metalMat)
+      sillMesh.position.set(leftPanelX, 0.04, facadeZ)
+      frontFacadeGroup.add(sillMesh)
+
+      // Top frame
+      const topFrameGeo = new THREE.BoxGeometry(leftPanelW, 0.06, 0.08)
+      const topFrameMesh = new THREE.Mesh(topFrameGeo, metalMat)
+      topFrameMesh.position.set(leftPanelX, canopyMinY - 0.03, facadeZ)
+      frontFacadeGroup.add(topFrameMesh)
+    }
+
+    // 2. Right Glass Panel (from doorRightX to widthVal / 2)
+    const rightPanelW = (widthVal / 2) - doorRightX
+    if (rightPanelW > 0.05) {
+      const rightPanelX = doorRightX + rightPanelW / 2
+      // Glass
+      const glassGeo = new THREE.BoxGeometry(rightPanelW, canopyMinY, 0.02)
+      const glassMesh = new THREE.Mesh(glassGeo, glassMat)
+      glassMesh.position.set(rightPanelX, canopyMinY / 2, facadeZ)
+      frontFacadeGroup.add(glassMesh)
+
+      // Metal Frame
+      // Bottom sill
+      const sillGeo = new THREE.BoxGeometry(rightPanelW, 0.08, 0.08)
+      const sillMesh = new THREE.Mesh(sillGeo, metalMat)
+      sillMesh.position.set(rightPanelX, 0.04, facadeZ)
+      frontFacadeGroup.add(sillMesh)
+
+      // Top frame
+      const topFrameGeo = new THREE.BoxGeometry(rightPanelW, 0.06, 0.08)
+      const topFrameMesh = new THREE.Mesh(topFrameGeo, metalMat)
+      topFrameMesh.position.set(rightPanelX, canopyMinY - 0.03, facadeZ)
+      frontFacadeGroup.add(topFrameMesh)
+    }
+
+    // 3. Automatic Glass Door (at doorX3d)
+    // Vertical frame sides
+    const sideFrameGeo = new THREE.BoxGeometry(0.06, doorHeight, 0.08)
+    
+    const leftDoorFrame = new THREE.Mesh(sideFrameGeo, metalMat)
+    leftDoorFrame.position.set(doorLeftX, doorHeight / 2, facadeZ)
+    frontFacadeGroup.add(leftDoorFrame)
+
+    const rightDoorFrame = new THREE.Mesh(sideFrameGeo, metalMat)
+    rightDoorFrame.position.set(doorRightX, doorHeight / 2, facadeZ)
+    frontFacadeGroup.add(rightDoorFrame)
+
+    // Header profile
+    const headerMesh = new THREE.Mesh(new THREE.BoxGeometry(doorW, 0.12, 0.12), metalMat)
+    headerMesh.position.set(doorX3d, doorHeight + 0.06, facadeZ)
+    frontFacadeGroup.add(headerMesh)
+
+    // Sliding Glass Panels (two sheets, slightly open or closed)
+    const sheetW = doorW / 2 - 0.02
+    const sheetGeo = new THREE.BoxGeometry(sheetW, doorHeight - 0.06, 0.02)
+    
+    // Left sheet (center to left, slightly open for realism, e.g. offset 10cm)
+    const leftSheetX = doorX3d - sheetW / 2 - 0.10
+    const leftSheetMesh = new THREE.Mesh(sheetGeo, glassMat)
+    leftSheetMesh.position.set(leftSheetX, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
+    frontFacadeGroup.add(leftSheetMesh)
+
+    // Right sheet (center to right, slightly open)
+    const rightSheetX = doorX3d + sheetW / 2 + 0.10
+    const rightSheetMesh = new THREE.Mesh(sheetGeo, glassMat)
+    rightSheetMesh.position.set(rightSheetX, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
+    frontFacadeGroup.add(rightSheetMesh)
+
+    // 4. Upper Canopy (Marquise) - projecting forward by 0.5m in Z
+    const canopyDepth = 0.5
+    const canopyGeo = new THREE.BoxGeometry(widthVal, canopyHeight, canopyDepth)
+    const canopyMesh = new THREE.Mesh(canopyGeo, canopyMat)
+    canopyMesh.position.set(0, canopyMinY + canopyHeight / 2, facadeZ + canopyDepth / 2)
+    canopyMesh.castShadow = true
+    canopyMesh.receiveShadow = true
+    frontFacadeGroup.add(canopyMesh)
+
+    // 5. Commercial Sign (Placa comercial)
+    const signW = Math.min(widthVal * 0.7, 4.0)
+    const signH = 0.5
+    const signTex = createSignageTexture(pharmacyName || 'FARMÁCIA PROJEFARMA', '#0d2217', '#ffffff')
+    const signFrontMat = new THREE.MeshStandardMaterial({ 
+      map: signTex, 
+      roughness: 0.1, 
+      emissive: 0x10b981, 
+      emissiveIntensity: 0.25 
+    })
+    const signBorderMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4 })
+    const signMaterials = [signBorderMat, signBorderMat, signBorderMat, signBorderMat, signFrontMat, signBorderMat]
+    
+    const signGeo = new THREE.BoxGeometry(signW, signH, 0.06)
+    const signMesh = new THREE.Mesh(signGeo, signMaterials)
+    signMesh.position.set(0, canopyMinY + canopyHeight / 2, facadeZ + canopyDepth + 0.03)
+    frontFacadeGroup.add(signMesh)
+
+    // 6. External Lighting (Spotlights under the canopy pointing down)
+    const numSpots = Math.max(2, Math.floor(widthVal / 3))
+    for (let i = 0; i < numSpots; i++) {
+      const spotX = -widthVal / 2 + (widthVal / (numSpots + 1)) * (i + 1)
+      
+      const fixtureGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.08, 8)
+      const fixtureMesh = new THREE.Mesh(fixtureGeo, metalMat)
+      fixtureMesh.position.set(spotX, canopyMinY - 0.04, facadeZ + canopyDepth / 2)
+      frontFacadeGroup.add(fixtureMesh)
+
+      const spotLight = new THREE.SpotLight(0xfffbeb, 2.0, 6.0, Math.PI / 4, 0.5, 1.0)
+      spotLight.position.set(spotX, canopyMinY - 0.08, facadeZ + canopyDepth / 2)
+      spotLight.target.position.set(spotX, 0, facadeZ + canopyDepth / 2)
+      spotLight.castShadow = shadowsEnabled
+      spotLight.shadow.bias = -0.001
+      spotLight.shadow.mapSize.width = 512
+      spotLight.shadow.mapSize.height = 512
+      frontFacadeGroup.add(spotLight)
+      frontFacadeGroup.add(spotLight.target)
+    }
+  }
+
   // --- Effect 2: Atualização de Dimensões (Paredes, Piso, Teto, Spawn) ---
   useEffect(() => {
     if (!initializedRef.current) return
@@ -1096,8 +1276,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     const widthVal = Math.max(4, Number(storeWidth) || 10)
     const heightVal = Math.max(4, Number(storeHeight) || 12)
 
-    const initialDistance = Math.max(widthVal, heightVal) * 1.15
-    orbitDistanceRef.current = initialDistance
+    // Set camera default orbit look angle to a beautiful corner-perspective (yaw=0.6, pitch=0.5)
+    orbitDistanceRef.current = Math.max(widthVal, heightVal) * 1.15
+    orbitYawRef.current = 0.6
+    orbitPitchRef.current = 0.5
     orbitTargetRef.current.set(0, 0.5, 0)
 
     const scene = sceneRef.current
@@ -1145,20 +1327,13 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
     // 4. Atualizar Geometria e Posição das Paredes
     const wBack = wallsRef.current[0]
-    const wFront = wallsRef.current[1]
-    const wLeft = wallsRef.current[2]
-    const wRight = wallsRef.current[3]
+    const wLeft = wallsRef.current[1]
+    const wRight = wallsRef.current[2]
 
     if (wBack) {
       wBack.geometry.dispose()
       wBack.geometry = new THREE.PlaneGeometry(widthVal, 3.0)
       wBack.position.set(0, 1.5, -heightVal / 2)
-    }
-
-    if (wFront) {
-      wFront.geometry.dispose()
-      wFront.geometry = new THREE.PlaneGeometry(widthVal, 3.0)
-      wFront.position.set(0, 1.5, heightVal / 2)
     }
 
     if (wLeft) {
@@ -1172,6 +1347,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       wRight.geometry = new THREE.PlaneGeometry(heightVal, 3.0)
       wRight.position.set(widthVal / 2, 1.5, 0)
     }
+
+    // Atualizar a fachada frontal realista
+    rebuildFrontFacade(widthVal, heightVal)
 
     // 5. Atualizar Placas de Setorização
     const signageGroup = signageGroupRef.current
@@ -1335,7 +1513,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     if (rendererRef.current) {
       rendererRef.current.shadowMap.needsUpdate = true
     }
-  }, [storeWidth, storeHeight, items])
+  }, [storeWidth, storeHeight, items, wallColor, pharmacyName])
 
   // --- Effect 3: Sincronização de Móveis ---
   useEffect(() => {
@@ -1389,6 +1567,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     // 2. Popular móveis
     items.forEach(item => {
       if (!item) return
+      // Skip doors since they are custom-rendered on the front facade
+      if (item.isDoor || item.itemId?.includes('door') || item.itemId?.includes('porta')) return
+
       const itemW = Number(item.width) || 1.0
       const itemD = Number(item.height) || 1.0
       const itemX = Number(item.x) || 0
@@ -1928,6 +2109,26 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
                 Azul Suave
               </button>
             </div>
+          </div>
+
+          <div className="cust-section">
+            <label className="cust-label">Nome da Farmácia (Fachada)</label>
+            <input 
+              type="text" 
+              className="cust-input"
+              value={pharmacyName} 
+              onChange={e => setPharmacyName(e.target.value)} 
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                color: 'white',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                width: '100%',
+                fontSize: 'var(--fs-xs)',
+                outline: 'none'
+              }}
+            />
           </div>
 
           <div className="cust-section">
