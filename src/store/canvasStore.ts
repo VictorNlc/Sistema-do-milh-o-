@@ -103,8 +103,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // === TOOLS ===
   activeTool: 'select',
-  snapToGrid: true,
-  gridSize: 0.5,
+  snapToGrid: false,
+  gridSize: 0.1,
 
   // === VIEW ===
   scale: 1,
