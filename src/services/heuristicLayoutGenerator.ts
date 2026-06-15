@@ -297,7 +297,7 @@ export async function generateAILayout(
   let centralMaxY = storeHeight - sideOffset
 
   const medShelfDepth = 0.21
-  const operatorSpace = 1.30
+  const operatorSpace = 1.31
   const balcaoDepth = 0.40
   const latCaixaW = 0.4
 
