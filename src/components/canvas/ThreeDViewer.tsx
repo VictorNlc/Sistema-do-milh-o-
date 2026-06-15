@@ -465,10 +465,11 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         powerPreference: "high-performance",
         precision: "mediump"
       })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setSize(width, height)
       renderer.shadowMap.enabled = true
       renderer.shadowMap.type = THREE.PCFShadowMap
-      renderer.shadowMap.autoUpdate = false
+      renderer.shadowMap.autoUpdate = true
       renderer.domElement.tabIndex = 1
       renderer.domElement.style.outline = 'none'
       container.appendChild(renderer.domElement)
@@ -1118,6 +1119,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         }
         cam.aspect = w / h
         cam.updateProjectionMatrix()
+        ren.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         ren.setSize(w, h)
       }
       window.addEventListener('resize', handleResize)
@@ -1406,10 +1408,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const spotLight = new THREE.SpotLight(0xfffbeb, 2.0, 6.0, Math.PI / 4, 0.5, 1.0)
       spotLight.position.set(spotX, canopyMinY - 0.08, facadeZ + canopyDepth / 2)
       spotLight.target.position.set(spotX, 0, facadeZ + canopyDepth / 2)
-      spotLight.castShadow = shadowsEnabled
-      spotLight.shadow.bias = -0.001
-      spotLight.shadow.mapSize.width = 512
-      spotLight.shadow.mapSize.height = 512
+      spotLight.castShadow = false
       frontFacadeGroup.add(spotLight)
       frontFacadeGroup.add(spotLight.target)
     }
@@ -1762,10 +1761,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       const light = new THREE.SpotLight(0xffd8a8, 1.5, 16.0, Math.PI / 4, 0.6, 1.0)
       light.position.set(0, 4.9, 1.1)
       light.target.position.set(0, 0, 1.1)
-      light.castShadow = shadowsEnabled
-      light.shadow.bias = -0.001
-      light.shadow.mapSize.width = 512
-      light.shadow.mapSize.height = 512
+      light.castShadow = false
       streetlightGroup.add(light)
       streetlightGroup.add(light.target)
 
