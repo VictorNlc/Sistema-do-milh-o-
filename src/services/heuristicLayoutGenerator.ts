@@ -153,13 +153,13 @@ export async function generateAILayout(
   const isLargeStore = storeWidth * storeHeight > 100
 
   // Corridor size based on layout density option (Livre, Padrão, Apertado)
-  let minCorridor = 1.0
-  if (density === 'spacious') minCorridor = 1.2
-  else if (density === 'compact') minCorridor = 0.80 // 80cm is compact accessibility corridor
+  let minCorridor = 1.00
+  if (density === 'spacious') minCorridor = 1.20
+  else if (density === 'compact') minCorridor = 1.00 // NBR 9050 accessibility requires at least 1.00m for wheelchairs
 
-  // Forçar 80cm (0.80) para farmácias <= 100m²
+  // Force at least 1.00m for all stores (including <= 100m²) to guarantee wheelchair accessibility
   if (!isLargeStore) {
-    minCorridor = 0.80
+    minCorridor = 1.00
   }
 
   // Verificar dimensões mínimas
