@@ -555,22 +555,50 @@ export async function generateAILayout(
     endVal: number,
     sign: number
   ) => {
-    const modules = [
+    const totalDist = Math.abs(endVal - startVal)
+    let currentVal = endVal
+    const oppSign = -sign
+
+    // We want to force MED 807 (catalog-21) and MED 500 (catalog-22) next to the counter
+    const hasSpaceForForced = totalDist >= 1.307
+
+    const forcedSequence = hasSpaceForForced
+      ? [
+          { id: 'catalog-21', name: 'Prateleira Medicamentos', icon: '💊', w: 0.807 },
+          { id: 'catalog-22', name: 'Prateleira Medicamentos', icon: '💊', w: 0.5 },
+        ]
+      : []
+
+    const normalSequence = [
       { id: 'catalog-23', name: 'Prateleira Medicamentos', icon: '💊', w: 1.0 },
       { id: 'catalog-21', name: 'Prateleira Medicamentos', icon: '💊', w: 0.807 },
       { id: 'catalog-22', name: 'Prateleira Medicamentos', icon: '💊', w: 0.5 },
     ]
 
-    let currentVal = startVal
+    let forcedIndex = 0
+
     while (true) {
-      const remaining = sign === 1 ? (endVal - currentVal) : (currentVal - endVal)
+      const remaining = oppSign === 1 ? (startVal - currentVal) : (currentVal - startVal)
       if (remaining <= 0.01) break
 
-      const fitting = modules.filter(m => m.w <= remaining + 0.001)
-      if (fitting.length === 0) break
+      let item = null
+      if (forcedIndex < forcedSequence.length) {
+        const candidate = forcedSequence[forcedIndex]
+        if (candidate.w <= remaining + 0.001) {
+          item = candidate
+          forcedIndex++
+        } else {
+          forcedIndex = forcedSequence.length
+        }
+      }
 
-      const item = fitting[0]
-      const itemVal = getPos(currentVal, item.w, rot, sign)
+      if (!item) {
+        const fitting = normalSequence.filter(m => m.w <= remaining + 0.001)
+        if (fitting.length === 0) break
+        item = fitting[0]
+      }
+
+      const itemVal = getPos(currentVal, item.w, rot, oppSign)
       const posX = axis === 'x' ? itemVal : fixedCoord
       const posY = axis === 'y' ? itemVal : fixedCoord
       
@@ -591,7 +619,7 @@ export async function generateAILayout(
           { rotation: rot, isWallItem: true }
         ))
       }
-      currentVal += sign * item.w
+      currentVal += oppSign * item.w
     }
   }
 
