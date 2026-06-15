@@ -916,9 +916,10 @@ export async function generateAILayout(
     }
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    const wallSequenceGap = isLarge ? 2.15 : 0
-    placeWallSequence(0.26, 'y', 90, storeHeight, balcaoY, -1, wallSequenceGap)
-    placeWallSequence(storeWidth - 0.26, 'y', 270, storeHeight, balcaoY, -1, 0)
+    const leftGap = 0.80
+    const rightGap = isLarge ? 2.15 : 0.80
+    placeWallSequence(0.26, 'y', 90, storeHeight, balcaoY, -1, leftGap)
+    placeWallSequence(storeWidth - 0.26, 'y', 270, storeHeight, balcaoY, -1, rightGap)
 
     // 4. Place Central Gondolas
     placeHorizontalLayoutGondolas(balcaoY + minCorridor, storeHeight - minCorridor)
@@ -1214,9 +1215,10 @@ export async function generateAILayout(
     }
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    const wallSequenceGap = isLarge ? 2.15 : 0
-    placeWallSequence(0.26, 'y', 90, 0, balcaoY, 1, wallSequenceGap)
-    placeWallSequence(storeWidth - 0.26, 'y', 270, 0, balcaoY, 1, 0)
+    const leftGap = isLarge ? 2.15 : 0.80
+    const rightGap = 0.80
+    placeWallSequence(0.26, 'y', 90, 0, balcaoY, 1, leftGap)
+    placeWallSequence(storeWidth - 0.26, 'y', 270, 0, balcaoY, 1, rightGap)
 
     // 4. Place Central Gondolas
     placeHorizontalLayoutGondolas(minCorridor, balcaoY - minCorridor)
@@ -1512,9 +1514,10 @@ export async function generateAILayout(
     }
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    const wallSequenceGap = isLarge ? 2.15 : 0
-    placeWallSequence(0, 'x', 0, storeWidth, balcaoX, -1, wallSequenceGap)
-    placeWallSequence(storeHeight, 'x', 180, storeWidth, balcaoX, -1, 0)
+    const topGap = isLarge ? 2.15 : 0.80
+    const bottomGap = 0.80
+    placeWallSequence(0, 'x', 0, storeWidth, balcaoX, -1, topGap)
+    placeWallSequence(storeHeight, 'x', 180, storeWidth, balcaoX, -1, bottomGap)
 
     // 4. Place Central Gondolas
     placeVerticalLayoutGondolas(balcaoX + minCorridor, storeWidth - minCorridor)
@@ -1813,9 +1816,10 @@ export async function generateAILayout(
     }
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    const wallSequenceGap = isLarge ? 2.15 : 0
-    placeWallSequence(0, 'x', 0, 0, balcaoX, 1, 0)
-    placeWallSequence(storeHeight, 'x', 180, 0, balcaoX, 1, wallSequenceGap)
+    const topGap = 0.80
+    const bottomGap = isLarge ? 2.15 : 0.80
+    placeWallSequence(0, 'x', 0, 0, balcaoX, 1, topGap)
+    placeWallSequence(storeHeight, 'x', 180, 0, balcaoX, 1, bottomGap)
 
     // 4. Place Central Gondolas
     placeVerticalLayoutGondolas(minCorridor, balcaoX - minCorridor)
