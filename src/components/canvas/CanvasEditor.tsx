@@ -263,172 +263,196 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const renderCorridorMeasures = () => {
     if (!showMeasures || items.length === 0) return null
 
-    // 1. Horizontal Gaps (Vertical Corridors along X)
-    const xIntervals: { start: number; end: number }[] = []
-    let leftLimit = 0
-    let rightLimit = storeWidth
-    
-    items.forEach(item => {
-      const bounds = getRotatedBounds(item.x, item.y, item.width, item.height, item.rotation)
-      const realW = bounds.width
-      const realH = bounds.height
-      const x1 = bounds.x
-      const y1 = bounds.y
-
-      // Determine if item is placed against any wall (within 0.5m)
-      const isWall = !!item.isWallItem || x1 < 0.5 || (x1 + realW) > storeWidth - 0.5 || y1 < 0.5 || (y1 + realH) > storeHeight - 0.5
-      
-      if (isWall || item.category === 'PERFUMARIA') {
-        if (x1 < 0.8) {
-          leftLimit = Math.max(leftLimit, x1 + realW)
-        }
-        if (x1 + realW > storeWidth - 0.8) {
-          rightLimit = Math.min(rightLimit, x1)
-        }
-      }
-      
-      if (item.category === 'GONDOLAS' && !item.isPillar && !item.isObstacle && !isWall) {
-        xIntervals.push({ start: x1, end: x1 + realW })
-      }
-    })
-    
-    xIntervals.sort((a, b) => a.start - b.start)
-    
-    const mergedX: { start: number; end: number }[] = []
-    xIntervals.forEach(curr => {
-      if (mergedX.length === 0) {
-        mergedX.push(curr)
-      } else {
-        const prev = mergedX[mergedX.length - 1]
-        if (curr.start <= prev.end + 0.1) {
-          prev.end = Math.max(prev.end, curr.end)
-        } else {
-          mergedX.push(curr)
-        }
-      }
-    })
-    
-    const xGaps: { start: number; end: number }[] = []
-    let lastX = leftLimit
-    mergedX.forEach(idx => {
-      if (idx.start > lastX + 0.1) {
-        xGaps.push({ start: lastX, end: idx.start })
-      }
-      lastX = idx.end
-    })
-    if (rightLimit > lastX + 0.1) {
-      xGaps.push({ start: lastX, end: rightLimit })
+    interface CorridorGap {
+      id: string
+      start: number
+      end: number
+      axis: 'x' | 'y'
+      coord: number
+      dist: number
     }
-    
-    // 2. Vertical Gaps (Horizontal Corridors along Y)
-    const yIntervals: { start: number; end: number }[] = []
-    let topLimit = 0
-    let bottomLimit = storeHeight
-    
-    items.forEach(item => {
-      const bounds = getRotatedBounds(item.x, item.y, item.width, item.height, item.rotation)
-      const realW = bounds.width
-      const realH = bounds.height
-      const x1 = bounds.x
-      const y1 = bounds.y
 
-      // Determine if item is placed against any wall (within 0.5m)
-      const isWall = !!item.isWallItem || x1 < 0.5 || (x1 + realW) > storeWidth - 0.5 || y1 < 0.5 || (y1 + realH) > storeHeight - 0.5
-      
-      if (item.category === 'BALCOES' || isWall) {
-        if (y1 < 3.0) {
-          topLimit = Math.max(topLimit, y1 + realH)
-        }
-        if (y1 + realH > storeHeight - 2.0) {
-          bottomLimit = Math.min(bottomLimit, y1)
-        }
-      }
-      
-      if (item.category === 'GONDOLAS' && !item.isPillar && !item.isObstacle && !isWall) {
-        yIntervals.push({ start: y1, end: y1 + realH })
+    const obstacleItems = items.filter(item => 
+      !item.isDoor && 
+      item.itemId !== 'porta-entrada' && 
+      item.itemId !== 'porta-saida-emergencia'
+    ).map(item => {
+      const bounds = getRotatedBounds(item.x ?? 0, item.y ?? 0, item.width ?? 0.3, item.height ?? 0.3, item.rotation ?? 0)
+      return {
+        id: item.id,
+        x1: bounds.x,
+        x2: bounds.x + bounds.width,
+        y1: bounds.y,
+        y2: bounds.y + bounds.height,
       }
     })
-    
-    yIntervals.sort((a, b) => a.start - b.start)
-    
-    const mergedY: { start: number; end: number }[] = []
-    yIntervals.forEach(curr => {
-      if (mergedY.length === 0) {
-        mergedY.push(curr)
+
+    const gaps: CorridorGap[] = []
+
+    // 1. Horizontal Gaps (Measuring along X)
+    obstacleItems.forEach(B => {
+      // Find closest item A to the left of B that overlaps vertically
+      const leftOverlaps = obstacleItems.filter(A => 
+        A.id !== B.id &&
+        A.x2 <= B.x1 + 0.05 &&
+        Math.max(A.y1, B.y1) < Math.min(A.y2, B.y2) - 0.05
+      )
+
+      if (leftOverlaps.length > 0) {
+        let closest = leftOverlaps[0]
+        leftOverlaps.forEach(A => {
+          if (A.x2 > closest.x2) closest = A
+        })
+        const dist = B.x1 - closest.x2
+        if (dist >= 0.30 && dist <= 5.00) {
+          const overlapY = (Math.max(closest.y1, B.y1) + Math.min(closest.y2, B.y2)) / 2
+          gaps.push({
+            id: `h-${closest.id}-${B.id}`,
+            start: closest.x2,
+            end: B.x1,
+            axis: 'x',
+            coord: overlapY,
+            dist,
+          })
+        }
       } else {
-        const prev = mergedY[mergedY.length - 1]
-        if (curr.start <= prev.end + 0.1) {
-          prev.end = Math.max(prev.end, curr.end)
-        } else {
-          mergedY.push(curr)
+        // Gap to left wall
+        const dist = B.x1
+        if (dist >= 0.30 && dist <= 5.00) {
+          gaps.push({
+            id: `h-leftwall-${B.id}`,
+            start: 0,
+            end: B.x1,
+            axis: 'x',
+            coord: (B.y1 + B.y2) / 2,
+            dist,
+          })
         }
       }
     })
-    
-    const yGaps: { start: number; end: number }[] = []
-    let lastY = topLimit
-    mergedY.forEach(idx => {
-      if (idx.start > lastY + 0.1) {
-        yGaps.push({ start: lastY, end: idx.start })
+
+    // Gap from rightmost items to right wall
+    obstacleItems.forEach(A => {
+      const rightOverlaps = obstacleItems.filter(B => 
+        B.id !== A.id &&
+        B.x1 >= A.x2 - 0.05 &&
+        Math.max(A.y1, B.y1) < Math.min(A.y2, B.y2) - 0.05
+      )
+      if (rightOverlaps.length === 0) {
+        const dist = storeWidth - A.x2
+        if (dist >= 0.30 && dist <= 5.00) {
+          gaps.push({
+            id: `h-${A.id}-rightwall`,
+            start: A.x2,
+            end: storeWidth,
+            axis: 'x',
+            coord: (A.y1 + A.y2) / 2,
+            dist,
+          })
+        }
       }
-      lastY = idx.end
     })
-    if (bottomLimit > lastY + 0.1) {
-      yGaps.push({ start: lastY, end: bottomLimit })
-    }
-    
+
+    // 2. Vertical Gaps (Measuring along Y)
+    obstacleItems.forEach(B => {
+      // Find closest item A above B that overlaps horizontally
+      const topOverlaps = obstacleItems.filter(A => 
+        A.id !== B.id &&
+        A.y2 <= B.y1 + 0.05 &&
+        Math.max(A.x1, B.x1) < Math.min(A.x2, B.x2) - 0.05
+      )
+
+      if (topOverlaps.length > 0) {
+        let closest = topOverlaps[0]
+        topOverlaps.forEach(A => {
+          if (A.y2 > closest.y2) closest = A
+        })
+        const dist = B.y1 - closest.y2
+        if (dist >= 0.30 && dist <= 5.00) {
+          const overlapX = (Math.max(closest.x1, B.x1) + Math.min(closest.x2, B.x2)) / 2
+          gaps.push({
+            id: `v-${closest.id}-${B.id}`,
+            start: closest.y2,
+            end: B.y1,
+            axis: 'y',
+            coord: overlapX,
+            dist,
+          })
+        }
+      } else {
+        // Gap to top wall
+        const dist = B.y1
+        if (dist >= 0.30 && dist <= 5.00) {
+          gaps.push({
+            id: `v-topwall-${B.id}`,
+            start: 0,
+            end: B.y1,
+            axis: 'y',
+            coord: (B.x1 + B.x2) / 2,
+            dist,
+          })
+        }
+      }
+    })
+
+    // Gap from bottommost items to bottom wall
+    obstacleItems.forEach(A => {
+      const bottomOverlaps = obstacleItems.filter(B => 
+        B.id !== A.id &&
+        B.y1 >= A.y2 - 0.05 &&
+        Math.max(A.x1, B.x1) < Math.min(A.x2, B.x2) - 0.05
+      )
+      if (bottomOverlaps.length === 0) {
+        const dist = storeHeight - A.y2
+        if (dist >= 0.30 && dist <= 5.00) {
+          gaps.push({
+            id: `v-${A.id}-bottomwall`,
+            start: A.y2,
+            end: storeHeight,
+            axis: 'y',
+            coord: (A.x1 + A.x2) / 2,
+            dist,
+          })
+        }
+      }
+    })
+
     const elements: React.ReactNode[] = []
-    
-    // Draw horizontal dimension lines
-    xGaps.forEach((gap, idx) => {
-      const dist = gap.end - gap.start
-      if (dist < 0.4 || dist > 4.0) return
-      
-      const yPositions = [storeHeight * 0.35, storeHeight * 0.7]
-      yPositions.forEach((yVal, yIdx) => {
-        const key = `corridor-x-${idx}-${yIdx}`
+
+    gaps.forEach(gap => {
+      if (gap.axis === 'x') {
         const pX1 = gap.start * PIXELS_PER_METER
         const pX2 = gap.end * PIXELS_PER_METER
-        const pY = yVal * PIXELS_PER_METER
+        const pY = gap.coord * PIXELS_PER_METER
         const midX = (pX1 + pX2) / 2
-        
+
         elements.push(
-          <Group key={key}>
+          <Group key={`corridor-x-${gap.id}`}>
             <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
             <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
             <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-            <Rect x={midX - 20} y={pY - 6} width={40} height={12} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
-            <Text x={midX - 20} y={pY - 4.5} width={40} text={`${dist.toFixed(2)}m`} fontSize={8} fontStyle="bold" fill="#10B981" align="center" />
+            <Rect x={midX - 18} y={pY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
+            <Text x={midX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
           </Group>
         )
-      })
-    })
-    
-    // Draw vertical dimension lines
-    yGaps.forEach((gap, idx) => {
-      const dist = gap.end - gap.start
-      if (dist < 0.4 || dist > 4.0) return
-      
-      const xPositions = [storeWidth * 0.3, storeWidth * 0.7]
-      xPositions.forEach((xVal, xIdx) => {
-        const key = `corridor-y-${idx}-${xIdx}`
+      } else {
         const pY1 = gap.start * PIXELS_PER_METER
         const pY2 = gap.end * PIXELS_PER_METER
-        const pX = xVal * PIXELS_PER_METER
+        const pX = gap.coord * PIXELS_PER_METER
         const midY = (pY1 + pY2) / 2
-        
+
         elements.push(
-          <Group key={key}>
+          <Group key={`corridor-y-${gap.id}`}>
             <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
             <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
             <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-            <Rect x={pX - 20} y={midY - 6} width={40} height={12} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
-            <Text x={pX - 20} y={midY - 4.5} width={40} text={`${dist.toFixed(2)}m`} fontSize={8} fontStyle="bold" fill="#10B981" align="center" />
+            <Rect x={pX - 18} y={midY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
+            <Text x={pX - 18} y={midY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
           </Group>
         )
-      })
+      }
     })
-    
+
     return elements
   }
 
