@@ -279,8 +279,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   }, [cameraMode])
 
   const orbitDistanceRef = useRef(12.0)
-  const orbitYawRef = useRef(0.0)
-  const orbitPitchRef = useRef(0.6) // ~34 degrees
+  const orbitYawRef = useRef(0.12)
+  const orbitPitchRef = useRef(0.18) // ~10 degrees
   const orbitTargetRef = useRef(new THREE.Vector3(0, 0.5, 0))
 
   // --- EFFECT 5: TEMATIZAÇÃO PADRÃO COM BASE NO STORETYPE ---
@@ -295,8 +295,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       setFloorStyle('wood')
       setWallColor('gray')
     } else {
-      setFloorStyle('grid')
-      setWallColor('mint')
+      setFloorStyle('marble')
+      setWallColor('white')
     }
   }, [storeType])
 
@@ -422,7 +422,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
       // Teto (placeholder geometry, redimensionado no Effect 2)
       const ceilingGeo = new THREE.PlaneGeometry(1, 1)
-      const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x0f1d15, roughness: 0.9 })
+      const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xf9fafb, roughness: 0.8 })
       const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat)
       ceiling.rotation.x = Math.PI / 2
       ceiling.position.y = 3.0
@@ -1231,12 +1231,31 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     // 5. Commercial Sign (Placa comercial)
     const signW = Math.min(widthVal * 0.7, 4.0)
     const signH = 0.5
-    const signTex = createSignageTexture(pharmacyName || 'FARMÁCIA PROJEFARMA', '#0d2217', '#ffffff')
+    
+    // Choose sign colors dynamically based on wall color
+    let signBg = '#' + wallColorHex.toString(16).padStart(6, '0')
+    let signFg = '#ffffff'
+    let signEmissiveColor = 0xffffff
+    let signEmissiveIntensity = 0.1
+    
+    if (wallColor === 'white') {
+      signBg = '#0d2217' // Elegant dark green brand color on white walls
+      signEmissiveColor = 0x10b981
+      signEmissiveIntensity = 0.2
+    } else if (wallColor === 'mint') {
+      signEmissiveColor = 0x10b981
+      signEmissiveIntensity = 0.2
+    } else if (wallColor === 'blue') {
+      signEmissiveColor = 0x60a5fa
+      signEmissiveIntensity = 0.2
+    }
+    
+    const signTex = createSignageTexture(pharmacyName || 'FARMÁCIA PROJEFARMA', signBg, signFg)
     const signFrontMat = new THREE.MeshStandardMaterial({ 
       map: signTex, 
       roughness: 0.1, 
-      emissive: 0x10b981, 
-      emissiveIntensity: 0.25 
+      emissive: signEmissiveColor, 
+      emissiveIntensity: signEmissiveIntensity
     })
     const signBorderMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4 })
     const signMaterials = [signBorderMat, signBorderMat, signBorderMat, signBorderMat, signFrontMat, signBorderMat]
@@ -1276,10 +1295,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     const widthVal = Math.max(4, Number(storeWidth) || 10)
     const heightVal = Math.max(4, Number(storeHeight) || 12)
 
-    // Set camera default orbit look angle to a beautiful corner-perspective (yaw=0.6, pitch=0.5)
-    orbitDistanceRef.current = Math.max(widthVal, heightVal) * 1.15
-    orbitYawRef.current = 0.6
-    orbitPitchRef.current = 0.5
+    // Set camera default orbit look angle to be directly in front of the entrance showing the facade and part of the interior
+    orbitDistanceRef.current = Math.max(widthVal, heightVal) * 1.2
+    orbitYawRef.current = 0.12 // slightly offset for architectural depth
+    orbitPitchRef.current = 0.18 // eye-level perspective looking slightly down
     orbitTargetRef.current.set(0, 0.5, 0)
 
     const scene = sceneRef.current
