@@ -670,8 +670,8 @@ export async function generateAILayout(
   if (rxWall === 'Top') {
     // Back wall medicines along y = 0
     const backWallY = 0
-    const backWallStart = 0.21
-    const backWallEnd = storeWidth - 0.21
+    const backWallStart = 0.0
+    const backWallEnd = storeWidth
     let currentX = backWallStart
 
     while (currentX + 0.5 <= backWallEnd) {
@@ -1010,8 +1010,8 @@ export async function generateAILayout(
   else if (rxWall === 'Bottom') {
     // Back wall medicines along y = storeHeight
     const backWallY = storeHeight - medShelfDepth
-    const backWallStart = 0.21
-    const backWallEnd = storeWidth - 0.21
+    const backWallStart = 0.0
+    const backWallEnd = storeWidth
     let currentX = backWallStart
 
     while (currentX + 0.5 <= backWallEnd) {
@@ -1341,8 +1341,8 @@ export async function generateAILayout(
   else if (rxWall === 'Left') {
     // Back wall medicines along x = 0
     const backWallX = 0
-    const backWallStart = 0.21
-    const backWallEnd = storeHeight - 0.21
+    const backWallStart = 0.0
+    const backWallEnd = storeHeight
     let currentY = backWallStart
 
     while (currentY + 0.5 <= backWallEnd) {
@@ -1671,8 +1671,8 @@ export async function generateAILayout(
   else if (rxWall === 'Right') {
     // Back wall medicines along x = storeWidth
     const backWallX = storeWidth - medShelfDepth
-    const backWallStart = 0.21
-    const backWallEnd = storeHeight - 0.21
+    const backWallStart = 0.0
+    const backWallEnd = storeHeight
     let currentY = backWallStart
 
     while (currentY + 0.5 <= backWallEnd) {
