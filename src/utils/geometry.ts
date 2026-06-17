@@ -17,23 +17,24 @@ export function getRotatedBounds(
   rotation: number = 0
 ): BoundingBox {
   const rot = (rotation % 360 + 360) % 360
+  const rad = (rot * Math.PI) / 180
 
-  const realW = rot === 90 || rot === 270 ? h : w
-  const realH = rot === 90 || rot === 270 ? w : h
+  const realW = Math.abs(w * Math.cos(rad)) + Math.abs(h * Math.sin(rad))
+  const realH = Math.abs(w * Math.sin(rad)) + Math.abs(h * Math.cos(rad))
 
-  let x1 = x
-  if (rot === 90 || rot === 180) {
-    x1 = x - realW
-  }
+  const c1_x = w * Math.cos(rad)
+  const c1_y = w * Math.sin(rad)
+  const c2_x = w * Math.cos(rad) - h * Math.sin(rad)
+  const c2_y = w * Math.sin(rad) + h * Math.cos(rad)
+  const c3_x = -h * Math.sin(rad)
+  const c3_y = h * Math.cos(rad)
 
-  let y1 = y
-  if (rot === 270 || rot === 180) {
-    y1 = y - realH
-  }
+  const minX = Math.min(0, c1_x, c2_x, c3_x)
+  const minY = Math.min(0, c1_y, c2_y, c3_y)
 
   return {
-    x: x1,
-    y: y1,
+    x: x + minX,
+    y: y + minY,
     width: realW,
     height: realH
   }
@@ -50,3 +51,43 @@ export function checkAABBCollision(boxA: BoundingBox, boxB: BoundingBox): boolea
     boxA.y + boxA.height > boxB.y
   )
 }
+
+/**
+ * Clamps the pivot position (x, y) of a rotated item of width w and height h
+ * so that its rotated bounding box stays fully within [0, storeWidth] and [0, storeHeight].
+ */
+export function clampItemPosition(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  rotation: number,
+  storeWidth: number,
+  storeHeight: number
+): { x: number; y: number } {
+  const rot = (rotation % 360 + 360) % 360
+  const realW = rot === 90 || rot === 270 ? h : w
+  const realH = rot === 90 || rot === 270 ? w : h
+
+  let offsetLeft = 0
+  if (rot === 90 || rot === 180) {
+    offsetLeft = realW
+  }
+
+  let offsetTop = 0
+  if (rot === 270 || rot === 180) {
+    offsetTop = realH
+  }
+
+  const boundsX = x - offsetLeft
+  const boundsY = y - offsetTop
+
+  const clampedBoundsX = Math.max(0, Math.min(boundsX, storeWidth - realW))
+  const clampedBoundsY = Math.max(0, Math.min(boundsY, storeHeight - realH))
+
+  return {
+    x: clampedBoundsX + offsetLeft,
+    y: clampedBoundsY + offsetTop,
+  }
+}
+

@@ -9,6 +9,8 @@ import type {
   LayoutDensity,
   PharmacyItemTemplate,
 } from '../types'
+import { clampItemPosition, getRotatedBounds } from '../utils/geometry'
+import { cleanItemName } from '../utils/labels'
 
 // Pixels por metro no canvas (escala)
 export const PIXELS_PER_METER = 60
@@ -125,14 +127,106 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // === ACTIONS ===
   setStoreDimensions: (width, height) => {
+    const oldW = get().storeWidth
+    const oldH = get().storeHeight
+
     const clampedItems = get().items.map(item => {
+      const isDoor = item.isDoor || item.itemId === 'porta-entrada' || item.itemId === 'porta-saida-emergencia'
       const newW = Math.min(item.width, width)
       const newH = Math.min(item.height, height)
-      const newX = Math.max(0, Math.min(item.x, width - newW))
-      const newY = Math.max(0, Math.min(item.y, height - newH))
-      return { ...item, width: newW, height: newH, x: newX, y: newY }
+
+      if (isDoor) {
+        const bounds = getRotatedBounds(item.x ?? 0, item.y ?? 0, item.width ?? 1.2, item.height ?? 0.15, item.rotation ?? 0)
+        const isHorizontal = bounds.width > bounds.height
+
+        let wall: 'Top' | 'Bottom' | 'Left' | 'Right' = 'Bottom'
+        if (isHorizontal) {
+          wall = (bounds.y + bounds.height / 2 < oldH / 2) ? 'Top' : 'Bottom'
+        } else {
+          wall = (bounds.x + bounds.width / 2 < oldW / 2) ? 'Left' : 'Right'
+        }
+
+        const dx = (item.x ?? 0) - bounds.x
+        const dy = (item.y ?? 0) - bounds.y
+
+        let newBoundsX = bounds.x
+        let newBoundsY = bounds.y
+
+        if (wall === 'Top') {
+          newBoundsY = 0
+          newBoundsX = Math.max(0, Math.min(bounds.x, width - bounds.width))
+        } else if (wall === 'Bottom') {
+          newBoundsY = height - bounds.height
+          newBoundsX = Math.max(0, Math.min(bounds.x, width - bounds.width))
+        } else if (wall === 'Left') {
+          newBoundsX = 0
+          newBoundsY = Math.max(0, Math.min(bounds.y, height - bounds.height))
+        } else if (wall === 'Right') {
+          newBoundsX = width - bounds.width
+          newBoundsY = Math.max(0, Math.min(bounds.y, height - bounds.height))
+        }
+
+        return {
+          ...item,
+          width: newW,
+          height: newH,
+          x: Math.round((newBoundsX + dx) * 100) / 100,
+          y: Math.round((newBoundsY + dy) * 100) / 100,
+        }
+      } else {
+        const clamped = clampItemPosition(item.x, item.y, newW, newH, item.rotation || 0, width, height)
+        return { ...item, width: newW, height: newH, x: clamped.x, y: clamped.y }
+      }
     })
-    set({ storeWidth: width, storeHeight: height, items: clampedItems, isDirty: true })
+
+    const newEntrance = get().entrance ? (() => {
+      const ent = get().entrance!
+      let newX = ent.x
+      let newY = ent.y
+      if (ent.orientation === 'N') {
+        newY = 0
+        newX = Math.max(0, Math.min(ent.x, width))
+      } else if (ent.orientation === 'S') {
+        newY = height
+        newX = Math.max(0, Math.min(ent.x, width))
+      } else if (ent.orientation === 'W') {
+        newX = 0
+        newY = Math.max(0, Math.min(ent.y, height))
+      } else if (ent.orientation === 'E') {
+        newX = width
+        newY = Math.max(0, Math.min(ent.y, height))
+      }
+      return { ...ent, x: newX, y: newY }
+    })() : null
+
+    const newEmergencyExit = get().emergencyExit ? (() => {
+      const ext = get().emergencyExit!
+      let newX = ext.x
+      let newY = ext.y
+      if (ext.orientation === 'N') {
+        newY = 0
+        newX = Math.max(0, Math.min(ext.x, width))
+      } else if (ext.orientation === 'S') {
+        newY = height
+        newX = Math.max(0, Math.min(ext.x, width))
+      } else if (ext.orientation === 'W') {
+        newX = 0
+        newY = Math.max(0, Math.min(ext.y, height))
+      } else if (ext.orientation === 'E') {
+        newX = width
+        newY = Math.max(0, Math.min(ext.y, height))
+      }
+      return { ...ext, x: newX, y: newY }
+    })() : null
+
+    set({
+      storeWidth: width,
+      storeHeight: height,
+      items: clampedItems,
+      entrance: newEntrance,
+      emergencyExit: newEmergencyExit,
+      isDirty: true
+    })
     get().saveToHistory()
   },
   setPillars: (newPillars) => {
@@ -172,10 +266,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   addItem: (itemTemplate, x, y) => {
     const { storeWidth, storeHeight } = get()
+    const cleanedName = cleanItemName(itemTemplate.name)
     const newItem: CanvasItem = {
       id: uuidv4(),
       itemId: itemTemplate.id,
-      name: itemTemplate.name,
+      name: cleanedName,
       icon: itemTemplate.icon,
       category: itemTemplate.category,
       x: Math.max(0, Math.min(x, storeWidth - itemTemplate.width)),
@@ -186,14 +281,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       strokeColor: itemTemplate.strokeColor,
       color: itemTemplate.color,
       rotation: 0,
-      isObstacle: itemTemplate.isObstacle ?? false,
-      isPillar: itemTemplate.isPillar ?? false,
-      isDoor: itemTemplate.isDoor ?? false,
-      isRoom: itemTemplate.isRoom ?? false,
-      isEmergency: itemTemplate.isEmergency ?? false,
-      isWallItem: itemTemplate.isWallItem,
-      isRound: itemTemplate.isRound,
-      label: itemTemplate.name,
+      isObstacle: itemTemplate.isObstacle ?? itemTemplate.id?.includes('obstacle') ?? false,
+      isPillar: itemTemplate.isPillar ?? itemTemplate.id?.includes('pilar') ?? false,
+      isDoor: itemTemplate.isDoor ?? itemTemplate.id?.includes('porta') ?? false,
+      isRoom: itemTemplate.isRoom ?? (itemTemplate.category === 'SERVICOS' || itemTemplate.category === 'OPERACIONAL') ?? false,
+      isEmergency: itemTemplate.isEmergency ?? itemTemplate.id?.includes('emergencia') ?? false,
+      isWallItem: itemTemplate.isWallItem ?? false,
+      isRound: itemTemplate.isRound ?? itemTemplate.id?.includes('display') ?? false,
+      label: cleanedName,
       createdAt: Date.now(),
       price: itemTemplate.price,
       finish: itemTemplate.finish,
@@ -222,11 +317,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       newY = Math.round(y / gridSize) * gridSize
     }
 
-    newX = Math.max(0, Math.min(newX, storeWidth - item.width))
-    newY = Math.max(0, Math.min(newY, storeHeight - item.height))
+    const clamped = clampItemPosition(newX, newY, item.width, item.height, item.rotation || 0, storeWidth, storeHeight)
 
     set(s => ({
-      items: s.items.map(i => (i.id === id ? { ...i, x: newX, y: newY } : i)),
+      items: s.items.map(i => (i.id === id ? { ...i, x: clamped.x, y: clamped.y } : i)),
       isDirty: true,
     }))
     get().saveToHistory()
@@ -248,8 +342,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   rotateItem: (id, angle) => {
+    const { storeWidth, storeHeight } = get()
     set(s => ({
-      items: s.items.map(i => (i.id === id ? { ...i, rotation: ((i.rotation || 0) + angle) % 360 } : i)),
+      items: s.items.map(i => {
+        if (i.id !== id) return i
+        const newRotation = ((i.rotation || 0) + angle) % 360
+        const clamped = clampItemPosition(i.x, i.y, i.width, i.height, newRotation, storeWidth, storeHeight)
+        return { ...i, rotation: newRotation, x: clamped.x, y: clamped.y }
+      }),
       isDirty: true,
     }))
     get().saveToHistory()
@@ -316,11 +416,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   loadLayout: (layoutData) => {
+    const loadedItems = (layoutData.items ?? []).map(item => {
+      const cleanName = cleanItemName(item.name || '')
+      const cleanLabel = cleanItemName(item.label || '')
+      return {
+        ...item,
+        name: cleanName,
+        label: cleanLabel,
+      }
+    })
     set({
       storeWidth: layoutData.storeWidth ?? 10,
       storeHeight: layoutData.storeHeight ?? 12,
       storeType: layoutData.storeType ?? 'popular',
-      items: layoutData.items ?? [],
+      items: loadedItems,
       pillars: layoutData.pillars ?? [],
       entrance: layoutData.entrance ?? null,
       emergencyExit: layoutData.emergencyExit ?? null,

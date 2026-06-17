@@ -1,3 +1,15 @@
+import {
+  WALL_SHELF_DEPTH,
+  STANDARD_PASSAGE_WIDTH,
+  CORNER_GAP_LIMIT,
+  MEDICINE_SHELF_DEPTH,
+  OPERATOR_SPACE,
+  BALCAO_DEPTH,
+  CESTAO_SIZE,
+  FRALDA_WIDTH,
+  FRALDA_DEPTH,
+  ENTRANCE_ISLAND_OFFSET,
+} from '../config/layoutDimensions';
 // ============================================
 // AI Layout Assistant — Rule-based + Layouts de Referência (SketchUp)
 // Bug Fix: usa uuid real em vez de Math.random()
@@ -30,7 +42,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   popular: {
     name: 'Farmácia Popular',
     priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-21-premium'],
-    corridorMin: 1.2,
+    corridorMin: STANDARD_PASSAGE_WIDTH,
     focus: 'volume de vendas e acessibilidade',
     tips: [
       'Coloque o balcão de atendimento ao fundo para guiar o fluxo de clientes',
@@ -54,7 +66,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   manipulacao: {
     name: 'Farmácia de Manipulação',
     priority: ['catalog-55-premium', 'catalog-51-premium', 'catalog-21-premium'],
-    corridorMin: 1.2,
+    corridorMin: STANDARD_PASSAGE_WIDTH,
     focus: 'área técnica e manipulação',
     tips: [
       'Área de manipulação deve ser separada da área de vendas',
@@ -93,7 +105,7 @@ export async function generateAILayout(
   // DESABILITADO: Força o uso da lógica heurística de regras para que a estratégia de layout
   // (laterais caixa rotacionados, sem espaço vazio ao lado, etc.) seja aplicada a todos os tamanhos.
   /*
-  const referenceLayouts = findCompatibleReferenceLayouts(storeType, storeWidth, storeHeight, 0.40)
+  const referenceLayouts = findCompatibleReferenceLayouts(storeType, storeWidth, storeHeight, BALCAO_DEPTH)
   if (referenceLayouts.length > 0) {
     const ref = referenceLayouts[0]
     const scaleX = storeWidth / ref.storeWidth
@@ -154,12 +166,23 @@ export async function generateAILayout(
 
   // Corridor size based on layout density option (Livre, Padrão, Apertado)
   let minCorridor = 1.00
-  if (density === 'spacious') minCorridor = 1.20
+  if (density === 'spacious') minCorridor = STANDARD_PASSAGE_WIDTH
   else if (density === 'compact') minCorridor = 1.00 // NBR 9050 accessibility requires at least 1.00m for wheelchairs
 
   // Force at least 1.00m for all stores (including <= 100m²) to guarantee wheelchair accessibility
   if (!isLargeStore) {
     minCorridor = 1.00
+  }
+
+  // Verificar se há uma porta de entrada
+  const hasDoor = existingObstacles.some(i => i.isDoor || i.itemId?.includes('door') || i.itemId?.includes('porta') || i.name?.toLowerCase().includes('entrada'));
+  if (!hasDoor) {
+    return {
+      items: [],
+      messages: ['⚠️ Adicione uma porta de entrada ao canvas antes de gerar o layout.'],
+      valid: false,
+      stats: { usedArea: '0', totalArea: (storeWidth * storeHeight).toFixed(1), corridorMin: minCorridor },
+    };
   }
 
   // Verificar dimensões mínimas
@@ -229,7 +252,7 @@ export async function generateAILayout(
   let exit = doors.find(i => i.itemId === 'porta-saida-emergencia' || i.name?.toLowerCase().includes('saida') || i.isEmergency)
 
   if (!entrance) {
-    const entX = Math.max(0.5, storeWidth / 2 - 0.8)
+    const entX = Math.max(0.5, storeWidth / 2 - CORNER_GAP_LIMIT)
     const entY = storeHeight - 0.15
     const newEnt = makeItem(
       'porta-entrada',
@@ -237,7 +260,7 @@ export async function generateAILayout(
       '🚪',
       entX,
       entY,
-      1.2,
+      STANDARD_PASSAGE_WIDTH,
       0.15,
       '#FCD34D',
       '#78350F',
@@ -248,7 +271,7 @@ export async function generateAILayout(
   }
 
   if (!exit) {
-    const extX = Math.min(storeWidth - 1.5, storeWidth / 2 + 0.8)
+    const extX = Math.min(storeWidth - 1.5, storeWidth / 2 + CORNER_GAP_LIMIT)
     const extY = storeHeight - 0.15
     const newExt = makeItem(
       'porta-saida-emergencia',
@@ -289,26 +312,29 @@ export async function generateAILayout(
   else if (entranceWall === 'Left') rxWall = 'Right'
   else rxWall = 'Left'
 
+  // Chamada para posicionar os expositores de vitrine na parede de entrada (movida para o fim)
+
   // Variáveis para controlar os limites centrais (corredores baseados na densidade)
-  const sideOffset = 0.26 + minCorridor
+  const sideOffset = WALL_SHELF_DEPTH + minCorridor
   let centralMinX = sideOffset
   let centralMaxX = storeWidth - sideOffset
   let centralMinY = sideOffset
   let centralMaxY = storeHeight - sideOffset
 
-  const medShelfDepth = 0.21
-  const operatorSpace = 1.31
-  const balcaoDepth = 0.40
-  const latCaixaW = 0.4
+  const medShelfDepth = MEDICINE_SHELF_DEPTH
+  const operatorSpace = OPERATOR_SPACE
+  const balcaoDepth = BALCAO_DEPTH
+  const latCaixaW = CESTAO_SIZE
 
   // Helper para posicionar gôndolas em layout horizontal (rxWall = Top ou Bottom)
   const placeHorizontalLayoutGondolas = (yStart: number, yEnd: number) => {
-    const leftLimit = 0.26
-    const rightLimit = storeWidth - 0.26
+    const leftLimit = WALL_SHELF_DEPTH
+    const rightLimit = storeWidth - WALL_SHELF_DEPTH
     const availableWidth = rightLimit - leftLimit
     
     let numColumns = 0
-    while (true) {
+    let safetyCounter1 = 0;
+    while (safetyCounter1++ < 500) {
       const nextNum = numColumns + 1
       const nextCorridor = (availableWidth - nextNum * 0.43) / (nextNum + 1)
       if (nextCorridor >= minCorridor) {
@@ -334,17 +360,19 @@ export async function generateAILayout(
       const maxY = Math.max(yStart, yEnd)
       const availableHeight = maxY - minY
 
-      let tempY = minY
-      const rowLengths: number[] = []
-      while (tempY + 1.70 <= maxY) {
-        let gondolaLen = 1.70
-        if (tempY + 3.00 <= maxY) {
-          gondolaLen = 3.00
-        } else if (tempY + 2.20 <= maxY) {
-          gondolaLen = 2.20
-        }
-        rowLengths.push(gondolaLen)
-        tempY += gondolaLen + minCorridor
+      let rowLengths: number[] = []
+      if (availableHeight >= 3.00 + 3.00 + minCorridor) {
+        rowLengths = [3.00, 3.00]
+      } else if (availableHeight >= 2.20 + 2.20 + minCorridor) {
+        rowLengths = [2.20, 2.20]
+      } else if (availableHeight >= 1.70 + 1.70 + minCorridor) {
+        rowLengths = [1.70, 1.70]
+      } else if (availableHeight >= 3.00) {
+        rowLengths = [3.00]
+      } else if (availableHeight >= 2.20) {
+        rowLengths = [2.20]
+      } else if (availableHeight >= 1.70) {
+        rowLengths = [1.70]
       }
 
       const numRows = rowLengths.length
@@ -402,17 +430,17 @@ export async function generateAILayout(
 
           // Check if we can place a promotional basket or smaller unit at the bottom of the column
           const leftoverY = maxY - currentY
-          if (leftoverY >= 0.40) {
+          if (leftoverY >= BALCAO_DEPTH) {
             const basketX = gondolaX - 0.43 + 0.015 // center horizontally in the 0.43m wide column projection
-            if (!collidesWithObstacle(basketX, currentY, 0.40, 0.40, 0)) {
+            if (!collidesWithObstacle(basketX, currentY, BALCAO_DEPTH, BALCAO_DEPTH, 0)) {
               generatedItems.push(makeItem(
                 `catalog-71${lineSuffix}`,
                 'Cestão Promocional',
                 '🧺',
                 basketX,
                 currentY,
-                0.40,
-                0.40,
+                BALCAO_DEPTH,
+                BALCAO_DEPTH,
                 '#FDF8F0',
                 '#8B7355',
                 { rotation: 0 }
@@ -426,12 +454,13 @@ export async function generateAILayout(
 
   // Helper para posicionar gôndolas em layout vertical (rxWall = Left ou Right)
   const placeVerticalLayoutGondolas = (xStart: number, xEnd: number) => {
-    const topLimit = 0.26
-    const bottomLimit = storeHeight - 0.26
+    const topLimit = WALL_SHELF_DEPTH
+    const bottomLimit = storeHeight - WALL_SHELF_DEPTH
     const availableHeight = bottomLimit - topLimit
     
     let numRows = 0
-    while (true) {
+    let safetyCounter2 = 0;
+    while (safetyCounter2++ < 500) {
       const nextNum = numRows + 1
       const nextCorridor = (availableHeight - nextNum * 0.43) / (nextNum + 1)
       if (nextCorridor >= minCorridor) {
@@ -456,17 +485,19 @@ export async function generateAILayout(
       const maxX = Math.max(xStart, xEnd)
       const availableWidth = maxX - minX
 
-      let tempX = minX
-      const colLengths: number[] = []
-      while (tempX + 1.70 <= maxX) {
-        let gondolaLen = 1.70
-        if (tempX + 3.00 <= maxX) {
-          gondolaLen = 3.00
-        } else if (tempX + 2.20 <= maxX) {
-          gondolaLen = 2.20
-        }
-        colLengths.push(gondolaLen)
-        tempX += gondolaLen + minCorridor
+      let colLengths: number[] = []
+      if (availableWidth >= 3.00 + 3.00 + minCorridor) {
+        colLengths = [3.00, 3.00]
+      } else if (availableWidth >= 2.20 + 2.20 + minCorridor) {
+        colLengths = [2.20, 2.20]
+      } else if (availableWidth >= 1.70 + 1.70 + minCorridor) {
+        colLengths = [1.70, 1.70]
+      } else if (availableWidth >= 3.00) {
+        colLengths = [3.00]
+      } else if (availableWidth >= 2.20) {
+        colLengths = [2.20]
+      } else if (availableWidth >= 1.70) {
+        colLengths = [1.70]
       }
 
       const numCols = colLengths.length
@@ -524,17 +555,17 @@ export async function generateAILayout(
 
           // Check if we can place a promotional basket or smaller unit at the right of the row
           const leftoverX = maxX - currentX
-          if (leftoverX >= 0.40) {
+          if (leftoverX >= BALCAO_DEPTH) {
             const basketY = gondolaY + 0.015 // center vertically in the 0.43m wide row projection
-            if (!collidesWithObstacle(currentX, basketY, 0.40, 0.40, 0)) {
+            if (!collidesWithObstacle(currentX, basketY, BALCAO_DEPTH, BALCAO_DEPTH, 0)) {
               generatedItems.push(makeItem(
                 `catalog-71${lineSuffix}`,
                 'Cestão Promocional',
                 '🧺',
                 currentX,
                 basketY,
-                0.40,
-                0.40,
+                BALCAO_DEPTH,
+                BALCAO_DEPTH,
                 '#FDF8F0',
                 '#8B7355',
                 { rotation: 0 }
@@ -556,8 +587,8 @@ export async function generateAILayout(
     sign: number
   ) => {
     const oppSign = -sign
-    const totalDist = Math.max(0, Math.abs(endVal - startVal) - 0.40)
-    let currentVal = endVal + oppSign * 0.40
+    const totalDist = Math.max(0, Math.abs(endVal - startVal) - BALCAO_DEPTH)
+    let currentVal = endVal + oppSign * BALCAO_DEPTH
 
     // We want to force MED 807 (catalog-21) and MED 500 (catalog-22) next to the counter
     const hasSpaceForForced = totalDist >= 1.307
@@ -577,7 +608,8 @@ export async function generateAILayout(
 
     let forcedIndex = 0
 
-    while (true) {
+    let safetyCounter3 = 0;
+    while (safetyCounter3++ < 500) {
       const remaining = oppSign === 1 ? (startVal - currentVal) : (currentVal - startVal)
       if (remaining <= 0.01) break
 
@@ -603,7 +635,7 @@ export async function generateAILayout(
       const posY = axis === 'y' ? itemVal : fixedCoord
       
       const itemW = item.w
-      const itemH = 0.21
+      const itemH = MEDICINE_SHELF_DEPTH
 
       if (!collidesWithObstacle(posX, posY, itemW, itemH, rot)) {
         generatedItems.push(makeItem(
@@ -654,7 +686,8 @@ export async function generateAILayout(
     ]
 
     let seqIndex = 0
-    while (true) {
+    let safetyCounter4 = 0;
+    while (safetyCounter4++ < 500) {
       const remaining = sign === 1 ? (endVal - currentVal) : (currentVal - endVal)
       if (remaining <= 0.01) break
 
@@ -673,7 +706,7 @@ export async function generateAILayout(
       const posY = axis === 'y' ? itemVal : fixedCoord
       
       const itemW = item.w
-      const itemH = 0.26
+      const itemH = WALL_SHELF_DEPTH
 
       if (!collidesWithObstacle(posX, posY, itemW, itemH, rot)) {
         generatedItems.push(makeItem(
@@ -691,6 +724,352 @@ export async function generateAILayout(
       }
       currentVal += sign * item.w
       seqIndex++
+    }
+  }
+
+  // ─── Sequências específicas de parede (esquerda: MIP+fralda / direita: beleza) ───
+  interface WallSeqItem {
+    id: string; name: string; icon: string; w: number; depth?: number; color?: string; stroke?: string
+  }
+
+  const placeSmartWallSequence = (
+    fixedCoord: number,
+    axis: 'x' | 'y',
+    rot: number,
+    startVal: number,
+    endVal: number,
+    sign: number,
+    prefix: WallSeqItem[],
+    suffix: WallSeqItem[] = [],
+    extraGap: number = 0,
+  ) => {
+    const fillSeq: WallSeqItem[] = [
+      { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807, color: '#FFF1F7', stroke: '#DB2777' },
+      { id: 'catalog-13', name: 'Perfumaria 550', icon: '🌸', w: 0.55, color: '#FFF1F7', stroke: '#DB2777' },
+    ]
+
+    const placeOne = (item: WallSeqItem, val: number) => {
+      const d = item.depth ?? WALL_SHELF_DEPTH
+      // For left/right wall items (rot=90/270), adjust fixedCoord so item stays against the wall
+      // rot=90 (left wall): item extends LEFT by depth from posX → posX must equal depth
+      // rot=270 (right wall): item extends RIGHT by depth from posX → posX must equal storeWidth-depth
+      let adjusted = fixedCoord
+      if (rot === 90) adjusted = d
+      else if (rot === 270) adjusted = fixedCoord + (WALL_SHELF_DEPTH - d)
+      const itemVal = getPos(val, item.w, rot, sign)
+      const posX = axis === 'x' ? itemVal : adjusted
+      const posY = axis === 'y' ? itemVal : adjusted
+      if (!collidesWithObstacle(posX, posY, item.w, d, rot)) {
+        generatedItems.push(makeItem(
+          `${item.id}${lineSuffix}`,
+          item.name, item.icon, posX, posY,
+          item.w, d,
+          item.color ?? '#FFF1F7', item.stroke ?? '#DB2777',
+          { rotation: rot, isWallItem: true },
+        ))
+      }
+    }
+
+    const suffixSpace = suffix.reduce((s, i) => s + i.w, 0)
+    const fillEnd = sign > 0 ? endVal - suffixSpace : endVal + suffixSpace
+
+    // 1. Prefix (near counter)
+    let cur = startVal + sign * extraGap
+    for (const item of prefix) {
+      const rem = sign > 0 ? fillEnd - cur : cur - fillEnd
+      if (rem <= 0.001) break
+      if (item.w > rem + 0.001) continue
+      placeOne(item, cur)
+      cur += sign * item.w
+    }
+
+    // 2. Fill with perfumaria up to fillEnd
+    let safety = 0
+    while (safety++ < 300) {
+      const rem = sign > 0 ? fillEnd - cur : cur - fillEnd
+      if (rem <= 0.001) break
+      const item = fillSeq.find(f => f.w <= rem + 0.001)
+      if (!item) break
+      placeOne(item, cur)
+      cur += sign * item.w
+    }
+
+    // 3. Suffix placed right where fill stopped — no gap between fill and suffix
+    // (any leftover space ends up at the entrance-side end, not between fill and fraldas)
+    let sufCur = cur
+    for (const item of suffix) {
+      const rem = sign > 0 ? endVal - sufCur : sufCur - endVal
+      if (rem <= 0.001 || item.w > rem + 0.001) break
+      placeOne(item, sufCur)
+      sufCur += sign * item.w
+    }
+  }
+
+  // Definições das sequências fixas por parede
+  const MIP_AMARELO: WallSeqItem = { id: 'catalog-43', name: 'MIP Dor e Febre', icon: '💊', w: 0.5, color: '#FFFBEB', stroke: '#D97706' }
+  const MIP_VERMELHO: WallSeqItem = { id: 'catalog-44', name: 'MIP Gripe e Alergia', icon: '💊', w: 0.5, color: '#FEF2F2', stroke: '#DC2626' }
+  const MIP_AZUL: WallSeqItem = { id: 'catalog-45', name: 'MIP Sist. Digestivo', icon: '💊', w: 0.5, color: '#EFF6FF', stroke: '#2563EB' }
+  const PF_CANAL: WallSeqItem = { id: 'catalog-14', name: 'PF Canaletado', icon: '🌸', w: 0.807, color: '#FFF1F7', stroke: '#DB2777' }
+  const DERMO: WallSeqItem = { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5, color: '#F8FAFC', stroke: '#1C1917' }
+  const ESMALTE: WallSeqItem = { id: 'catalog-111', name: 'Esmaltes', icon: '💅', w: 0.5, color: '#FDF4FF', stroke: '#9333EA' }
+  const MAQUIAGEM: WallSeqItem = { id: 'catalog-121', name: 'Maquiagem', icon: '💄', w: 0.5, color: '#FFF0F6', stroke: '#EC4899' }
+  const FRALDA_ITEM: WallSeqItem = { id: 'catalog-181', name: 'Fraldas', icon: '👶', w: FRALDA_WIDTH, depth: FRALDA_DEPTH, color: '#EEF2FF', stroke: '#4338CA' }
+  const PAINEL_CANAL: WallSeqItem = { id: 'catalog-141', name: 'Painel Canaletado', icon: '🌸', w: 0.807, color: '#FFF1F7', stroke: '#DB2777' }
+
+  const LEFT_PREFIX: WallSeqItem[] = [MIP_AMARELO, MIP_VERMELHO, MIP_AZUL, PF_CANAL]
+  const LEFT_SUFFIX: WallSeqItem[] = [FRALDA_ITEM, FRALDA_ITEM]
+  const RIGHT_PREFIX: WallSeqItem[] = [DERMO, ESMALTE, MAQUIAGEM, PF_CANAL]
+
+  // Helper: ilha de cestões na entrada (1.2m após a parede de entrada)
+  const placeEntranceIsland = (
+    entranceWallAxis: 'x' | 'y',
+    entranceEdgeVal: number,
+    crossAxis: 'x' | 'y',
+    crossCenter: number,
+    towardInteriorSign: number,
+    checkoutCrossMin?: number,
+    checkoutCrossMax?: number,
+  ) => {
+    const area = storeWidth * storeHeight
+    const numCols = Math.max(2, Math.min(3, Math.floor(Math.min(1.2, storeWidth - 2 * minCorridor) / CESTAO_SIZE)))
+    const numRows = area >= 60 ? 2 : 1
+    const islandW = numCols * CESTAO_SIZE
+    const storeSize = entranceWallAxis === 'y' ? storeWidth : storeHeight
+    let islandCrossStart = Math.max(minCorridor, Math.min(
+      storeSize - minCorridor - islandW,
+      crossCenter - islandW / 2,
+    ))
+
+    if (checkoutCrossMin !== undefined && checkoutCrossMax !== undefined) {
+      const islandEnd = islandCrossStart + islandW
+      const clearLeft = checkoutCrossMin - minCorridor
+      const clearRight = checkoutCrossMax + minCorridor
+      if (islandEnd > clearLeft && islandCrossStart < clearRight) {
+        const rEnd = storeSize - minCorridor
+        if (rEnd - clearRight >= islandW) {
+          islandCrossStart = clearRight + (rEnd - clearRight - islandW) / 2
+        } else if (clearLeft - minCorridor >= islandW) {
+          islandCrossStart = minCorridor + (clearLeft - minCorridor - islandW) / 2
+        }
+      }
+    }
+
+    let islandEdge = entranceEdgeVal + towardInteriorSign * ENTRANCE_ISLAND_OFFSET
+    if (towardInteriorSign === -1) {
+      islandEdge -= CESTAO_SIZE
+    }
+
+    for (let row = 0; row < numRows; row++) {
+      for (let col = 0; col < numCols; col++) {
+        const crossVal = islandCrossStart + col * CESTAO_SIZE
+        const depthVal = islandEdge + towardInteriorSign * row * CESTAO_SIZE
+        const cx = crossAxis === 'x' ? crossVal : depthVal
+        const cy = crossAxis === 'x' ? depthVal : crossVal
+        if (!collidesWithObstacle(cx, cy, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+          generatedItems.push(makeItem(
+            `catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+            cx, cy, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 },
+          ))
+        }
+      }
+    }
+  }
+
+  // Helper: itens ao redor do checkout em L (painel + vitrine, sem cestões)
+  // O painel canaletado SEMPRE fica grudado na parede de entrada (parede do cliente),
+  // diretamente atrás do módulo de checkout L.
+  const placeCheckoutSurroundings = (
+    checkoutX: number,
+    checkoutY: number,
+    checkoutRot: number,
+    placeOnLeft: boolean,
+    rxWall: string,
+  ) => {
+    if (rxWall === 'Top') {
+      // Entrada em y=storeHeight (parede sul). Painel grudado nessa parede, atrás do checkout L.
+      // Checkout rot=90 ocupa x=checkoutX-1.2..checkoutX. Painel alinhado à esquerda: x=checkoutX-1.2..checkoutX-0.393.
+      // rot=180 em (checkoutX-STANDARD_PASSAGE_WIDTH+PAINEL_CANAL.w, storeHeight).
+      generatedItems.push(makeItem(
+        `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
+        checkoutX - STANDARD_PASSAGE_WIDTH + PAINEL_CANAL.w, storeHeight, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 180, isWallItem: true },
+      ))
+    } else if (rxWall === 'Bottom') {
+      // Entrada em y=0 (parede norte). Painel grudado nessa parede, atrás do checkout L.
+      // Checkout rot=180 ocupa x=checkoutX-1.2..checkoutX. Painel alinhado à esquerda: x=checkoutX-1.2..checkoutX-0.393.
+      // rot=0 em (checkoutX-STANDARD_PASSAGE_WIDTH, 0): ocupa x=checkoutX-1.2..checkoutX-0.393, y=0..0.26.
+      generatedItems.push(makeItem(
+        `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
+        checkoutX - STANDARD_PASSAGE_WIDTH, 0, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 0, isWallItem: true },
+      ))
+    } else if (rxWall === 'Left') {
+      // Entrada em x=storeWidth (parede leste). Painel grudado nessa parede, atrás do checkout L.
+      // Checkout rot=270 ocupa y=checkoutY-1.2..checkoutY. Painel alinhado à esquerda: y=checkoutY-1.2..checkoutY-0.393.
+      // rot=90 em (storeWidth, checkoutY-STANDARD_PASSAGE_WIDTH): ocupa x=storeWidth-0.26..storeWidth, y=checkoutY-1.2..checkoutY-0.393.
+      const painelY = checkoutY - STANDARD_PASSAGE_WIDTH
+      generatedItems.push(makeItem(
+        `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
+        storeWidth, painelY, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 90, isWallItem: true },
+      ))
+    } else { // Right — entrada em x=0 (parede oeste)
+      // Checkout rot=90 ocupa y=checkoutY..checkoutY+1.2. Painel em y=checkoutY..checkoutY+0.807.
+      // rot=90 em (WALL_SHELF_DEPTH, checkoutY): ocupa x=0..0.26, y=checkoutY..checkoutY+0.807.
+      const painelY = checkoutY
+      generatedItems.push(makeItem(
+        `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
+        WALL_SHELF_DEPTH, painelY, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 90, isWallItem: true },
+      ))
+    }
+  }
+
+  // Helper para posicionar os expositores de vitrine (catalog-15) na parede de entrada.
+  // Coloca no máximo 2 de cada lado da porta de entrada.
+  // No lado esquerdo (menor coordenada), coloca apenas se houver espaço livre.
+  function placeVitrinesOnEntranceWall() {
+    if (!entrance) return
+
+    const gap = 0.05 // gap de segurança da porta
+    const vitrineW = 0.807
+    const vitrineH = WALL_SHELF_DEPTH // 0.26
+
+    const ex = entrance.x ?? 0
+    const ey = entrance.y ?? 0
+    const ew = entrance.width ?? 2.0
+    const eh = entrance.height ?? 0.15
+
+    if (entranceWall === 'Bottom') {
+      const wallY = storeHeight
+
+      // Lado Direito (Maior X) - Começa no canto direito e vai em direção à porta
+      for (let i = 0; i < 2; i++) {
+        const pivotX = storeWidth - i * vitrineW
+        const startX = pivotX - vitrineW
+        if (startX >= ex + ew + gap) {
+          if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 180)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              pivotX, wallY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 180, isWallItem: true }
+            ))
+          }
+        }
+      }
+
+      // Lado Esquerdo (Menor X) - Começa no canto esquerdo e vai em direção à porta (apenas se houver espaço livre)
+      for (let i = 0; i < 2; i++) {
+        const pivotX = (i + 1) * vitrineW
+        const startX = pivotX - vitrineW
+        if (pivotX <= ex - gap) {
+          if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 180)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              pivotX, wallY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 180, isWallItem: true }
+            ))
+          }
+        }
+      }
+    } else if (entranceWall === 'Top') {
+      const wallY = 0
+
+      // Lado Direito (Maior X) - Começa no canto direito e vai em direção à porta
+      for (let i = 0; i < 2; i++) {
+        const pivotX = storeWidth - (i + 1) * vitrineW
+        if (pivotX >= ex + ew + gap) {
+          if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 0)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              pivotX, wallY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 0, isWallItem: true }
+            ))
+          }
+        }
+      }
+
+      // Lado Esquerdo (Menor X) - Começa no canto esquerdo e vai em direção à porta (apenas se houver espaço livre)
+      for (let i = 0; i < 2; i++) {
+        const pivotX = i * vitrineW
+        const endX = pivotX + vitrineW
+        if (endX <= ex - gap) {
+          if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 0)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              pivotX, wallY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 0, isWallItem: true }
+            ))
+          }
+        }
+      }
+    } else if (entranceWall === 'Left') {
+      const wallX = WALL_SHELF_DEPTH
+
+      // Lado Direito (Maior Y) - Começa no canto inferior e vai em direção à porta
+      for (let i = 0; i < 2; i++) {
+        const pivotY = storeHeight - (i + 1) * vitrineW
+        if (pivotY >= ey + eh + gap) {
+          if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 90)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              wallX, pivotY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 90, isWallItem: true }
+            ))
+          }
+        }
+      }
+
+      // Lado Esquerdo (Menor Y) - Começa no canto superior e vai em direção à porta (apenas se houver espaço livre)
+      for (let i = 0; i < 2; i++) {
+        const pivotY = i * vitrineW
+        const endY = pivotY + vitrineW
+        if (endY <= ey - gap) {
+          if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 90)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              wallX, pivotY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 90, isWallItem: true }
+            ))
+          }
+        }
+      }
+    } else if (entranceWall === 'Right') {
+      const wallX = storeWidth - WALL_SHELF_DEPTH
+
+      // Lado Direito (Maior Y) - Começa no canto inferior e vai em direção à porta
+      for (let i = 0; i < 2; i++) {
+        const pivotY = storeHeight - i * vitrineW
+        const startY = pivotY - vitrineW
+        if (startY >= ey + eh + gap) {
+          if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 270)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              wallX, pivotY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 270, isWallItem: true }
+            ))
+          }
+        }
+      }
+
+      // Lado Esquerdo (Menor Y) - Começa no canto superior e vai em direção à porta (apenas se houver espaço livre)
+      for (let i = 0; i < 2; i++) {
+        const pivotY = (i + 1) * vitrineW
+        const startY = pivotY - vitrineW
+        if (pivotY <= ey - gap) {
+          if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 270)) {
+            generatedItems.push(makeItem(
+              `catalog-15${lineSuffix}`, 'Vitrine PF', '✨',
+              wallX, pivotY, vitrineW, vitrineH,
+              '#F0F9FF', '#0369A1',
+              { rotation: 270, isWallItem: true }
+            ))
+          }
+        }
+      }
     }
   }
 
@@ -741,100 +1120,52 @@ export async function generateAILayout(
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
 
+    let checkoutIslandMin: number | undefined
+    let checkoutIslandMax: number | undefined
+
     if (isLarge) {
       const entX = entrance?.x ?? (storeWidth / 2)
-      const entW = entrance?.width ?? 1.2
-      const checkoutY = storeHeight - 1.2
+      const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
+      const checkoutY = storeHeight - STANDARD_PASSAGE_WIDTH
       let checkoutX = entX - 0.20
       let placeOnLeft = true
       if (entX < 2.0) {
         checkoutX = Math.min(storeWidth, entX + entW + 1.4)
         placeOnLeft = false
       }
+      checkoutIslandMin = checkoutX - STANDARD_PASSAGE_WIDTH
+      checkoutIslandMax = checkoutX
 
       // 1. Place L-Checkout (Rotation 90)
-      if (!collidesWithObstacle(checkoutX, checkoutY, 1.2, 1.2, 90)) {
+      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-131${lineSuffix}`,
           'Checkout em L',
           '💳',
           checkoutX,
           checkoutY,
-          1.2,
-          1.2,
+          STANDARD_PASSAGE_WIDTH,
+          STANDARD_PASSAGE_WIDTH,
           '#DBEAFE',
           '#1D4ED8',
-          { rotation: 90, width: 1.2, height: 1.2 }
+          { rotation: 90, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
         ))
       }
 
-      // 2. Corner Cestão: placed in the bottom-left corner
-      if (!collidesWithObstacle(0, storeHeight - 0.40, 0.4, 0.4, 0)) {
-        generatedItems.push(makeItem(
-          `catalog-71${lineSuffix}`,
-          'Cestão Promocional',
-          '🧺',
-          0,
-          storeHeight - 0.40,
-          0.4,
-          0.4,
-          '#FDF8F0',
-          '#8B7355',
-          { rotation: 0 }
-        ))
-      }
+      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
+      placeCheckoutSurroundings(checkoutX, checkoutY, 90, placeOnLeft, 'Top')
+    }
 
-      // Baskets Left wall (vertical row going up from corner)
-      const numVertBaskets = Math.min(
-        Math.floor((storeHeight - 0.40 - balcaoY - 0.80) / 0.45),
-        Math.floor((2.0 - 0.40) / 0.45)
-      )
-      for (let j = 0; j < numVertBaskets; j++) {
-        const by = storeHeight - 0.40 - (j + 1) * 0.45
-        if (!collidesWithObstacle(0, by, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            0,
-            by,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
-
-      // Baskets Front wall (horizontal row going right from corner up to checkout/door)
-      for (let i = 0; i < 20; i++) {
-        const bx = 0.40 + i * 0.45
-        if (bx + 0.40 > storeWidth) break
-        if (placeOnLeft && bx + 0.40 > checkoutX - 1.2) break
-        if (!placeOnLeft && bx + 0.40 > entX) break
-
-        if (!collidesWithObstacle(bx, storeHeight - 0.40, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            bx,
-            storeHeight - 0.40,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
+    // Ilha de cestões na entrada: primeiro item que o cliente vê ao entrar (1.2m da parede)
+    {
+      const entX = entrance?.x ?? (storeWidth / 2)
+      placeEntranceIsland('y', storeHeight, 'x', entX, -1, checkoutIslandMin, checkoutIslandMax)
     }
 
     // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
-    let passageW = 1.20
+    let passageW = STANDARD_PASSAGE_WIDTH
     if (availableWidth < 3.20) {
-      passageW = Math.max(0.80, availableWidth - 2.00)
+      passageW = Math.max(CORNER_GAP_LIMIT, availableWidth - 2.00)
     }
     const totalCounterW = availableWidth - passageW
     const twoGroups = totalCounterW >= 2.00
@@ -844,25 +1175,25 @@ export async function generateAILayout(
       const W_right = Math.round((totalCounterW - W_left) * 100) / 100
 
       // Left Group (starts at leftLimit)
-      // Lateral Caixa: spans leftLimit to leftLimit + 0.26
-      const latCxX = leftLimit + 0.26
-      if (!collidesWithObstacle(latCxX, balcaoY - 0.40, 0.40, 0.26, 90)) {
+      // Lateral Caixa: spans leftLimit to leftLimit + WALL_SHELF_DEPTH
+      const latCxX = leftLimit + WALL_SHELF_DEPTH
+      if (!collidesWithObstacle(latCxX, balcaoY - BALCAO_DEPTH, BALCAO_DEPTH, WALL_SHELF_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           latCxX,
-          balcaoY - 0.40,
-          0.40,
-          0.26,
+          balcaoY - BALCAO_DEPTH,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 90 }
         ))
       }
-      // Caixa: spans leftLimit + 0.26 to leftLimit + 0.86
+      // Caixa: spans leftLimit + WALL_SHELF_DEPTH to leftLimit + 0.86
       const cxX = leftLimit + 0.86
-      if (!collidesWithObstacle(cxX, balcaoY, 0.60, 0.40, 180)) {
+      if (!collidesWithObstacle(cxX, balcaoY, 0.60, BALCAO_DEPTH, 180)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -870,7 +1201,7 @@ export async function generateAILayout(
           cxX,
           balcaoY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 180 }
@@ -885,7 +1216,7 @@ export async function generateAILayout(
           const bx_min = leftLimit + 0.86 + i * w_each
           const bx_max = bx_min + w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(bx_max, balcaoY, w_each, 0.40, 180)) {
+          if (!collidesWithObstacle(bx_max, balcaoY, w_each, BALCAO_DEPTH, 180)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -893,7 +1224,7 @@ export async function generateAILayout(
               bx_max,
               balcaoY,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 180, width: w_each }
@@ -903,25 +1234,25 @@ export async function generateAILayout(
       }
 
       // Right Group (ends at rightLimit)
-      // Lateral Caixa: spans rightLimit - 0.26 to rightLimit
-      const latCxRX = rightLimit - 0.26
-      if (!collidesWithObstacle(latCxRX, balcaoY, 0.40, 0.26, 270)) {
+      // Lateral Caixa: spans rightLimit - WALL_SHELF_DEPTH to rightLimit
+      const latCxRX = rightLimit - WALL_SHELF_DEPTH
+      if (!collidesWithObstacle(latCxRX, balcaoY, BALCAO_DEPTH, WALL_SHELF_DEPTH, 270)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           latCxRX,
           balcaoY,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 270 }
         ))
       }
-      // Caixa: spans rightLimit - 0.86 to rightLimit - 0.26
-      const rightCxX = rightLimit - 0.26
-      if (!collidesWithObstacle(rightCxX, balcaoY, 0.60, 0.40, 180)) {
+      // Caixa: spans rightLimit - 0.86 to rightLimit - WALL_SHELF_DEPTH
+      const rightCxX = rightLimit - WALL_SHELF_DEPTH
+      if (!collidesWithObstacle(rightCxX, balcaoY, 0.60, BALCAO_DEPTH, 180)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -929,7 +1260,7 @@ export async function generateAILayout(
           rightCxX,
           balcaoY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 180 }
@@ -944,7 +1275,7 @@ export async function generateAILayout(
           const bx_min = rightLimit - 0.86 - (i + 1) * w_each
           const bx_max = bx_min + w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(bx_max, balcaoY, w_each, 0.40, 180)) {
+          if (!collidesWithObstacle(bx_max, balcaoY, w_each, BALCAO_DEPTH, 180)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -952,7 +1283,7 @@ export async function generateAILayout(
               bx_max,
               balcaoY,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 180, width: w_each }
@@ -963,23 +1294,23 @@ export async function generateAILayout(
     } else {
       // Single group
       const W_left = totalCounterW
-      const latCxX = leftLimit + 0.26
-      if (!collidesWithObstacle(latCxX, balcaoY - 0.40, 0.40, 0.26, 90)) {
+      const latCxX = leftLimit + WALL_SHELF_DEPTH
+      if (!collidesWithObstacle(latCxX, balcaoY - BALCAO_DEPTH, BALCAO_DEPTH, WALL_SHELF_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           latCxX,
-          balcaoY - 0.40,
-          0.40,
-          0.26,
+          balcaoY - BALCAO_DEPTH,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 90 }
         ))
       }
       const cxX = leftLimit + 0.86
-      if (!collidesWithObstacle(cxX, balcaoY, 0.60, 0.40, 180)) {
+      if (!collidesWithObstacle(cxX, balcaoY, 0.60, BALCAO_DEPTH, 180)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -987,7 +1318,7 @@ export async function generateAILayout(
           cxX,
           balcaoY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 180 }
@@ -1001,7 +1332,7 @@ export async function generateAILayout(
           const bx_min = leftLimit + 0.86 + i * w_each
           const bx_max = bx_min + w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(bx_max, balcaoY, w_each, 0.40, 180)) {
+          if (!collidesWithObstacle(bx_max, balcaoY, w_each, BALCAO_DEPTH, 180)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1009,7 +1340,7 @@ export async function generateAILayout(
               bx_max,
               balcaoY,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 180, width: w_each }
@@ -1020,21 +1351,25 @@ export async function generateAILayout(
     }
 
     // Wrap around side walls: Top section of Left and Right walls
-    placeWrapAroundShelves(0.21, 'y', 90, medShelfDepth, balcaoY, 1)
-    placeWrapAroundShelves(storeWidth - 0.21, 'y', 270, medShelfDepth, balcaoY, 1)
+    placeWrapAroundShelves(MEDICINE_SHELF_DEPTH, 'y', 90, medShelfDepth, balcaoY, 1)
+    placeWrapAroundShelves(storeWidth - MEDICINE_SHELF_DEPTH, 'y', 270, medShelfDepth, balcaoY, 1)
 
-    // 3. Place side wall sequences (perfumaria/MIPs)
-    const leftGap = 0.80
-    const rightGap = 0.80
-    placeWallSequence(0.26, 'y', 90, balcaoY, storeHeight - leftGap, 1)
-    placeWallSequence(storeWidth - 0.26, 'y', 270, balcaoY, storeHeight - rightGap, 1)
+    // 3. Paredes laterais: esquerda (MIP + fralda no final) / direita (beleza)
+    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, storeHeight - CORNER_GAP_LIMIT, 1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(storeWidth - WALL_SHELF_DEPTH, 'y', 270, balcaoY, storeHeight - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
 
-    // 4. Place Central Gondolas
-    placeHorizontalLayoutGondolas(balcaoY + minCorridor, storeHeight - minCorridor)
+    // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
+    {
+      const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      // Borda interna da ilha (âncora da fileira mais profunda na loja)
+      const islandInnerY = storeHeight - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
+      const gondolaYEnd = islandInnerY - minCorridor
+      placeHorizontalLayoutGondolas(balcaoY + minCorridor, gondolaYEnd)
+    }
 
     centralMinY = balcaoY + minCorridor
     centralMaxY = storeHeight - minCorridor
-  } 
+  }
   else if (rxWall === 'Bottom') {
     // Back wall medicines along y = storeHeight
     const backWallY = storeHeight - medShelfDepth
@@ -1080,100 +1415,52 @@ export async function generateAILayout(
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
 
+    let checkoutIslandMin: number | undefined
+    let checkoutIslandMax: number | undefined
+
     if (isLarge) {
       const entX = entrance?.x ?? (storeWidth / 2)
-      const entW = entrance?.width ?? 1.2
-      const checkoutY = 1.2
+      const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
+      const checkoutY = STANDARD_PASSAGE_WIDTH
       let checkoutX = entX - 0.20
       let placeOnLeft = true
       if (entX < 2.0) {
         checkoutX = Math.min(storeWidth, entX + entW + 1.4)
         placeOnLeft = false
       }
+      checkoutIslandMin = checkoutX - STANDARD_PASSAGE_WIDTH
+      checkoutIslandMax = checkoutX
 
       // 1. Place L-Checkout (Rotation 180)
-      if (!collidesWithObstacle(checkoutX, checkoutY, 1.2, 1.2, 180)) {
+      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 180)) {
         generatedItems.push(makeItem(
           `catalog-131${lineSuffix}`,
           'Checkout em L',
           '💳',
           checkoutX,
           checkoutY,
-          1.2,
-          1.2,
+          STANDARD_PASSAGE_WIDTH,
+          STANDARD_PASSAGE_WIDTH,
           '#DBEAFE',
           '#1D4ED8',
-          { rotation: 180, width: 1.2, height: 1.2 }
+          { rotation: 180, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
         ))
       }
 
-      // 2. Corner Cestão: placed in the top-left corner
-      if (!collidesWithObstacle(0, 0, 0.4, 0.4, 0)) {
-        generatedItems.push(makeItem(
-          `catalog-71${lineSuffix}`,
-          'Cestão Promocional',
-          '🧺',
-          0,
-          0,
-          0.4,
-          0.4,
-          '#FDF8F0',
-          '#8B7355',
-          { rotation: 0 }
-        ))
-      }
+      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
+      placeCheckoutSurroundings(checkoutX, checkoutY, 180, placeOnLeft, 'Bottom')
+    }
 
-      // Baskets Left wall (vertical row going down from corner)
-      const numVertBaskets = Math.min(
-        Math.floor((balcaoY - 0.80 - 0.40) / 0.45),
-        Math.floor((2.0 - 0.40) / 0.45)
-      )
-      for (let j = 0; j < numVertBaskets; j++) {
-        const by = 0.40 + j * 0.45
-        if (!collidesWithObstacle(0, by, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            0,
-            by,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
-
-      // Baskets Top wall (horizontal row going right from corner up to checkout/door)
-      for (let i = 0; i < 20; i++) {
-        const bx = 0.40 + i * 0.45
-        if (bx + 0.40 > storeWidth) break
-        if (placeOnLeft && bx + 0.40 > checkoutX - 1.2) break
-        if (!placeOnLeft && bx + 0.40 > entX) break
-
-        if (!collidesWithObstacle(bx, 0, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            bx,
-            0,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
+    // Ilha de cestões na entrada: primeiro item que o cliente vê ao entrar (1.2m da parede)
+    {
+      const entX = entrance?.x ?? (storeWidth / 2)
+      placeEntranceIsland('y', 0, 'x', entX, 1, checkoutIslandMin, checkoutIslandMax)
     }
 
     // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
-    let passageW = 1.20
+    let passageW = STANDARD_PASSAGE_WIDTH
     if (availableWidth < 3.20) {
-      passageW = Math.max(0.80, availableWidth - 2.00)
+      passageW = Math.max(CORNER_GAP_LIMIT, availableWidth - 2.00)
     }
     const totalCounterW = availableWidth - passageW
     const twoGroups = totalCounterW >= 2.00
@@ -1184,30 +1471,30 @@ export async function generateAILayout(
 
       // Left Group (starts at leftLimit)
       // Lateral Caixa: spans leftLimit to leftLimit + 0.26. Rotation 90.
-      if (!collidesWithObstacle(0.26, balcaoY, 0.40, 0.26, 90)) {
+      if (!collidesWithObstacle(WALL_SHELF_DEPTH, balcaoY, BALCAO_DEPTH, WALL_SHELF_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
-          0.26,
+          WALL_SHELF_DEPTH,
           balcaoY,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 90 }
         ))
       }
-      // Caixa: spans leftLimit + 0.26 to leftLimit + 0.86
-      if (!collidesWithObstacle(leftLimit + 0.26, balcaoY, 0.60, 0.40, 0)) {
+      // Caixa: spans leftLimit + WALL_SHELF_DEPTH to leftLimit + 0.86
+      if (!collidesWithObstacle(leftLimit + WALL_SHELF_DEPTH, balcaoY, 0.60, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
           '💳',
-          leftLimit + 0.26,
+          leftLimit + WALL_SHELF_DEPTH,
           balcaoY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 0 }
@@ -1221,7 +1508,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const bx_min = leftLimit + 0.86 + i * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(bx_min, balcaoY, w_each, 0.40, 0)) {
+          if (!collidesWithObstacle(bx_min, balcaoY, w_each, BALCAO_DEPTH, 0)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1229,7 +1516,7 @@ export async function generateAILayout(
               bx_min,
               balcaoY,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 0, width: w_each }
@@ -1239,25 +1526,25 @@ export async function generateAILayout(
       }
 
       // Right Group (ends at rightLimit)
-      // Lateral Caixa: spans rightLimit - 0.26 to rightLimit. Rotation 270.
-      const latCxX = rightLimit - 0.26
-      if (!collidesWithObstacle(latCxX, balcaoY + 0.40, 0.40, 0.26, 270)) {
+      // Lateral Caixa: spans rightLimit - WALL_SHELF_DEPTH to rightLimit. Rotation 270.
+      const latCxX = rightLimit - WALL_SHELF_DEPTH
+      if (!collidesWithObstacle(latCxX, balcaoY + BALCAO_DEPTH, BALCAO_DEPTH, WALL_SHELF_DEPTH, 270)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           latCxX,
-          balcaoY + 0.40,
-          0.40,
-          0.26,
+          balcaoY + BALCAO_DEPTH,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 270 }
         ))
       }
-      // Caixa: spans rightLimit - 0.86 to rightLimit - 0.26
+      // Caixa: spans rightLimit - 0.86 to rightLimit - WALL_SHELF_DEPTH
       const cxX = rightLimit - 0.86
-      if (!collidesWithObstacle(cxX, balcaoY, 0.60, 0.40, 0)) {
+      if (!collidesWithObstacle(cxX, balcaoY, 0.60, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -1265,7 +1552,7 @@ export async function generateAILayout(
           cxX,
           balcaoY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 0 }
@@ -1279,7 +1566,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const bx_min = rightLimit - 0.86 - (i + 1) * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(bx_min, balcaoY, w_each, 0.40, 0)) {
+          if (!collidesWithObstacle(bx_min, balcaoY, w_each, BALCAO_DEPTH, 0)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1287,7 +1574,7 @@ export async function generateAILayout(
               bx_min,
               balcaoY,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 0, width: w_each }
@@ -1298,29 +1585,29 @@ export async function generateAILayout(
     } else {
       // Single group
       const W_left = totalCounterW
-      if (!collidesWithObstacle(0.26, balcaoY, 0.40, 0.26, 90)) {
+      if (!collidesWithObstacle(WALL_SHELF_DEPTH, balcaoY, BALCAO_DEPTH, WALL_SHELF_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
-          0.26,
+          WALL_SHELF_DEPTH,
           balcaoY,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 90 }
         ))
       }
-      if (!collidesWithObstacle(leftLimit + 0.26, balcaoY, 0.60, 0.40, 0)) {
+      if (!collidesWithObstacle(leftLimit + WALL_SHELF_DEPTH, balcaoY, 0.60, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
           '💳',
-          leftLimit + 0.26,
+          leftLimit + WALL_SHELF_DEPTH,
           balcaoY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 0 }
@@ -1333,7 +1620,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const bx_min = leftLimit + 0.86 + i * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(bx_min, balcaoY, w_each, 0.40, 0)) {
+          if (!collidesWithObstacle(bx_min, balcaoY, w_each, BALCAO_DEPTH, 0)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1341,7 +1628,7 @@ export async function generateAILayout(
               bx_min,
               balcaoY,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 0, width: w_each }
@@ -1351,21 +1638,25 @@ export async function generateAILayout(
       }
     }
 
-    placeWrapAroundShelves(0.21, 'y', 90, storeHeight - medShelfDepth, balcaoY, -1)
-    placeWrapAroundShelves(storeWidth - 0.21, 'y', 270, storeHeight - medShelfDepth, balcaoY, -1)
+    placeWrapAroundShelves(MEDICINE_SHELF_DEPTH, 'y', 90, storeHeight - medShelfDepth, balcaoY, -1)
+    placeWrapAroundShelves(storeWidth - MEDICINE_SHELF_DEPTH, 'y', 270, storeHeight - medShelfDepth, balcaoY, -1)
 
-    // 3. Place side wall sequences (perfumaria/MIPs)
-    const leftGap = 0.80
-    const rightGap = 0.80
-    placeWallSequence(0.26, 'y', 90, balcaoY, leftGap, -1)
-    placeWallSequence(storeWidth - 0.26, 'y', 270, balcaoY, rightGap, -1)
+    // 3. Paredes laterais: esquerda (MIP + fralda no final) / direita (beleza)
+    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, CORNER_GAP_LIMIT, -1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(storeWidth - WALL_SHELF_DEPTH, 'y', 270, balcaoY, CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
 
-    // 4. Place Central Gondolas
-    placeHorizontalLayoutGondolas(minCorridor, balcaoY - minCorridor)
+    // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
+    {
+      const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      // Borda interna da ilha (borda inferior da fileira mais profunda na loja)
+      const islandHighY = ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
+      const gondolaYStart = islandHighY + minCorridor
+      placeHorizontalLayoutGondolas(gondolaYStart, balcaoY - minCorridor)
+    }
 
     centralMinY = minCorridor
     centralMaxY = balcaoY - minCorridor
-  } 
+  }
   else if (rxWall === 'Left') {
     // Back wall medicines along x = 0
     const backWallX = 0
@@ -1385,12 +1676,12 @@ export async function generateAILayout(
         w = 0.807
       }
       
-      if (!collidesWithObstacle(0.21, currentY, w, medShelfDepth, 90)) {
+      if (!collidesWithObstacle(MEDICINE_SHELF_DEPTH, currentY, w, medShelfDepth, 90)) {
         generatedItems.push(makeItem(
           itemId,
           'Prateleira Medicamentos',
           '💊',
-          0.21,
+          MEDICINE_SHELF_DEPTH,
           currentY,
           w,
           medShelfDepth,
@@ -1411,100 +1702,52 @@ export async function generateAILayout(
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
 
+    let checkoutIslandMin: number | undefined
+    let checkoutIslandMax: number | undefined
+
     if (isLarge) {
       const entY = entrance?.y ?? (storeHeight / 2)
-      const entW = entrance?.width ?? 1.2
-      const checkoutX = storeWidth - 1.2
+      const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
+      const checkoutX = storeWidth - STANDARD_PASSAGE_WIDTH
       let checkoutY = entY - 0.20
       let placeOnLeft = true
       if (entY < 2.0) {
         checkoutY = Math.min(storeHeight, entY + entW + 1.4)
         placeOnLeft = false
       }
+      checkoutIslandMin = checkoutY - STANDARD_PASSAGE_WIDTH
+      checkoutIslandMax = checkoutY
 
       // 1. Place L-Checkout (Rotation 270)
-      if (!collidesWithObstacle(checkoutX, checkoutY, 1.2, 1.2, 270)) {
+      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 270)) {
         generatedItems.push(makeItem(
           `catalog-131${lineSuffix}`,
           'Checkout em L',
           '💳',
           checkoutX,
           checkoutY,
-          1.2,
-          1.2,
+          STANDARD_PASSAGE_WIDTH,
+          STANDARD_PASSAGE_WIDTH,
           '#DBEAFE',
           '#1D4ED8',
-          { rotation: 270, width: 1.2, height: 1.2 }
+          { rotation: 270, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
         ))
       }
 
-      // 2. Corner Cestão: placed in the top-right corner
-      if (!collidesWithObstacle(storeWidth - 0.40, 0, 0.4, 0.4, 0)) {
-        generatedItems.push(makeItem(
-          `catalog-71${lineSuffix}`,
-          'Cestão Promocional',
-          '🧺',
-          storeWidth - 0.40,
-          0,
-          0.4,
-          0.4,
-          '#FDF8F0',
-          '#8B7355',
-          { rotation: 0 }
-        ))
-      }
+      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
+      placeCheckoutSurroundings(checkoutX, checkoutY, 270, placeOnLeft, 'Left')
+    }
 
-      // Baskets Top wall (horizontal row going left from corner)
-      const numHorizBaskets = Math.min(
-        Math.floor((storeWidth - 0.40 - balcaoX - 0.80) / 0.45),
-        Math.floor((2.0 - 0.40) / 0.45)
-      )
-      for (let j = 0; j < numHorizBaskets; j++) {
-        const bx = storeWidth - 0.40 - (j + 1) * 0.45
-        if (!collidesWithObstacle(bx, 0, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            bx,
-            0,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
-
-      // Baskets Right wall (vertical row going down from corner up to checkout/door)
-      for (let i = 0; i < 20; i++) {
-        const by = 0.40 + i * 0.45
-        if (by + 0.40 > storeHeight) break
-        if (placeOnLeft && by + 0.40 > checkoutY - 1.2) break
-        if (!placeOnLeft && by + 0.40 > entY) break
-
-        if (!collidesWithObstacle(storeWidth - 0.40, by, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            storeWidth - 0.40,
-            by,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
+    // Ilha de cestões na entrada (1.2m da parede direita, onde fica a entrada)
+    {
+      const entY = entrance?.y ?? (storeHeight / 2)
+      placeEntranceIsland('x', storeWidth, 'y', entY, -1, checkoutIslandMin, checkoutIslandMax)
     }
 
     // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
-    let passageW = 1.20
+    let passageW = STANDARD_PASSAGE_WIDTH
     if (availableHeight < 3.20) {
-      passageW = Math.max(0.80, availableHeight - 2.00)
+      passageW = Math.max(CORNER_GAP_LIMIT, availableHeight - 2.00)
     }
     const totalCounterW = availableHeight - passageW
     const twoGroups = totalCounterW >= 2.00
@@ -1515,30 +1758,30 @@ export async function generateAILayout(
 
       // Top Group (starts at topLimit)
       // Lateral Caixa: spans topLimit to topLimit + 0.26. Rotation 0.
-      if (!collidesWithObstacle(balcaoX - 0.40, topLimit, 0.40, 0.26, 0)) {
+      if (!collidesWithObstacle(balcaoX - BALCAO_DEPTH, topLimit, BALCAO_DEPTH, WALL_SHELF_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
-          balcaoX - 0.40,
+          balcaoX - BALCAO_DEPTH,
           topLimit,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 0 }
         ))
       }
-      // Caixa: spans topLimit + 0.26 to topLimit + 0.86
-      if (!collidesWithObstacle(balcaoX, topLimit + 0.26, 0.60, 0.40, 90)) {
+      // Caixa: spans topLimit + WALL_SHELF_DEPTH to topLimit + 0.86
+      if (!collidesWithObstacle(balcaoX, topLimit + WALL_SHELF_DEPTH, 0.60, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
           '💳',
           balcaoX,
-          topLimit + 0.26,
+          topLimit + WALL_SHELF_DEPTH,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 90 }
@@ -1552,7 +1795,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const by_min = topLimit + 0.86 + i * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(balcaoX, by_min, w_each, 0.40, 90)) {
+          if (!collidesWithObstacle(balcaoX, by_min, w_each, BALCAO_DEPTH, 90)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1560,7 +1803,7 @@ export async function generateAILayout(
               balcaoX,
               by_min,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 90, width: w_each }
@@ -1570,24 +1813,24 @@ export async function generateAILayout(
       }
 
       // Bottom Group (ends at bottomLimit)
-      // Lateral Caixa: spans bottomLimit - 0.26 to bottomLimit. Rotation 180.
-      if (!collidesWithObstacle(balcaoX, bottomLimit, 0.40, 0.26, 180)) {
+      // Lateral Caixa: spans bottomLimit - WALL_SHELF_DEPTH to bottomLimit. Rotation 180.
+      if (!collidesWithObstacle(balcaoX, bottomLimit, BALCAO_DEPTH, WALL_SHELF_DEPTH, 180)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           balcaoX,
           bottomLimit,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 180 }
         ))
       }
-      // Caixa: spans bottomLimit - 0.86 to bottomLimit - 0.26
+      // Caixa: spans bottomLimit - 0.86 to bottomLimit - WALL_SHELF_DEPTH
       const cxY = bottomLimit - 0.86
-      if (!collidesWithObstacle(balcaoX, cxY, 0.60, 0.40, 90)) {
+      if (!collidesWithObstacle(balcaoX, cxY, 0.60, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -1595,7 +1838,7 @@ export async function generateAILayout(
           balcaoX,
           cxY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 90 }
@@ -1609,7 +1852,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const by_min = bottomLimit - 0.86 - (i + 1) * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(balcaoX, by_min, w_each, 0.40, 90)) {
+          if (!collidesWithObstacle(balcaoX, by_min, w_each, BALCAO_DEPTH, 90)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1617,7 +1860,7 @@ export async function generateAILayout(
               balcaoX,
               by_min,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 90, width: w_each }
@@ -1628,29 +1871,29 @@ export async function generateAILayout(
     } else {
       // Single group
       const W_top = totalCounterW
-      if (!collidesWithObstacle(balcaoX - 0.40, topLimit, 0.40, 0.26, 0)) {
+      if (!collidesWithObstacle(balcaoX - BALCAO_DEPTH, topLimit, BALCAO_DEPTH, WALL_SHELF_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
-          balcaoX - 0.40,
+          balcaoX - BALCAO_DEPTH,
           topLimit,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 0 }
         ))
       }
-      if (!collidesWithObstacle(balcaoX, topLimit + 0.26, 0.60, 0.40, 90)) {
+      if (!collidesWithObstacle(balcaoX, topLimit + WALL_SHELF_DEPTH, 0.60, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
           '💳',
           balcaoX,
-          topLimit + 0.26,
+          topLimit + WALL_SHELF_DEPTH,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 90 }
@@ -1663,7 +1906,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const by_min = topLimit + 0.86 + i * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(balcaoX, by_min, w_each, 0.40, 90)) {
+          if (!collidesWithObstacle(balcaoX, by_min, w_each, BALCAO_DEPTH, 90)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1671,7 +1914,7 @@ export async function generateAILayout(
               balcaoX,
               by_min,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 90, width: w_each }
@@ -1685,13 +1928,17 @@ export async function generateAILayout(
     placeWrapAroundShelves(storeHeight, 'x', 180, medShelfDepth, balcaoX, 1)
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    const topGap = 0.80
-    const bottomGap = 0.80
-    placeWallSequence(0, 'x', 0, balcaoX, storeWidth - topGap, 1)
-    placeWallSequence(storeHeight, 'x', 180, balcaoX, storeWidth - bottomGap, 1)
+    placeSmartWallSequence(0, 'x', 0, balcaoX, storeWidth - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
+    placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, storeWidth - CORNER_GAP_LIMIT, 1, LEFT_PREFIX, LEFT_SUFFIX)
 
-    // 4. Place Central Gondolas
-    placeVerticalLayoutGondolas(balcaoX + minCorridor, storeWidth - minCorridor)
+    // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
+    {
+      const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      // Borda interna da ilha (âncora da fileira mais profunda na loja, lado esquerdo)
+      const islandInnerX = storeWidth - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
+      const gondolaXEnd = islandInnerX - minCorridor
+      placeVerticalLayoutGondolas(balcaoX + minCorridor, gondolaXEnd)
+    }
 
     centralMinX = balcaoX + minCorridor
     centralMaxX = storeWidth - minCorridor
@@ -1741,100 +1988,52 @@ export async function generateAILayout(
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
 
+    let checkoutIslandMin: number | undefined
+    let checkoutIslandMax: number | undefined
+
     if (isLarge) {
       const entY = entrance?.y ?? (storeHeight / 2)
-      const entW = entrance?.width ?? 1.2
-      const checkoutX = 1.2
+      const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
+      const checkoutX = STANDARD_PASSAGE_WIDTH
       let checkoutY = entY - 1.4
       let placeOnLeft = true
       if (entY < 2.0) {
         checkoutY = entY + entW + 0.20
         placeOnLeft = false
       }
+      checkoutIslandMin = checkoutY
+      checkoutIslandMax = checkoutY + STANDARD_PASSAGE_WIDTH
 
       // 1. Place L-Checkout (Rotation 90)
-      if (!collidesWithObstacle(checkoutX, checkoutY, 1.2, 1.2, 90)) {
+      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-131${lineSuffix}`,
           'Checkout em L',
           '💳',
           checkoutX,
           checkoutY,
-          1.2,
-          1.2,
+          STANDARD_PASSAGE_WIDTH,
+          STANDARD_PASSAGE_WIDTH,
           '#DBEAFE',
           '#1D4ED8',
-          { rotation: 90, width: 1.2, height: 1.2 }
+          { rotation: 90, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
         ))
       }
 
-      // 2. Corner Cestão: placed in the top-left corner
-      if (!collidesWithObstacle(0, 0, 0.4, 0.4, 0)) {
-        generatedItems.push(makeItem(
-          `catalog-71${lineSuffix}`,
-          'Cestão Promocional',
-          '🧺',
-          0,
-          0,
-          0.4,
-          0.4,
-          '#FDF8F0',
-          '#8B7355',
-          { rotation: 0 }
-        ))
-      }
+      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
+      placeCheckoutSurroundings(checkoutX, checkoutY, 90, placeOnLeft, 'Right')
+    }
 
-      // Baskets Top wall (horizontal row going right from corner)
-      const numHorizBaskets = Math.min(
-        Math.floor((balcaoX - 0.80 - 0.40) / 0.45),
-        Math.floor((2.0 - 0.40) / 0.45)
-      )
-      for (let j = 0; j < numHorizBaskets; j++) {
-        const bx = 0.40 + j * 0.45
-        if (!collidesWithObstacle(bx, 0, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            bx,
-            0,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
-
-      // Baskets Left wall (vertical row going down from corner up to checkout/door)
-      for (let i = 0; i < 20; i++) {
-        const by = 0.40 + i * 0.45
-        if (by + 0.40 > storeHeight) break
-        if (placeOnLeft && by + 0.40 > checkoutY) break
-        if (!placeOnLeft && by + 0.40 > entY) break
-
-        if (!collidesWithObstacle(0, by, 0.4, 0.4, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`,
-            'Cestão Promocional',
-            '🧺',
-            0,
-            by,
-            0.4,
-            0.4,
-            '#FDF8F0',
-            '#8B7355',
-            { rotation: 0 }
-          ))
-        }
-      }
+    // Ilha de cestões na entrada (1.2m da parede esquerda, onde fica a entrada)
+    {
+      const entY = entrance?.y ?? (storeHeight / 2)
+      placeEntranceIsland('x', 0, 'y', entY, 1, checkoutIslandMin, checkoutIslandMax)
     }
 
     // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
-    let passageW = 1.20
+    let passageW = STANDARD_PASSAGE_WIDTH
     if (availableHeight < 3.20) {
-      passageW = Math.max(0.80, availableHeight - 2.00)
+      passageW = Math.max(CORNER_GAP_LIMIT, availableHeight - 2.00)
     }
     const totalCounterW = availableHeight - passageW
     const twoGroups = totalCounterW >= 2.00
@@ -1845,23 +2044,23 @@ export async function generateAILayout(
 
       // Top Group (starts at topLimit)
       // Lateral Caixa: spans topLimit to topLimit + 0.26. Rotation 0.
-      if (!collidesWithObstacle(balcaoX, topLimit, 0.40, 0.26, 0)) {
+      if (!collidesWithObstacle(balcaoX, topLimit, BALCAO_DEPTH, WALL_SHELF_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           balcaoX,
           topLimit,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 0 }
         ))
       }
-      // Caixa: spans topLimit + 0.26 to topLimit + 0.86
+      // Caixa: spans topLimit + WALL_SHELF_DEPTH to topLimit + 0.86
       const cxY = topLimit + 0.86
-      if (!collidesWithObstacle(balcaoX, cxY, 0.60, 0.40, 270)) {
+      if (!collidesWithObstacle(balcaoX, cxY, 0.60, BALCAO_DEPTH, 270)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -1869,7 +2068,7 @@ export async function generateAILayout(
           balcaoX,
           cxY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 270 }
@@ -1883,7 +2082,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const by_max = topLimit + 0.86 + (i + 1) * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(balcaoX, by_max, w_each, 0.40, 270)) {
+          if (!collidesWithObstacle(balcaoX, by_max, w_each, BALCAO_DEPTH, 270)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1891,7 +2090,7 @@ export async function generateAILayout(
               balcaoX,
               by_max,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 270, width: w_each }
@@ -1901,24 +2100,24 @@ export async function generateAILayout(
       }
 
       // Bottom Group (ends at bottomLimit)
-      // Lateral Caixa: spans bottomLimit - 0.26 to bottomLimit. Rotation 180.
-      if (!collidesWithObstacle(balcaoX + 0.40, bottomLimit, 0.40, 0.26, 180)) {
+      // Lateral Caixa: spans bottomLimit - WALL_SHELF_DEPTH to bottomLimit. Rotation 180.
+      if (!collidesWithObstacle(balcaoX + BALCAO_DEPTH, bottomLimit, BALCAO_DEPTH, WALL_SHELF_DEPTH, 180)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
-          balcaoX + 0.40,
+          balcaoX + BALCAO_DEPTH,
           bottomLimit,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 180 }
         ))
       }
-      // Caixa: spans bottomLimit - 0.86 to bottomLimit - 0.26
-      const bottomCxY = bottomLimit - 0.26
-      if (!collidesWithObstacle(balcaoX, bottomCxY, 0.60, 0.40, 270)) {
+      // Caixa: spans bottomLimit - 0.86 to bottomLimit - WALL_SHELF_DEPTH
+      const bottomCxY = bottomLimit - WALL_SHELF_DEPTH
+      if (!collidesWithObstacle(balcaoX, bottomCxY, 0.60, BALCAO_DEPTH, 270)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -1926,7 +2125,7 @@ export async function generateAILayout(
           balcaoX,
           bottomCxY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 270 }
@@ -1940,7 +2139,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const by_max = bottomLimit - 0.86 - i * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(balcaoX, by_max, w_each, 0.40, 270)) {
+          if (!collidesWithObstacle(balcaoX, by_max, w_each, BALCAO_DEPTH, 270)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -1948,7 +2147,7 @@ export async function generateAILayout(
               balcaoX,
               by_max,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 270, width: w_each }
@@ -1959,22 +2158,22 @@ export async function generateAILayout(
     } else {
       // Single group
       const W_top = totalCounterW
-      if (!collidesWithObstacle(balcaoX, topLimit, 0.40, 0.26, 0)) {
+      if (!collidesWithObstacle(balcaoX, topLimit, BALCAO_DEPTH, WALL_SHELF_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-81${lineSuffix}`,
           'Lateral Caixa',
           '📥',
           balcaoX,
           topLimit,
-          0.40,
-          0.26,
+          BALCAO_DEPTH,
+          WALL_SHELF_DEPTH,
           '#EFF6FF',
           '#2563EB',
           { rotation: 0 }
         ))
       }
       const cxY = topLimit + 0.86
-      if (!collidesWithObstacle(balcaoX, cxY, 0.60, 0.40, 270)) {
+      if (!collidesWithObstacle(balcaoX, cxY, 0.60, BALCAO_DEPTH, 270)) {
         generatedItems.push(makeItem(
           `catalog-61${lineSuffix}`,
           'Caixa',
@@ -1982,7 +2181,7 @@ export async function generateAILayout(
           balcaoX,
           cxY,
           0.60,
-          0.40,
+          BALCAO_DEPTH,
           '#D1FAE5',
           '#047857',
           { rotation: 270 }
@@ -1995,7 +2194,7 @@ export async function generateAILayout(
         for (let i = 0; i < N; i++) {
           const by_max = topLimit + 0.86 + (i + 1) * w_each
           const balcaoId = getBalcaoIdForWidth(w_each, lineSuffix)
-          if (!collidesWithObstacle(balcaoX, by_max, w_each, 0.40, 270)) {
+          if (!collidesWithObstacle(balcaoX, by_max, w_each, BALCAO_DEPTH, 270)) {
             generatedItems.push(makeItem(
               balcaoId,
               'Balcão de Atendimento',
@@ -2003,7 +2202,7 @@ export async function generateAILayout(
               balcaoX,
               by_max,
               w_each,
-              0.40,
+              BALCAO_DEPTH,
               '#DBEAFE',
               '#1D4ED8',
               { rotation: 270, width: w_each }
@@ -2017,13 +2216,17 @@ export async function generateAILayout(
     placeWrapAroundShelves(storeHeight, 'x', 180, storeWidth - medShelfDepth, balcaoX, -1)
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    const topGap = 0.80
-    const bottomGap = 0.80
-    placeWallSequence(0, 'x', 0, balcaoX, topGap, -1)
-    placeWallSequence(storeHeight, 'x', 180, balcaoX, bottomGap, -1)
+    placeSmartWallSequence(0, 'x', 0, balcaoX, CORNER_GAP_LIMIT, -1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
 
-    // 4. Place Central Gondolas
-    placeVerticalLayoutGondolas(minCorridor, balcaoX - minCorridor)
+    // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
+    {
+      const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      // Borda interna da ilha (borda direita da fileira mais profunda na loja)
+      const islandHighX = ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
+      const gondolaXStart = islandHighX + minCorridor
+      placeVerticalLayoutGondolas(gondolaXStart, balcaoX - minCorridor)
+    }
 
     centralMinX = minCorridor
     centralMaxX = balcaoX - minCorridor
@@ -2041,26 +2244,26 @@ export async function generateAILayout(
     const ph = pillar.height ?? 0.3
 
     const candidates = [
-      { x: px + (pw - 0.4) / 2, y: py - 0.4 }, // Norte
-      { x: px + (pw - 0.4) / 2, y: py + ph },  // Sul
-      { x: px - 0.4, y: py + (ph - 0.4) / 2 }, // Oeste
-      { x: px + pw, y: py + (ph - 0.4) / 2 },  // Leste
+      { x: px + (pw - CESTAO_SIZE) / 2, y: py - CESTAO_SIZE }, // Norte
+      { x: px + (pw - CESTAO_SIZE) / 2, y: py + ph },  // Sul
+      { x: px - CESTAO_SIZE, y: py + (ph - CESTAO_SIZE) / 2 }, // Oeste
+      { x: px + pw, y: py + (ph - CESTAO_SIZE) / 2 },  // Leste
     ]
 
     candidates.forEach(cand => {
-      const insideX = cand.x >= centralMinX && cand.x + 0.4 <= centralMaxX
-      const insideY = cand.y >= centralMinY && cand.y + 0.4 <= centralMaxY
+      const insideX = cand.x >= centralMinX && cand.x + CESTAO_SIZE <= centralMaxX
+      const insideY = cand.y >= centralMinY && cand.y + CESTAO_SIZE <= centralMaxY
       
       if (insideX && insideY) {
         const collides = generatedItems.some(item => {
           const itemX = item.x ?? 0
           const itemY = item.y ?? 0
-          const itemW = item.width ?? 0.4
-          const itemH = item.height ?? 0.4
+          const itemW = item.width ?? CESTAO_SIZE
+          const itemH = item.height ?? CESTAO_SIZE
           const itemRot = item.rotation ?? 0
 
           const boxA = getRotatedBounds(itemX, itemY, itemW, itemH, itemRot)
-          const boxB = { x: cand.x, y: cand.y, width: 0.4, height: 0.4 }
+          const boxB = { x: cand.x, y: cand.y, width: CESTAO_SIZE, height: CESTAO_SIZE }
 
           return checkAABBCollision(boxA, boxB)
         })
@@ -2072,8 +2275,8 @@ export async function generateAILayout(
             '🧺',
             cand.x,
             cand.y,
-            0.4,
-            0.4,
+            CESTAO_SIZE,
+            CESTAO_SIZE,
             '#FDF8F0',
             '#8B7355',
             { rotation: 0 }
@@ -2082,6 +2285,10 @@ export async function generateAILayout(
       }
     })
   })
+
+  // Chamada para posicionar os expositores de vitrine na parede de entrada por último
+  // para evitar colidir e bloquear outros itens cruciais como o checkout em L.
+  placeVitrinesOnEntranceWall()
 
   // === VALIDAÇÃO E ESTATÍSTICAS ===
   const validation = validateLayout(generatedItems, storeWidth, storeHeight, minCorridor)

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Stage, Layer, Rect, Text, Line, Group } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
 import { getRotatedBounds } from '../../utils/geometry'
@@ -85,28 +85,20 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     return () => ro.disconnect()
   }, [])
 
-  const hasCentered = useRef(false)
-  const lastDimensions = useRef({ w: 0, h: 0 })
+  const hasInitialized = useRef(false)
 
   // Center stage when dimensions change — Bug Fix: only center initially or when store layout dimensions change
   useEffect(() => {
-    if (containerSize.width === 600 && containerSize.height === 500) {
-      // Wait for the ResizeObserver to get the actual container size
+    if (hasInitialized.current) return
+    if (!storeWidth || !storeHeight || (containerSize.width === 600 && containerSize.height === 500)) {
       return
     }
 
-    const dimChanged = lastDimensions.current.w !== storeWidth || lastDimensions.current.h !== storeHeight
-    const shouldCenter = !hasCentered.current || dimChanged
-
-    if (shouldCenter) {
-      hasCentered.current = true
-      lastDimensions.current = { w: storeWidth, h: storeHeight }
-      const cx = (containerSize.width - canvasW * scale) / 2
-      const cy = (containerSize.height - canvasH * scale) / 2
-      setStagePosition(cx, cy)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeWidth, storeHeight, containerSize.width, containerSize.height])
+    const cx = (containerSize.width - canvasW * scale) / 2
+    const cy = (containerSize.height - canvasH * scale) / 2
+    setStagePosition(cx, cy)
+    hasInitialized.current = true
+  }, [storeWidth, storeHeight, containerSize])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -215,7 +207,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       const tmpl = JSON.parse(data)
       const stage = stageRef.current
       if (!stage) return
-      const box = stage.container().getBoundingClientRect()
+      const box = containerRef.current?.getBoundingClientRect()
+      if (!box) return
       const x = (e.clientX - box.left - stageX) / (PIXELS_PER_METER * scale)
       const y = (e.clientY - box.top - stageY) / (PIXELS_PER_METER * scale)
       addItem(tmpl, x - tmpl.width / 2, y - tmpl.height / 2)
@@ -260,7 +253,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   }
 
   // Draw measurements between gondolas/shelves on the floor
-  const renderCorridorMeasures = () => {
+  const corridorMeasures = useMemo(() => {
     if (!showMeasures || items.length === 0) return null
 
     interface CorridorGap {
@@ -417,44 +410,113 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       }
     })
 
-    const elements: React.ReactNode[] = []
-
+    // Deduplicate gaps to show only one measurement line per corridor
+    const uniqueGaps: CorridorGap[] = []
     gaps.forEach(gap => {
+      const isDuplicate = uniqueGaps.some(existing => {
+        if (existing.axis !== gap.axis) return false
+        return Math.abs(existing.start - gap.start) < 0.25 && Math.abs(existing.end - gap.end) < 0.25
+      })
+      if (!isDuplicate) {
+        uniqueGaps.push(gap)
+      }
+    })
+
+    const elements: React.ReactNode[] = []
+    const placedLabels: { x: number; y: number; w: number; h: number }[] = []
+
+    const checkOverlap = (x: number, y: number, w: number, h: number) => {
+      const margin = 3
+      return placedLabels.some(rect => {
+        return (
+          x - margin < rect.x + rect.w + margin &&
+          x + w + margin > rect.x - margin &&
+          y - margin < rect.y + rect.h + margin &&
+          y + h + margin > rect.y - margin
+        )
+      })
+    }
+
+    uniqueGaps.forEach(gap => {
       if (gap.axis === 'x') {
         const pX1 = gap.start * PIXELS_PER_METER
         const pX2 = gap.end * PIXELS_PER_METER
         const pY = gap.coord * PIXELS_PER_METER
         const midX = (pX1 + pX2) / 2
 
-        elements.push(
-          <Group key={`corridor-x-${gap.id}`}>
-            <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
-            <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-            <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-            <Rect x={midX - 18} y={pY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
-            <Text x={midX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
-          </Group>
-        )
+        // Try different positions along the line
+        const shifts = [0, -30, 30, -60, 60]
+        let foundX = null
+        for (const shift of shifts) {
+          const candidateX = midX + shift
+          if (candidateX - 18 >= pX1 + 5 && candidateX + 18 <= pX2 - 5) {
+            if (!checkOverlap(candidateX - 18, pY - 5, 36, 10)) {
+              foundX = candidateX
+              break
+            }
+          }
+        }
+
+        if (foundX !== null) {
+          placedLabels.push({ x: foundX - 18, y: pY - 5, w: 36, h: 10 })
+          elements.push(
+            <Group key={`corridor-x-${gap.id}`}>
+              <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
+              <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+              <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+              <Rect x={foundX - 18} y={pY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
+              <Text x={foundX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
+            </Group>
+          )
+        } else {
+          elements.push(
+            <Group key={`corridor-x-${gap.id}`}>
+              <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.4} />
+            </Group>
+          )
+        }
       } else {
         const pY1 = gap.start * PIXELS_PER_METER
         const pY2 = gap.end * PIXELS_PER_METER
         const pX = gap.coord * PIXELS_PER_METER
         const midY = (pY1 + pY2) / 2
 
-        elements.push(
-          <Group key={`corridor-y-${gap.id}`}>
-            <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
-            <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-            <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-            <Rect x={pX - 18} y={midY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
-            <Text x={pX - 18} y={midY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
-          </Group>
-        )
+        // Try different positions along the line
+        const shifts = [0, -20, 20, -40, 40]
+        let foundY = null
+        for (const shift of shifts) {
+          const candidateY = midY + shift
+          if (candidateY - 5 >= pY1 + 5 && candidateY + 5 <= pY2 - 5) {
+            if (!checkOverlap(pX - 18, candidateY - 5, 36, 10)) {
+              foundY = candidateY
+              break
+            }
+          }
+        }
+
+        if (foundY !== null) {
+          placedLabels.push({ x: pX - 18, y: foundY - 5, w: 36, h: 10 })
+          elements.push(
+            <Group key={`corridor-y-${gap.id}`}>
+              <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
+              <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+              <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+              <Rect x={pX - 18} y={foundY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
+              <Text x={pX - 18} y={foundY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
+            </Group>
+          )
+        } else {
+          elements.push(
+            <Group key={`corridor-y-${gap.id}`}>
+              <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.4} />
+            </Group>
+          )
+        }
       }
     })
 
     return elements
-  }
+  }, [items, scale, storeWidth, storeHeight, showMeasures])
 
   // Unused but left for future: activeTool reference
   void activeTool
@@ -503,7 +565,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           {renderGrid()}
 
           {/* Corridor Measures */}
-          {renderCorridorMeasures()}
+          {corridorMeasures}
 
           {/* Ruler */}
           {renderRuler()}

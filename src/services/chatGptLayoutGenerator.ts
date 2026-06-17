@@ -1,7 +1,3 @@
-// ============================================
-// Serviço de integração com a API do ChatGPT (OpenAI)
-// ============================================
-
 import type { StoreType, CanvasItem } from '../types'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
@@ -64,7 +60,7 @@ ${context.emergencyExit ? '- Saída de emergência: posição (' + context.emerg
 ## Regras de Resposta:
 1. Sempre responda em **português brasileiro**.
 2. Seja conciso e prático nas respostas.
-3. Use emojis para tornar as respostas mais visuais (💊 medicamentos, 🌸 perfumaria, 💳 caixa, etc.).
+3. Use emojis para tornar as respostas mais visuais (medicamentos, perfumaria, caixa, etc.).
 4. Ao final, sugira ao usuário clicar no botão **"Gerar Layout com IA"** para criar o layout automaticamente no canvas.`
 }
 
@@ -120,6 +116,9 @@ export async function sendChatGPTMessage(
     { role: 'user', content: userMessage },
   ]
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
+
   try {
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -135,6 +134,7 @@ export async function sendChatGPTMessage(
         presence_penalty: 0.1,
         frequency_penalty: 0.1,
       }),
+      signal: controller.signal,
     })
 
     if (!response.ok) {
@@ -145,21 +145,21 @@ export async function sendChatGPTMessage(
         return {
           success: false,
           message: '',
-          error: '🔑 Chave API inválida. Verifique sua chave no arquivo .env',
+          error: 'Chave API inválida. Verifique sua chave no arquivo .env',
         }
       }
       if (response.status === 429) {
         return {
           success: false,
           message: '',
-          error: '⏳ Limite de requisições atingido. Aguarde um momento e tente novamente.',
+          error: 'Limite de requisições atingido. Aguarde um momento e tente novamente.',
         }
       }
       if (response.status === 402 || response.status === 403) {
         return {
           success: false,
           message: '',
-          error: '💳 Sem créditos na conta OpenAI. Verifique seu billing em platform.openai.com',
+          error: 'Sem créditos na conta OpenAI. Verifique seu billing em platform.openai.com',
         }
       }
 
@@ -188,13 +188,21 @@ export async function sendChatGPTMessage(
       message: reply.trim(),
     }
   } catch (err) {
+    if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('abort'))) {
+      return {
+        success: false,
+        message: '',
+        error: 'A IA demorou muito para responder. Tente novamente.',
+      }
+    }
+
     const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
 
     if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
       return {
         success: false,
         message: '',
-        error: '🌐 Erro de conexão. Verifique sua internet e tente novamente.',
+        error: ' Erro de conexão. Verifique sua internet e tente novamente.',
       }
     }
 
@@ -203,6 +211,8 @@ export async function sendChatGPTMessage(
       message: '',
       error: `Erro: ${errorMessage}`,
     }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -479,6 +489,9 @@ export async function generateLayoutWithGPT(
   const area = storeWidth * storeHeight
   const systemPrompt = buildLayoutSystemPrompt(storeWidth, storeHeight, storeType, area, obstacles)
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
+
   try {
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -495,15 +508,16 @@ export async function generateLayoutWithGPT(
         temperature: 0,
         max_tokens: 4096,
       }),
+      signal: controller.signal,
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       const errorMsg = (errorData as { error?: { message?: string } })?.error?.message || response.statusText
 
-      if (response.status === 401) return { success: false, items: [], error: '🔑 Chave API inválida.' }
-      if (response.status === 429) return { success: false, items: [], error: '⏳ Limite de requisições. Aguarde.' }
-      if (response.status === 402 || response.status === 403) return { success: false, items: [], error: '💳 Sem créditos OpenAI.' }
+      if (response.status === 401) return { success: false, items: [], error: ' Chave API inválida.' }
+      if (response.status === 429) return { success: false, items: [], error: ' Limite de requisições. Aguarde.' }
+      if (response.status === 402 || response.status === 403) return { success: false, items: [], error: ' Sem créditos OpenAI.' }
       return { success: false, items: [], error: `Erro API: ${errorMsg}` }
     }
 
@@ -541,6 +555,14 @@ export async function generateLayoutWithGPT(
 
     return { success: true, items: validItems }
   } catch (err) {
+    if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('abort'))) {
+      return {
+        success: false,
+        items: [],
+        error: 'A IA demorou muito para responder. Tente novamente.',
+      }
+    }
+
     const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
 
     if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
@@ -551,5 +573,7 @@ export async function generateLayoutWithGPT(
     }
 
     return { success: false, items: [], error: `Erro: ${errorMessage}` }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

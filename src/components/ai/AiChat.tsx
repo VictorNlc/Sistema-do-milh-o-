@@ -8,6 +8,7 @@ import { toast } from '../../store/toastStore'
 import type { StoreType, CanvasItem } from '../../types'
 import { v4 as uuidv4 } from 'uuid'
 import './AiChat.css'
+import { getRotatedBounds } from '../../utils/geometry'
 
 // Bug Fix: now() movida para fora do componente para evitar hoisting issue
 // Antes: function now() declarada dentro do componente mas usada no estado inicial
@@ -264,9 +265,9 @@ export default function AiChat({ onClose }: AiChatProps) {
         if (response.success) {
           setChatHistory(prev => [
             ...prev,
-            { role: 'user', content: userMsg },
-            { role: 'assistant', content: response.message },
-          ])
+            { role: 'user' as const, content: userMsg },
+            { role: 'assistant' as const, content: response.message },
+          ].slice(-40))
           setMsgs(m => [...m, { id: Date.now() + 1, role: 'ai', text: response.message, time: now() }])
         } else {
           setMsgs(m => [...m, {
@@ -316,8 +317,48 @@ export default function AiChat({ onClose }: AiChatProps) {
         return
       }
 
-      // Manter os itens estruturais do usuário e aplicar o layout gerado
-      const structuralItems = current.filter(i => i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA')
+      // Manter os itens estruturais do usuário e aplicar o layout gerado, corrigindo posições de portas (ENTRADA_FIXA = TRUE)
+      const structuralItems = current.filter(i => i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA').map(item => {
+        const isDoor = item.isDoor || item.itemId === 'porta-entrada' || item.itemId === 'porta-saida-emergencia'
+        if (isDoor) {
+          const bounds = getRotatedBounds(item.x ?? 0, item.y ?? 0, item.width ?? 1.2, item.height ?? 0.15, item.rotation ?? 0)
+          const isHorizontal = bounds.width > bounds.height
+
+          let wall: 'Top' | 'Bottom' | 'Left' | 'Right' = 'Bottom'
+          if (isHorizontal) {
+            wall = (bounds.y + bounds.height / 2 < storeHeight / 2) ? 'Top' : 'Bottom'
+          } else {
+            wall = (bounds.x + bounds.width / 2 < storeWidth / 2) ? 'Left' : 'Right'
+          }
+
+          const dx = (item.x ?? 0) - bounds.x
+          const dy = (item.y ?? 0) - bounds.y
+
+          let newBoundsX = bounds.x
+          let newBoundsY = bounds.y
+
+          if (wall === 'Top') {
+            newBoundsY = 0
+            newBoundsX = Math.max(0, Math.min(bounds.x, storeWidth - bounds.width))
+          } else if (wall === 'Bottom') {
+            newBoundsY = storeHeight - bounds.height
+            newBoundsX = Math.max(0, Math.min(bounds.x, storeWidth - bounds.width))
+          } else if (wall === 'Left') {
+            newBoundsX = 0
+            newBoundsY = Math.max(0, Math.min(bounds.y, storeHeight - bounds.height))
+          } else if (wall === 'Right') {
+            newBoundsX = storeWidth - bounds.width
+            newBoundsY = Math.max(0, Math.min(bounds.y, storeHeight - bounds.height))
+          }
+
+          return {
+            ...item,
+            x: Math.round((newBoundsX + dx) * 100) / 100,
+            y: Math.round((newBoundsY + dy) * 100) / 100,
+          }
+        }
+        return item
+      })
       canvasStore.setState(() => ({
         items: [...structuralItems, ...(result.items as typeof structuralItems)],
         isDirty: true,
@@ -346,8 +387,8 @@ Por favor, escreva uma análise rápida, extremamente profissional e simpática 
         if (chatResponse.success) {
           setChatHistory(prev => [
             ...prev,
-            { role: 'assistant', content: chatResponse.message },
-          ])
+            { role: 'assistant' as const, content: chatResponse.message },
+          ].slice(-40))
           setMsgs(m => [...m, {
             id: Date.now() + 1,
             role: 'ai',

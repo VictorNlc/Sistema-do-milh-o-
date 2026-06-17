@@ -1,6 +1,8 @@
 import { useRef, useCallback, useState, memo } from 'react'
 import { Group, Rect, Text, Circle, Line } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
+import { clampItemPosition } from '../../utils/geometry'
+import { cleanItemName } from '../../utils/labels'
 import type { CanvasItem as CanvasItemType } from '../../types'
 
 interface CanvasItemProps {
@@ -27,38 +29,15 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     }
 
     const name = item.name || ''
-    const nameUpper = name.toUpperCase()
-    const widthMm = Math.round((item.width ?? 0.807) * 1000)
+    const cleanedName = cleanItemName(name)
 
     if (item.isPillar) return 'PILAR'
     if (item.isEmergency) return 'S. EMERGÊNCIA'
-    if (item.isDoor) return nameUpper.includes('ENTRADA') ? 'P. ENTRADA' : 'P. SAÍDA'
-
-    let prefix = 'MÓVEL'
-    if (nameUpper.includes('MED DUPLO')) prefix = 'MED D.'
-    else if (nameUpper.includes('MED')) prefix = 'MED'
-    else if (nameUpper.includes('MIP')) prefix = 'MIP'
-    else if (nameUpper.includes('PF CANAL')) prefix = 'PF CANAL.'
-    else if (nameUpper.includes('PF')) prefix = 'PF'
-    else if (nameUpper.includes('GOND')) prefix = 'GOND'
-    else if (nameUpper.includes('LAT CX') || nameUpper.includes('LAT. CAIXA') || nameUpper.includes('LATERAL CAIXA') || nameUpper.includes('LAT.CAIXA')) prefix = 'LAT. CX'
-    else if (nameUpper.includes('CAIXA') || nameUpper.includes('CX')) prefix = 'CAIXA'
-    else if (nameUpper.includes('BA VD')) prefix = 'BA VIDRO'
-    else if (nameUpper.includes('BA POMBAL')) prefix = 'BA POMBAL'
-    else if (nameUpper.includes('BA')) prefix = 'BA'
-    else if (nameUpper.includes('MAQ')) prefix = 'MAQ'
-    else if (nameUpper.includes('ESM')) prefix = 'ESMALTES'
-    else if (nameUpper.includes('DERMO')) prefix = 'DERMO'
-    else if (nameUpper.includes('CTRL') || nameUpper.includes('CONTROLADO')) prefix = 'CTRL.'
-    else if (nameUpper.includes('FREEZER') || nameUpper.includes('GELADEIRA')) prefix = 'GELADEIRA'
-    else {
-      if (item.category === 'GONDOLAS') prefix = 'GOND'
-      else if (item.category === 'BALCOES') prefix = 'BA'
-      else if (item.category === 'PERFUMARIA') prefix = 'PF'
-      else prefix = item.name
+    if (item.isDoor) {
+      return cleanedName.toUpperCase().includes('ENTRADA') ? 'P. ENTRADA' : 'P. SAÍDA'
     }
 
-    return `${prefix} ${widthMm}mm`
+    return cleanedName
   }
 
   const x = item.x * PIXELS_PER_METER
@@ -93,33 +72,37 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     const sX = stage.x()
     const sY = stage.y()
 
-    // Convert absolute screen position back to local coordinates
+    // Convert absolute screen position back to local coordinates (in pixels)
     const localX = (pos.x - sX) / sScale
     const localY = (pos.y - sY) / sScale
     
-    let targetLocalX = localX
-    let targetLocalY = localY
+    // Convert to meters for easier math
+    let targetX = localX / PIXELS_PER_METER
+    let targetY = localY / PIXELS_PER_METER
     
     // Snap to grid if enabled
     if (snapToGrid) {
-      const snap = gridSize * PIXELS_PER_METER
-      targetLocalX = Math.round(localX / snap) * snap
-      targetLocalY = Math.round(localY / snap) * snap
+      targetX = Math.round(targetX / gridSize) * gridSize
+      targetY = Math.round(targetY / gridSize) * gridSize
     }
     
-    // Clamp within store boundaries (in pixels)
-    const maxLocalX = (storeWidth - item.width) * PIXELS_PER_METER
-    const maxLocalY = (storeHeight - item.height) * PIXELS_PER_METER
-    
-    targetLocalX = Math.max(0, Math.min(targetLocalX, maxLocalX))
-    targetLocalY = Math.max(0, Math.min(targetLocalY, maxLocalY))
+    // Clamp rotated item boundaries in meters
+    const clamped = clampItemPosition(
+      targetX,
+      targetY,
+      item.width,
+      item.height,
+      item.rotation || 0,
+      storeWidth,
+      storeHeight
+    )
     
     // Convert back to absolute screen coordinates
     return {
-      x: targetLocalX * sScale + sX,
-      y: targetLocalY * sScale + sY,
+      x: clamped.x * PIXELS_PER_METER * sScale + sX,
+      y: clamped.y * PIXELS_PER_METER * sScale + sY,
     }
-  }, [snapToGrid, gridSize, storeWidth, storeHeight, item.width, item.height])
+  }, [snapToGrid, gridSize, storeWidth, storeHeight, item.width, item.height, item.rotation])
 
   const isSmall = w < 25 || h < 25
   const isPillar = item.isPillar ?? item.id?.includes('pilar')

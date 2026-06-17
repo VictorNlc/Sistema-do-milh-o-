@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { PHARMACY_ITEMS } from '../../data/items'
+import { cleanItemName } from '../../utils/labels'
 import { useCanvasStore } from '../../store/canvasStore'
 import { toast } from '../../store/toastStore'
 import type { ItemCategory, PharmacyItemTemplate } from '../../types'
@@ -234,7 +235,7 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
     onItemAdded?.()
   }, [addItem, storeWidth, storeHeight, onItemAdded])
 
-  const filteredItems = PHARMACY_ITEMS.filter(item => {
+  const filteredItems = useMemo(() => PHARMACY_ITEMS.filter(item => {
     const matchSearch = !search || item.name.toLowerCase().includes(search.toLowerCase())
     
     let matchCat = true
@@ -247,7 +248,7 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
       ? !item.id.endsWith('-especial')
       : !item.id.endsWith('-premium')
     return matchSearch && matchCat && matchStoreType
-  })
+  }), [search, activeCategory, storeType])
 
   return (
     <div className="lib-root">
@@ -300,14 +301,14 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => e.key === 'Enter' && handleTapAdd(item)}
-                aria-label={`Adicionar ${item.name}`}
+                aria-label={`Adicionar ${cleanItemName(item.name)}`}
                 style={{ '--item-fill': item.fillColor, '--item-stroke': item.strokeColor } as React.CSSProperties}
               >
                 <div className="lib-swatch-svg">
                   {getItemIcon(item.category, item.id, item.name)}
                 </div>
                 <div className="lib-body">
-                  <span className="lib-name">{item.name}</span>
+                  <span className="lib-name">{cleanItemName(item.name)}</span>
                   <span className="lib-meta">{item.width}m × {item.height}m</span>
                 </div>
                 {item.isObstacle && <span className="lib-tag" style={{ position: 'absolute', top: 4, right: 4 }}>Fixo</span>}

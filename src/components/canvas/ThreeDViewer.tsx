@@ -8,7 +8,7 @@ import './ThreeDViewer.css'
 // Height estimations in meters based on item categories
 const CATEGORY_HEIGHTS: Record<string, number> = {
   GONDOLAS: 1.6,
-  BALCOES: 0.9,
+  BALCOES: 1.05, // normal counters height is 1.05m
   REFRIGERACAO: 1.8,
   PERFUMARIA: 1.5,
   SERVICOS: 1.0,
@@ -1524,7 +1524,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
     // 4. Neighboring Buildings (Left & Right)
     const leftBuildW = 30
     const leftBuildH = 9.0
-    const leftBuildX = -widthVal / 2 - leftBuildW / 2
+    const leftBuildX = -widthVal / 2 - leftBuildW / 2 - 0.02
     
     const leftBuildGeo = new THREE.BoxGeometry(leftBuildW, leftBuildH, heightVal)
     const leftBuildMesh = new THREE.Mesh(leftBuildGeo, buildingLeftMat)
@@ -1568,7 +1568,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
     const rightBuildW = 30
     const rightBuildH = 12.0
-    const rightBuildX = widthVal / 2 + rightBuildW / 2
+    const rightBuildX = widthVal / 2 + rightBuildW / 2 + 0.02
     
     const rightBuildGeo = new THREE.BoxGeometry(rightBuildW, rightBuildH, heightVal)
     const rightBuildMesh = new THREE.Mesh(rightBuildGeo, buildingRightMat)
@@ -2100,11 +2100,29 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       // Skip doors since they are custom-rendered on the front facade
       if (item.isDoor || item.itemId?.includes('door') || item.itemId?.includes('porta')) return
 
+      const nameUpper = (item.name || '').toUpperCase()
+      const idUpper = (item.itemId || item.id || '').toUpperCase()
+
+      const isLCheckout = idUpper.includes('catalog-131') || 
+                          nameUpper.includes('CHECK OUT L') || 
+                          nameUpper.includes('CHECKOUT L') || 
+                          nameUpper.includes('BALCÃO EM L') || 
+                          nameUpper.includes('BALCÃO L') || 
+                          nameUpper.includes('BA1200') ||
+                          nameUpper.includes('BA 1200') ||
+                          nameUpper.includes('BA120') ||
+                          nameUpper.includes('BA 120')
+
       const itemW = Number(item.width) || 1.0
       const itemD = Number(item.height) || 1.0
       const itemX = Number(item.x) || 0
       const itemY = Number(item.y) || 0
-      const itemH = Number(item.height3d) || CATEGORY_HEIGHTS[item.category as keyof typeof CATEGORY_HEIGHTS] || 1.2
+      let itemH = Number(item.height3d) || CATEGORY_HEIGHTS[item.category as keyof typeof CATEGORY_HEIGHTS] || 1.2
+      
+      if (isLCheckout) {
+        itemH = 1.05
+      }
+
       const itemGroup = new THREE.Group()
       itemGroup.name = item.category || 'MÓVEL'
 
@@ -2181,8 +2199,6 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
 
       // Match items to custom GLB 3D models added by the user
-      const nameUpper = (item.name || '').toUpperCase()
-      const idUpper = (item.itemId || item.id || '').toUpperCase()
       let matchedModel: THREE.Group | null = null
 
       if (idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')) {
@@ -2272,32 +2288,89 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           }
         } 
         else if (item.category === 'BALCOES') {
-          const baseW = Math.max(0.01, itemW - 0.02)
-          const baseH = Math.max(0.01, itemH - 0.05)
-          const baseD = Math.max(0.01, itemD - 0.02)
-          
-          const baseGeo = new THREE.BoxGeometry(baseW, baseH, baseD)
-          const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
-          const baseMesh = new THREE.Mesh(baseGeo, baseMat)
-          baseMesh.position.y = (itemH - 0.05) / 2
-          baseMesh.castShadow = true
-          subGroup.add(baseMesh)
+          if (isLCheckout) {
+            const tTop = 0.40
+            const tBase = 0.38
 
-          const topGeo = new THREE.BoxGeometry(itemW, 0.05, itemD)
-          const topMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 })
-          const topMesh = new THREE.Mesh(topGeo, topMat)
-          topMesh.position.y = itemH - 0.025
-          topMesh.castShadow = true
-          subGroup.add(topMesh)
-          
-          const bottleCount = Math.floor(itemW / 0.35)
-          for (let b = 0; b < bottleCount; b++) {
-            const bx = -itemW / 2 + 0.18 + b * 0.35 + (Math.random() - 0.5) * 0.05
-            const bGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 6)
-            const bMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, transparent: true, opacity: 0.75 })
-            const bMesh = new THREE.Mesh(bGeo, bMat)
-            bMesh.position.set(bx, itemH + 0.035, (Math.random() - 0.5) * (itemD - 0.1))
-            productsGroup.add(bMesh)
+            const baseH = Math.max(0.01, itemH - 0.05)
+            const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
+
+            // Base Leg 1 (Horizontal)
+            const baseW1 = Math.max(0.01, itemW - 0.02)
+            const baseL1Geo = new THREE.BoxGeometry(baseW1, baseH, tBase)
+            const baseL1Mesh = new THREE.Mesh(baseL1Geo, baseMat)
+            baseL1Mesh.position.set(0, baseH / 2, 0.20 - itemD / 2)
+            baseL1Mesh.castShadow = true
+            baseL1Mesh.receiveShadow = true
+            subGroup.add(baseL1Mesh)
+
+            // Base Leg 2 (Vertical)
+            const baseD2 = Math.max(0.01, itemD - 0.39)
+            const baseL2Geo = new THREE.BoxGeometry(tBase, baseH, baseD2)
+            const baseL2Mesh = new THREE.Mesh(baseL2Geo, baseMat)
+            baseL2Mesh.position.set(0.20 - itemW / 2, baseH / 2, 0.38 + baseD2 / 2 - itemD / 2)
+            baseL2Mesh.castShadow = true
+            baseL2Mesh.receiveShadow = true
+            subGroup.add(baseL2Mesh)
+
+            // 2. Countertop (Top)
+            const topMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 })
+
+            // Top Leg 1 (Horizontal)
+            const topL1Geo = new THREE.BoxGeometry(itemW, 0.05, tTop)
+            const topL1Mesh = new THREE.Mesh(topL1Geo, topMat)
+            topL1Mesh.position.set(0, itemH - 0.025, 0.20 - itemD / 2)
+            topL1Mesh.castShadow = true
+            topL1Mesh.receiveShadow = true
+            subGroup.add(topL1Mesh)
+
+            // Top Leg 2 (Vertical)
+            const topD2 = Math.max(0.01, itemD - tTop)
+            const topL2Geo = new THREE.BoxGeometry(tTop, 0.05, topD2)
+            const topL2Mesh = new THREE.Mesh(topL2Geo, topMat)
+            topL2Mesh.position.set(0.20 - itemW / 2, itemH - 0.025, tTop + topD2 / 2 - itemD / 2)
+            topL2Mesh.castShadow = true
+            topL2Mesh.receiveShadow = true
+            subGroup.add(topL2Mesh)
+
+            // 3. Products
+            const bottleCount = Math.floor(itemW / 0.35)
+            for (let b = 0; b < bottleCount; b++) {
+              const bx = -itemW / 2 + 0.18 + b * 0.35 + (Math.random() - 0.5) * 0.05
+              const bGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 6)
+              const bMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, transparent: true, opacity: 0.75 })
+              const bMesh = new THREE.Mesh(bGeo, bMat)
+              bMesh.position.set(bx, itemH + 0.035, 0.20 - itemD / 2 + (Math.random() - 0.5) * 0.2)
+              productsGroup.add(bMesh)
+            }
+          } else {
+            const baseW = Math.max(0.01, itemW - 0.02)
+            const baseH = Math.max(0.01, itemH - 0.05)
+            const baseD = Math.max(0.01, itemD - 0.02)
+            
+            const baseGeo = new THREE.BoxGeometry(baseW, baseH, baseD)
+            const baseMat = new THREE.MeshStandardMaterial({ color: itemColor, roughness: 0.6 })
+            const baseMesh = new THREE.Mesh(baseGeo, baseMat)
+            baseMesh.position.y = (itemH - 0.05) / 2
+            baseMesh.castShadow = true
+            subGroup.add(baseMesh)
+
+            const topGeo = new THREE.BoxGeometry(itemW, 0.05, itemD)
+            const topMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 })
+            const topMesh = new THREE.Mesh(topGeo, topMat)
+            topMesh.position.y = itemH - 0.025
+            topMesh.castShadow = true
+            subGroup.add(topMesh)
+            
+            const bottleCount = Math.floor(itemW / 0.35)
+            for (let b = 0; b < bottleCount; b++) {
+              const bx = -itemW / 2 + 0.18 + b * 0.35 + (Math.random() - 0.5) * 0.05
+              const bGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 6)
+              const bMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, transparent: true, opacity: 0.75 })
+              const bMesh = new THREE.Mesh(bGeo, bMat)
+              bMesh.position.set(bx, itemH + 0.035, (Math.random() - 0.5) * (itemD - 0.1))
+              productsGroup.add(bMesh)
+            }
           }
         }
         else if (item.category === 'REFRIGERACAO') {
