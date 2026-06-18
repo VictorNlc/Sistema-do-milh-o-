@@ -45,14 +45,23 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   const w = item.width * PIXELS_PER_METER
   const h = item.height * PIXELS_PER_METER
 
+  const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 767 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
+
   const handleSelect = useCallback(() => {
+    if (isMobileDevice) return
+    onSelect(item.id)
+  }, [item.id, onSelect, isMobileDevice])
+
+  const handleDblClick = useCallback(() => {
     onSelect(item.id)
   }, [item.id, onSelect])
 
   const handleDragStart = useCallback(() => {
     setIsDragging(true)
-    onSelect(item.id)
-  }, [item.id, onSelect])
+    if (!isMobileDevice) {
+      onSelect(item.id)
+    }
+  }, [item.id, onSelect, isMobileDevice])
 
   const handleDragEnd = useCallback((e: any) => {
     setIsDragging(false)
@@ -122,6 +131,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         onTap={handleSelect}
         onMouseDown={handleSelect}
         onTouchStart={handleSelect}
+        onDblClick={handleDblClick}
+        onDblTap={handleDblClick}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         dragBoundFunc={dragBoundFunc}
@@ -165,6 +176,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         onTap={handleSelect}
         onMouseDown={handleSelect}
         onTouchStart={handleSelect}
+        onDblClick={handleDblClick}
+        onDblTap={handleDblClick}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         dragBoundFunc={dragBoundFunc}
@@ -238,6 +251,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         onTap={handleSelect}
         onMouseDown={handleSelect}
         onTouchStart={handleSelect}
+        onDblClick={handleDblClick}
+        onDblTap={handleDblClick}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         dragBoundFunc={dragBoundFunc}
@@ -313,6 +328,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       onTap={handleSelect}
       onMouseDown={handleSelect}
       onTouchStart={handleSelect}
+      onDblClick={handleDblClick}
+      onDblTap={handleDblClick}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       dragBoundFunc={dragBoundFunc}
