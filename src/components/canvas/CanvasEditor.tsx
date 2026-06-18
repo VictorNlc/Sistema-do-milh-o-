@@ -598,7 +598,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               key={item.id}
               item={item}
               isSelected={selectedItemId === item.id}
-              isDraggable={selectedItemId === item.id}
+              isDraggable={true}
               onSelect={handleItemSelect}
               onDragEnd={handleItemDragEnd}
             />

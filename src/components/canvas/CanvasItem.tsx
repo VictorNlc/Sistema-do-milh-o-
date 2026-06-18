@@ -51,7 +51,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
 
   const handleDragStart = useCallback(() => {
     setIsDragging(true)
-  }, [])
+    onSelect(item.id)
+  }, [item.id, onSelect])
 
   const handleDragEnd = useCallback((e: any) => {
     setIsDragging(false)
