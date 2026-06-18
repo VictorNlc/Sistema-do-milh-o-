@@ -407,27 +407,14 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
   // --- Global Browser Error Catching ---
   useEffect(() => {
-    const IGNORED_ERRORS = ['pointerlockchange', 'pointerlock', 'WrongDocumentError', 'pointer lock']
-    const isPointerLockError = (msg: string) =>
-      IGNORED_ERRORS.some(k => msg?.toLowerCase().includes(k.toLowerCase()))
-
-    const handleGlobalError = (event: ErrorEvent) => {
-      const msg = event.error?.message ?? event.message ?? ''
-      if (isPointerLockError(msg)) return
-      console.error('Erro global capturado pelo 3D:', event.error || event.message)
-      const err = event.error
-      setErrorMsg('Erro global do navegador: ' + (err?.message || event.message) + '\nStack: ' + (err?.stack || 'Nenhuma stack trace disponível'))
-    }
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       event.preventDefault()
       console.warn('Promise rejeitada no 3D (normalmente Pointer Lock):', event.reason)
     }
 
-    window.addEventListener('error', handleGlobalError)
     window.addEventListener('unhandledrejection', handleUnhandledRejection)
 
     return () => {
-      window.removeEventListener('error', handleGlobalError)
       window.removeEventListener('unhandledrejection', handleUnhandledRejection)
     }
   }, [])
@@ -631,18 +618,31 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         } else {
           console.log(`📦 [3D Viewer] Carregando modelo do ${key} de ${path}...`)
           const loadPromise = new Promise<THREE.Group>((resolve, reject) => {
-            gltfLoader.load(
-              path,
-              (gltf) => {
-                configureMeshShadows(gltf.scene)
-                modelCache[key] = gltf.scene
-                resolve(gltf.scene)
-              },
-              undefined,
-              (error) => {
-                reject(error)
-              }
-            )
+            fetch(path)
+              .then((res) => {
+                if (!res.ok) {
+                  throw new Error(`Servidor respondeu com status ${res.status}`);
+                }
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                  throw new Error("Arquivo não encontrado (recebido HTML de fallback da SPA)");
+                }
+                gltfLoader.load(
+                  path,
+                  (gltf) => {
+                    configureMeshShadows(gltf.scene)
+                    modelCache[key] = gltf.scene
+                    resolve(gltf.scene)
+                  },
+                  undefined,
+                  (error) => {
+                    reject(error)
+                  }
+                )
+              })
+              .catch((err) => {
+                reject(err)
+              })
           })
 
           loadingPromises[key] = loadPromise
