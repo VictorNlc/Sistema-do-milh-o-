@@ -5,6 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid'
 import type { SavedLayout, Appointment, AppointmentStatus, CanvasItem } from '../types'
+import { supabase, isSupabaseConfigured } from './supabase'
 
 const LAYOUTS_KEY = 'projelayout_layouts'
 const APPOINTMENTS_KEY = 'projelayout_appointments'
@@ -40,6 +41,7 @@ export function saveLayout(layoutData: LayoutInput): SavedLayout | null {
     const layouts = getLayouts()
     layouts[id] = saved
     localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
+    syncLayoutToSupabase(saved)
     return saved
   } catch (e) {
     console.warn('Quota de localStorage excedida no salvamento. Tentando recuperação...', e)
@@ -53,6 +55,7 @@ export function saveLayout(layoutData: LayoutInput): SavedLayout | null {
       })
       layouts[id] = saved
       localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
+      syncLayoutToSupabase(saved)
       return saved
     } catch (e2) {
       console.warn('Recuperação passo 1 falhou. Salvando layout sem miniatura...', e2)
@@ -65,6 +68,7 @@ export function saveLayout(layoutData: LayoutInput): SavedLayout | null {
         saved.thumbnail = null
         layouts[id] = saved
         localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
+        syncLayoutToSupabase(saved)
         return saved
       } catch (e3) {
         console.error('Falha crítica ao salvar mesmo sem miniaturas:', e3)
@@ -97,6 +101,7 @@ export function deleteLayout(id: string): void {
   const layouts = getLayouts()
   delete layouts[id]
   localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
+  deleteLayoutFromSupabase(id)
 }
 
 export function getAllLayoutsList(): SavedLayout[] {
@@ -125,6 +130,7 @@ export function saveAppointment(appointmentData: AppointmentInput): Appointment 
     }
     appointments[id] = saved
     localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(appointments))
+    syncAppointmentToSupabase(saved)
     return saved
   } catch (e) {
     console.error('Error saving appointment:', e)
@@ -157,6 +163,7 @@ export function updateAppointmentStatus(id: string, status: AppointmentStatus): 
     appointments[id].status = status
     appointments[id].updatedAt = new Date().toISOString()
     localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(appointments))
+    syncAppointmentToSupabase(appointments[id])
   }
 }
 
@@ -186,5 +193,185 @@ export function getLayoutStats(layout: { storeWidth: number; storeHeight: number
     occupancyRate: ((usedArea / totalArea) * 100).toFixed(0),
     itemCount: items.filter(i => !i.isObstacle && !i.isPillar).length,
     pillars: items.filter(i => i.isPillar).length,
+  }
+}
+
+// ─── Supabase Background Sync Helpers ──────────────────────────────────────────
+
+export function syncLayoutToSupabase(layout: SavedLayout): void {
+  if (!supabase || !isSupabaseConfigured) return
+  
+  const dbData = {
+    id: layout.id,
+    layoutName: layout.layoutName,
+    storeWidth: layout.storeWidth,
+    storeHeight: layout.storeHeight,
+    storeType: layout.storeType,
+    layoutDensity: layout.layoutDensity || null,
+    items: layout.items,
+    shareToken: layout.shareToken,
+    thumbnail: layout.thumbnail,
+    createdAt: layout.createdAt,
+    updatedAt: layout.updatedAt,
+    layoutId: layout.layoutId || null
+  }
+
+  supabase.from('layouts')
+    .upsert(dbData)
+    .then(({ error }) => {
+      if (error) {
+        console.warn('⚠️ Erro ao sincronizar layout com o Supabase:', error.message)
+      } else {
+        console.log('✅ Layout sincronizado com o Supabase:', layout.id)
+      }
+    })
+    .catch(err => {
+      console.warn('⚠️ Falha de rede ao sincronizar layout:', err)
+    })
+}
+
+export function deleteLayoutFromSupabase(id: string): void {
+  if (!supabase || !isSupabaseConfigured) return
+
+  supabase.from('layouts')
+    .delete()
+    .eq('id', id)
+    .then(({ error }) => {
+      if (error) {
+        console.warn('⚠️ Erro ao deletar layout no Supabase:', error.message)
+      } else {
+        console.log('✅ Layout deletado no Supabase:', id)
+      }
+    })
+    .catch(err => {
+      console.warn('⚠️ Falha de rede ao deletar layout no Supabase:', err)
+    })
+}
+
+export function syncAppointmentToSupabase(appointment: Appointment): void {
+  if (!supabase || !isSupabaseConfigured) return
+
+  const dbData = {
+    id: appointment.id,
+    name: appointment.name,
+    email: appointment.email,
+    phone: appointment.phone,
+    city: appointment.city,
+    storeType: appointment.storeType,
+    storeArea: appointment.storeArea,
+    date: appointment.date,
+    time: appointment.time,
+    notes: appointment.notes || null,
+    layoutId: appointment.layoutId || null,
+    status: appointment.status,
+    createdAt: appointment.createdAt,
+    updatedAt: appointment.updatedAt || null
+  }
+
+  supabase.from('appointments')
+    .upsert(dbData)
+    .then(({ error }) => {
+      if (error) {
+        console.warn('⚠️ Erro ao sincronizar agendamento com o Supabase:', error.message)
+      } else {
+        console.log('✅ Agendamento sincronizado com o Supabase:', appointment.id)
+      }
+    })
+    .catch(err => {
+      console.warn('⚠️ Falha de rede ao sincronizar agendamento:', err)
+    })
+}
+
+export async function syncAllWithSupabase(): Promise<void> {
+  if (!supabase || !isSupabaseConfigured) return
+
+  console.log('🔄 Iniciando sincronização bidirecional com o Supabase...')
+  try {
+    // 1. Sincronizar Layouts
+    const { data: remoteLayouts, error: layoutsErr } = await supabase.from('layouts').select('*')
+    if (layoutsErr) {
+      console.warn('⚠️ Não foi possível carregar os layouts do Supabase:', layoutsErr.message)
+    } else if (remoteLayouts) {
+      const localLayouts = getLayouts()
+      let hasUpdates = false
+
+      remoteLayouts.forEach((rl: any) => {
+        const local = localLayouts[rl.id]
+        if (!local || new Date(rl.updatedAt).getTime() > new Date(local.updatedAt).getTime()) {
+          localLayouts[rl.id] = {
+            id: rl.id,
+            layoutName: rl.layoutName,
+            storeWidth: Number(rl.storeWidth),
+            storeHeight: Number(rl.storeHeight),
+            storeType: rl.storeType,
+            layoutDensity: rl.layoutDensity,
+            items: rl.items,
+            shareToken: rl.shareToken,
+            thumbnail: rl.thumbnail,
+            createdAt: rl.createdAt,
+            updatedAt: rl.updatedAt,
+            layoutId: rl.layoutId
+          }
+          hasUpdates = true
+        }
+      })
+
+      Object.values(localLayouts).forEach(local => {
+        const remote = remoteLayouts.find((r: any) => r.id === local.id)
+        if (!remote || new Date(local.updatedAt).getTime() > new Date(remote.updatedAt).getTime()) {
+          syncLayoutToSupabase(local)
+        }
+      })
+
+      if (hasUpdates) {
+        localStorage.setItem(LAYOUTS_KEY, JSON.stringify(localLayouts))
+      }
+    }
+
+    // 2. Sincronizar Agendamentos
+    const { data: remoteAppts, error: apptsErr } = await supabase.from('appointments').select('*')
+    if (apptsErr) {
+      console.warn('⚠️ Não foi possível carregar os agendamentos do Supabase:', apptsErr.message)
+    } else if (remoteAppts) {
+      const localAppts = getAppointments()
+      let hasUpdates = false
+
+      remoteAppts.forEach((ra: any) => {
+        const local = localAppts[ra.id]
+        if (!local || (ra.updatedAt && (!local.updatedAt || new Date(ra.updatedAt).getTime() > new Date(local.updatedAt).getTime()))) {
+          localAppts[ra.id] = {
+            id: ra.id,
+            name: ra.name,
+            email: ra.email,
+            phone: ra.phone,
+            city: ra.city,
+            storeType: ra.storeType,
+            storeArea: ra.storeArea,
+            date: ra.date,
+            time: ra.time,
+            notes: ra.notes,
+            layoutId: ra.layoutId,
+            status: ra.status,
+            createdAt: ra.createdAt,
+            updatedAt: ra.updatedAt
+          }
+          hasUpdates = true
+        }
+      })
+
+      Object.values(localAppts).forEach(local => {
+        const remote = remoteAppts.find((r: any) => r.id === local.id)
+        if (!remote || (local.updatedAt && (!remote.updatedAt || new Date(local.updatedAt).getTime() > new Date(remote.updatedAt).getTime()))) {
+          syncAppointmentToSupabase(local)
+        }
+      })
+
+      if (hasUpdates) {
+        localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(localAppts))
+      }
+    }
+    console.log('✅ Sincronização com o Supabase concluída.')
+  } catch (err) {
+    console.warn('⚠️ Falha crítica ao rodar sincronização com o Supabase:', err)
   }
 }

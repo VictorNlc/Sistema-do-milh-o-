@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from './components/ui/Toaster'
+import { syncAllWithSupabase } from './services/storage'
 import Home from './pages/Home'
 import Editor from './pages/Editor'
 import Schedule from './pages/Schedule'
@@ -8,6 +10,13 @@ import SharedLayout from './pages/SharedLayout'
 import './App.css'
 
 function App() {
+  useEffect(() => {
+    // Sincroniza dados com o Supabase no plano de fundo ao iniciar o app
+    syncAllWithSupabase().catch((err) => {
+      console.warn('Falha na sincronização inicial:', err)
+    })
+  }, [])
+
   return (
     <>
       <Routes>
