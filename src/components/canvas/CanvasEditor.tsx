@@ -190,6 +190,14 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     lastCenter.current = null
   }, [])
 
+  // Synchronously prioritize item dragging over stage dragging on pointer down
+  const handleStagePointerDown = useCallback((e: Konva.KonvaEventObject<any>) => {
+    const stage = e.target.getStage()
+    if (!stage) return
+    const isBackground = e.target === stage || e.target.name() === 'floor'
+    stage.draggable(isBackground)
+  }, [])
+
   // Click/tap on empty area → deselect
   const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
     if (e.target === e.target.getStage() || e.target.name() === 'floor') {
@@ -544,6 +552,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         scaleX={scale}
         scaleY={scale}
         draggable={!selectedItemId}
+        onMouseDown={handleStagePointerDown}
+        onTouchStart={handleStagePointerDown}
         onDragEnd={handleStageDragEnd}
         onWheel={handleWheel}
         onTouchMove={handleTouchMove}
