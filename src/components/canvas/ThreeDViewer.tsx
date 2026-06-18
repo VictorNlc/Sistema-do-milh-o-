@@ -305,6 +305,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const furnitureMeshesRef = useRef<{ box: THREE.Box3; isObstacle: boolean }[]>([])
   const lodObjectsRef = useRef<{ group: THREE.Group; worldPos: THREE.Vector3 }[]>([])
   const keysRef = useRef<Record<string, boolean>>({})
+  const dpadKeysRef = useRef<Record<string, boolean>>({})
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null)
 
   // refs para meshes dinâmicas
@@ -335,6 +336,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Customization & Physics States
+  const [showCustomizer, setShowCustomizer] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 767 : true))
   const [floorStyle, setFloorStyle] = useState('grid') 
   const [wallColor, setWallColor] = useState('mint') 
   const [shadowsEnabled, setShadowsEnabled] = useState(true)
@@ -929,6 +931,16 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         if (!cam || !sc || !ren) return
 
         try {
+          const currentTime = performance.now()
+          let deltaTime = (currentTime - lastTime) / 1000
+          lastTime = currentTime
+
+          if (isNaN(deltaTime) || !isFinite(deltaTime) || deltaTime < 0) {
+            deltaTime = 0
+          } else if (deltaTime > 0.1) {
+            deltaTime = 0.1
+          }
+
           const mode = cameraModeRef.current
 
           if (mode === 'orbit') {
@@ -936,6 +948,31 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             const pitch = orbitPitchRef.current
             const yaw = orbitYawRef.current
             const target = orbitTargetRef.current
+
+            // Allow moving target with WASD keys / D-pad in orbit mode too
+            const keys = { ...keysRef.current, ...dpadKeysRef.current }
+            const moveSpeed = 4.0 // speed of panning
+            const moveX = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize()
+            const moveZ = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).normalize()
+            
+            const panVector = new THREE.Vector3(0, 0, 0)
+            if (keys['KeyW'] || keys['ArrowUp'] || keys['w'] || keys['arrowup']) panVector.add(moveX)
+            if (keys['KeyS'] || keys['ArrowDown'] || keys['s'] || keys['arrowdown']) panVector.add(moveX.clone().multiplyScalar(-1))
+            if (keys['KeyD'] || keys['ArrowRight'] || keys['d'] || keys['arrowright']) panVector.add(moveZ)
+            if (keys['KeyA'] || keys['ArrowLeft'] || keys['a'] || keys['arrowleft']) panVector.add(moveZ.clone().multiplyScalar(-1))
+            
+            if (panVector.lengthSq() > 0.0001) {
+              panVector.normalize().multiplyScalar(moveSpeed * deltaTime)
+              target.x += panVector.x
+              target.z += panVector.z
+              
+              // Bound checking for orbit target
+              const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
+              const wVal = Math.max(4, Number(currentWidth) || 10)
+              const hVal = Math.max(4, Number(currentHeight) || 12)
+              target.x = Math.max(-wVal / 2, Math.min(target.x, wVal / 2))
+              target.z = Math.max(-hVal / 2, Math.min(target.z, hVal / 2))
+            }
 
             cam.position.x = target.x + r * Math.cos(pitch) * Math.sin(yaw)
             cam.position.y = target.y + r * Math.sin(pitch)
@@ -964,16 +1001,6 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
               const distSq = dx * dx + dz * dz
               item.group.visible = distSq <= maxDistSq
             }
-          }
-
-          const currentTime = performance.now()
-          let deltaTime = (currentTime - lastTime) / 1000
-          lastTime = currentTime
-
-          if (isNaN(deltaTime) || !isFinite(deltaTime) || deltaTime < 0) {
-            deltaTime = 0
-          } else if (deltaTime > 0.1) {
-            deltaTime = 0.1
           }
 
           // Animate procedural cars on the street
@@ -1015,7 +1042,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             frontVector.set(0, 0, 0)
             sideVector.set(0, 0, 0)
 
-            const keys = keysRef.current || {}
+            const keys = { ...keysRef.current, ...dpadKeysRef.current }
             if (keys['KeyW'] || keys['ArrowUp'] || keys['w'] || keys['arrowup'] || keys['z'] || keys['KeyZ']) frontVector.copy(cameraDirection)
             if (keys['KeyS'] || keys['ArrowDown'] || keys['s'] || keys['arrowdown']) frontVector.copy(cameraDirection).multiplyScalar(-1)
             if (keys['KeyD'] || keys['ArrowRight'] || keys['d'] || keys['arrowright']) sideVector.copy(rightVector)
@@ -1085,8 +1112,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           frameCount++
           // Telemetria do HUD - Throttled to once every 15 frames to prevent layout reflow bottlenecks
           if (debugTextRef.current && frameCount % 15 === 0) {
-            const activeKeys = Object.keys(keysRef.current || {})
-              .filter(k => keysRef.current[k])
+            const mergedKeys = { ...keysRef.current, ...dpadKeysRef.current }
+            const activeKeys = Object.keys(mergedKeys)
+              .filter(k => mergedKeys[k])
               .map(k => k.replace('Key', ''))
               .join(', ') || 'Nenhuma'
             
@@ -2607,10 +2635,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   }
 
   const handleDpadStart = (dir: string) => {
-    keysRef.current[dir] = true
+    dpadKeysRef.current[dir] = true
   }
   const handleDpadStop = (dir: string) => {
-    keysRef.current[dir] = false
+    dpadKeysRef.current[dir] = false
   }
 
   return (
@@ -2641,7 +2669,32 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       {/* ─── UI CONTROLS / OVERLAY ─── */}
       <div className="three-hud">
         <div className="hud-header">
-          <div className="hud-title">Visualização 3D Walkthrough</div>
+          <div className="hud-title">Visualização 3D</div>
+          
+          <button 
+            className={`btn btn-secondary btn-sm hud-toggle-customizer ${showCustomizer ? 'active' : ''}`}
+            onClick={() => setShowCustomizer(!showCustomizer)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              fontSize: 'var(--fs-xs)',
+              fontWeight: 700,
+              background: showCustomizer ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+              border: showCustomizer ? '1px solid var(--green-400)' : '1px solid rgba(255, 255, 255, 0.15)',
+              color: 'white',
+              borderRadius: 'var(--r-md)',
+              cursor: 'pointer',
+              boxShadow: showCustomizer ? 'var(--sh-green-sm)' : 'none',
+              transition: 'all var(--dur-fast) var(--ease-out)',
+              zIndex: 100,
+              pointerEvents: 'auto'
+            }}
+          >
+            ⚙️ {showCustomizer ? 'Fechar Ajustes' : 'Customizar'}
+          </button>
+
           <div className="hud-debug-telemetry" ref={debugTextRef} style={{
             fontSize: 'var(--fs-2xs)',
             fontFamily: 'monospace',
@@ -2663,8 +2716,9 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         </div>
 
         {/* ─── CUSTOMIZER SIDEBAR ─── */}
-        <div className="three-customizer pointer-events-auto">
-          <div className="cust-title">Customizar Espaço</div>
+        {showCustomizer && (
+          <div className="three-customizer pointer-events-auto">
+            <div className="cust-title">Customizar Espaço</div>
           
           <div className="cust-section">
             <label className="cust-label">Modo de Visualização</label>
@@ -2776,6 +2830,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             </label>
           </div>
         </div>
+      )}
 
         {/* ─── ON-SCREEN D-PAD CONTROLLER ─── */}
         <div className="three-dpad pointer-events-auto">

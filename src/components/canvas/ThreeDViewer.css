@@ -286,3 +286,67 @@
   user-select: none;
 }
 
+/* Responsividade Mobile (<= 767px) */
+@media (max-width: 767px) {
+  .three-hud {
+    padding: var(--s3) !important;
+  }
+  
+  .hud-header {
+    padding: var(--s2) var(--s3) !important;
+    gap: 8px;
+    border-radius: var(--r-lg);
+  }
+  
+  .hud-title {
+    font-size: var(--fs-xs) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .hud-debug-telemetry {
+    display: none !important;
+  }
+  
+  .hud-close {
+    font-size: var(--fs-xs) !important;
+    padding: 4px 8px !important;
+    white-space: nowrap;
+  }
+  
+  .hud-toggle-customizer {
+    font-size: var(--fs-2xs) !important;
+    padding: 4px 8px !important;
+  }
+  
+  .three-customizer {
+    top: 75px !important;
+    left: var(--s3) !important;
+    right: var(--s3) !important;
+    width: auto !important;
+    max-height: calc(100% - 90px) !important;
+    overflow-y: auto !important;
+    padding: var(--s4) !important;
+    border-radius: var(--r-lg) !important;
+    gap: var(--s3) !important;
+  }
+  
+  .three-dpad {
+    bottom: var(--s3) !important;
+    right: var(--s3) !important;
+    padding: var(--s2) !important;
+    grid-template-columns: 42px 42px 42px !important;
+    grid-template-rows: 42px 42px 42px !important;
+    border-radius: var(--r-lg) !important;
+  }
+  
+  .dpad-btn {
+    font-size: var(--fs-xs) !important;
+  }
+  
+  .hud-instructions {
+    display: none !important; /* Hide to avoid blocking screen space on tiny mobile portrait views */
+  }
+}
+
