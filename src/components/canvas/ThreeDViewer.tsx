@@ -339,7 +339,7 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const [showCustomizer, setShowCustomizer] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 767 : true))
   const [floorStyle, setFloorStyle] = useState('grid') 
   const [wallColor, setWallColor] = useState('mint') 
-  const [shadowsEnabled, setShadowsEnabled] = useState(true)
+  const [shadowsEnabled, setShadowsEnabled] = useState(false)
   const [pharmacyName, setPharmacyName] = useState('FARMÁCIA PROJEFARMA')
   const frontFacadeGroupRef = useRef<THREE.Group | null>(null)
   const urbanContextGroupRef = useRef<THREE.Group | null>(null)
@@ -354,15 +354,15 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const filaModelRef = useRef<THREE.Group | null>(null)
   const medicamentoModelRef = useRef<THREE.Group | null>(null)
   const perfumariaModelRef = useRef<THREE.Group | null>(null) 
-  const [showSignage, setShowSignage] = useState(true)
+  const [showSignage, setShowSignage] = useState(false)
   const [noclip, setNoclip] = useState(false) // Toggle physics/collisions
-
+ 
   const noclipRef = useRef(noclip)
   useEffect(() => {
     noclipRef.current = noclip
   }, [noclip])
-
-  const [showProducts, setShowProducts] = useState(true)
+ 
+  const [showProducts, setShowProducts] = useState(false)
   const showProductsRef = useRef(showProducts)
   useEffect(() => {
     showProductsRef.current = showProducts
