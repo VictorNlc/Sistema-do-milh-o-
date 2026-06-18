@@ -11,6 +11,7 @@
   background: #030705;
   font-family: var(--font);
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .three-container {
@@ -20,6 +21,11 @@
   inset: 0;
   z-index: 1;
   overflow: hidden;
+  touch-action: none;
+}
+
+.three-container canvas {
+  touch-action: none;
 }
 
 .three-hud {

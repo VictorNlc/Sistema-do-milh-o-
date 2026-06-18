@@ -785,6 +785,11 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           return
         }
         
+        // Prevent default touch gestures (scrolling, page bounce, pull-to-refresh)
+        if (e.cancelable) {
+          e.preventDefault()
+        }
+        
         if (e.touches && e.touches.length === 1) {
           isDragging = true
           previousMouseX = e.touches[0].clientX ?? 0
@@ -794,6 +799,28 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       }
 
       const handleTouchMove = (e: TouchEvent) => {
+        const target = e.target as HTMLElement
+        const tagName = target?.tagName
+        
+        if (
+          tagName === 'BUTTON' || 
+          tagName === 'INPUT' || 
+          tagName === 'SELECT' || 
+          tagName === 'TEXTAREA' || 
+          target?.closest('.three-customizer') || 
+          target?.closest('.three-dpad') || 
+          target?.closest('.hud-header') || 
+          target?.closest('.lock-card') ||
+          target?.closest('.ios-toggle')
+        ) {
+          return
+        }
+
+        // Prevent default touch gestures (scrolling, page bounce, pull-to-refresh)
+        if (e.cancelable) {
+          e.preventDefault()
+        }
+
         const cam = cameraRef.current
         if (!cam) return
         try {
@@ -872,8 +899,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       
-      document.addEventListener('touchstart', handleTouchStart, { passive: true })
-      document.addEventListener('touchmove', handleTouchMove, { passive: true })
+      document.addEventListener('touchstart', handleTouchStart, { passive: false })
+      document.addEventListener('touchmove', handleTouchMove, { passive: false })
       document.addEventListener('touchend', handleTouchEnd)
       document.addEventListener('pointerlockchange', onPointerLockChange)
 
