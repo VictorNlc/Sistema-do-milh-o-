@@ -35,6 +35,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const stageRef = externalStageRef ?? internalRef
   const [containerSize, setContainerSize] = useState({ width: 600, height: 500 })
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 767 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
 
   // Pinch-to-zoom state
   const lastDist = useRef(0)
@@ -192,11 +193,12 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
 
   // Synchronously prioritize item dragging over stage dragging on pointer down
   const handleStagePointerDown = useCallback((e: Konva.KonvaEventObject<any>) => {
+    if (!isMobileDevice) return // Preserve original desktop behavior: Stage remains draggable
     const stage = e.target.getStage()
     if (!stage) return
     const isBackground = e.target === stage || e.target.name() === 'floor'
     stage.draggable(isBackground)
-  }, [])
+  }, [isMobileDevice])
 
   // Click/tap on empty area → deselect
   const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
@@ -608,7 +610,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               key={item.id}
               item={item}
               isSelected={selectedItemId === item.id}
-              isDraggable={true}
+              isDraggable={isMobileDevice ? true : selectedItemId === item.id}
               onSelect={handleItemSelect}
               onDragEnd={handleItemDragEnd}
             />
