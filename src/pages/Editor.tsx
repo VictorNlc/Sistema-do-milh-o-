@@ -49,6 +49,18 @@ const getCategoryIcon = (category: ItemCategory | string) => {
   return <Icon />
 }
 
+function isWebGLAvailable(): boolean {
+  try {
+    const canvas = document.createElement('canvas')
+    return !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+    )
+  } catch (e) {
+    return false
+  }
+}
+
 export default function Editor() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -63,6 +75,7 @@ export default function Editor() {
   const [showSimulation, setShowSimulation] = useState(false)
   const [showAuditoria, setShowAuditoria] = useState(false)
   const [showFloorPlanReader, setShowFloorPlanReader] = useState(false)
+  const [showWebGLWarning, setShowWebGLWarning] = useState(false)
 
   const store = useCanvasStore()
   const {
@@ -96,6 +109,14 @@ export default function Editor() {
       setTimeout(prefetch, 3000);
     }
   }, []);
+
+  const handleOpen3D = () => {
+    if (!isWebGLAvailable()) {
+      setShowWebGLWarning(true)
+    } else {
+      setShow3D(true)
+    }
+  }
 
   const handleSave = useCallback(() => {
     let thumbnail = null
@@ -278,7 +299,7 @@ export default function Editor() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <span>Auditoria</span>
           </button>
-          <button id="btn-3d" className="tb-btn" onClick={() => setShow3D(true)}>
+          <button id="btn-3d" className="tb-btn" onClick={handleOpen3D}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Visualizar 3D</span>
           </button>
@@ -614,7 +635,7 @@ export default function Editor() {
                 <div className="mc-act-icon"><I.Redo /></div>
                 <span>Refazer</span>
               </button>
-              <button className="mc-act-btn" onClick={() => setShow3D(true)}>
+              <button className="mc-act-btn" onClick={handleOpen3D}>
                 <div className="mc-act-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                 </div>
@@ -842,6 +863,150 @@ export default function Editor() {
         <ErgonomyPanel onClose={() => setShowAuditoria(false)} />
       )}
       <FloorPlanReaderModal isOpen={showFloorPlanReader} onClose={() => setShowFloorPlanReader(false)} />
+
+      {/* WebGL warning modal */}
+      {showWebGLWarning && (
+        <div className="webgl-warning-overlay" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.45)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="webgl-warning-container" style={{
+            background: 'var(--surface-card)',
+            border: '1.5px solid var(--dourado)',
+            borderRadius: 'var(--r-xl)',
+            boxShadow: '0 20px 50px rgba(11, 61, 46, 0.06)',
+            width: '460px',
+            maxWidth: '90vw',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'springIn 0.3s var(--ease-spring)'
+          }}>
+            <div className="webgl-warning-head" style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderBottom: '1.5px solid var(--border-sm)',
+              background: 'var(--surface-subtle)'
+            }}>
+              <span className="webgl-warning-title" style={{
+                fontSize: 'var(--fs-md)',
+                fontWeight: '800',
+                color: 'var(--text-1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                ⚠️ WebGL Desativado ou Indisponível
+              </span>
+              <button 
+                onClick={() => setShowWebGLWarning(false)} 
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  color: 'var(--text-3)',
+                  background: 'rgba(11, 61, 46, 0.05)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'var(--fs-xs)'
+                }}
+              >✕</button>
+            </div>
+            <div className="webgl-warning-body" style={{
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              color: 'var(--text-2)',
+              fontSize: 'var(--fs-sm)'
+            }}>
+              <p style={{ fontWeight: '600' }}>
+                Para carregar a visualização 3D do ProjeLayout, você precisa ativar o WebGL e a aceleração gráfica por hardware no seu navegador.
+              </p>
+              <div style={{
+                background: 'var(--surface-subtle)',
+                border: '1px solid var(--border-sm)',
+                borderRadius: 'var(--r-md)',
+                padding: '12px',
+                fontSize: '12px',
+                lineHeight: '1.5',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ fontWeight: '700', color: 'var(--text-1)' }}>Como ativar no Google Chrome / Brave / Edge:</div>
+                <div>1. Clique nos três pontos (canto superior direito) e abra **Configurações**.</div>
+                <div>2. Vá na seção **Sistema** no menu lateral esquerdo.</div>
+                <div>3. Ative a opção **"Usar aceleração gráfica quando disponível"** (ou aceleração de hardware).</div>
+                <div>4. Reinicie seu navegador e tente carregar o 3D novamente.</div>
+              </div>
+              <div style={{
+                background: 'var(--surface-subtle)',
+                border: '1px solid var(--border-sm)',
+                borderRadius: 'var(--r-md)',
+                padding: '12px',
+                fontSize: '12px',
+                lineHeight: '1.5',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ fontWeight: '700', color: 'var(--text-1)' }}>Como verificar no Firefox:</div>
+                <div>1. Digite <code>about:config</code> na barra de endereços e dê enter.</div>
+                <div>2. Busque pelo parâmetro <code>webgl.disabled</code>.</div>
+                <div>3. Certifique-se de que o valor está definido como <code>false</code>.</div>
+              </div>
+            </div>
+            <div className="webgl-warning-foot" style={{
+              padding: '16px 20px',
+              borderTop: '1.5px solid var(--border-sm)',
+              background: 'var(--surface-subtle)',
+              display: 'flex',
+              justifyContent: 'end',
+              gap: '12px'
+            }}>
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowWebGLWarning(false)}
+              >
+                Voltar ao 2D
+              </button>
+              <button 
+                className="btn btn-sm"
+                style={{
+                  background: 'var(--dourado)',
+                  color: 'var(--verde-escuro)',
+                  fontWeight: '700'
+                }}
+                onClick={() => {
+                  if (isWebGLAvailable()) {
+                    setShowWebGLWarning(false);
+                    setShow3D(true);
+                    toast.success("WebGL detectado com sucesso! Iniciando 3D...");
+                  } else {
+                    toast.error("WebGL ainda está indisponível. Ative a aceleração de hardware nas configurações.");
+                  }
+                }}
+              >
+                Verificar Novamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
