@@ -6,8 +6,9 @@ import CanvasEditor from '../components/canvas/CanvasEditor'
 import ItemLibrary from '../components/canvas/ItemLibrary'
 import AiChat from '../components/ai/AiChat'
 import { useCanvasStore } from '../store/canvasStore'
-import { saveLayout } from '../services/storage'
+import { saveLayout, getLayoutById } from '../services/storage'
 import { toast } from '../store/toastStore'
+import TutorialOverlay from '../components/ui/TutorialOverlay'
 import BudgetPanel from '../components/canvas/BudgetPanel'
 import ErgonomyPanel from '../components/canvas/ErgonomyPanel'
 import { exportToCSV, exportToXLSX } from '../services/excelExport'
@@ -85,7 +86,7 @@ export default function Editor() {
     setStoreDimensions, setStoreType, setLayoutDensity, setPillars, setEntrance, setEmergencyExit,
     toggleSnapToGrid, toggleGrid, toggleMeasures, setScale,
     deleteSelected, undo, redo, canUndo, canRedo,
-    getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas,
+    getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas, loadLayout,
   } = store
 
   const selectedItem = getSelectedItem()
@@ -98,28 +99,66 @@ export default function Editor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Lê dados do formulário de cadastro do cliente (ClientIntakeForm) ──────
+  const [showTutorial, setShowTutorial] = useState(false)
+
+  // ── Inicialização de dados (dimensões, layout salvo, intake form) ──────
   useEffect(() => {
-    const raw = sessionStorage.getItem('projefarma_intake')
-    if (!raw) return
-    try {
-      const intake = JSON.parse(raw)
-      sessionStorage.removeItem('projefarma_intake') // consume once
-
-      if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
-        setStoreDimensions(Number(intake.width), Number(intake.height))
-        toast.success(`Dimensões aplicadas: ${intake.width}×${intake.height}m`)
-      } else if (intake.spaceMode === 'floorplan' && intake.floorPlanDataUrl) {
-        // Injects the image URL into a hidden input so FloorPlanReaderModal can consume it
-        sessionStorage.setItem('projefarma_floorplan_pending', intake.floorPlanDataUrl)
-        setShowFloorPlanReader(true)
+    // 1. Verifica se há id de layout salvo na URL
+    const id = searchParams.get('id')
+    let loadedFromId = false
+    if (id) {
+      const saved = getLayoutById(id)
+      if (saved) {
+        loadLayout(saved)
+        toast.success(`Layout "${saved.layoutName || 'Salvo'}" carregado!`)
+        loadedFromId = true
+      } else {
+        toast.error('Layout não encontrado')
       }
+    }
 
-      if (intake.pharmacyName) {
-        useCanvasStore.getState().setLayoutName(intake.pharmacyName)
+    // 2. Se não carregou por ID, tenta carregar dados do formulário de intake
+    if (!loadedFromId) {
+      const raw = sessionStorage.getItem('projefarma_intake')
+      if (raw) {
+        try {
+          const intake = JSON.parse(raw)
+          sessionStorage.removeItem('projefarma_intake') // consome apenas uma vez
+
+          if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
+            setStoreDimensions(Number(intake.width), Number(intake.height))
+            toast.success(`Dimensões aplicadas: ${intake.width}×${intake.height}m`)
+          } else if (intake.spaceMode === 'floorplan' && intake.floorPlanDataUrl) {
+            // Injeta a imagem pendente para o FloorPlanReaderModal
+            sessionStorage.setItem('projefarma_floorplan_pending', intake.floorPlanDataUrl)
+            setShowFloorPlanReader(true)
+          }
+
+          if (intake.pharmacyName) {
+            useCanvasStore.getState().setLayoutName(intake.pharmacyName)
+          }
+        } catch (e) {
+          console.warn('Erro ao processar dados de intake:', e)
+        }
+      } else {
+        // 3. Fallback: verifica se há dimensões diretas na URL (?w=...&h=...)
+        const w = searchParams.get('w')
+        const h = searchParams.get('h')
+        if (w && h) {
+          const numW = Number(w)
+          const numH = Number(h)
+          if (!isNaN(numW) && !isNaN(numH) && numW >= 3 && numH >= 3) {
+            setStoreDimensions(numW, numH)
+            toast.success(`Dimensões da URL aplicadas: ${numW}×${numH}m`)
+          }
+        }
       }
-    } catch {
-      // ignore malformed data
+    }
+
+    // 4. Controla a inicialização do tutorial (apenas se for primeira visita)
+    const seen = localStorage.getItem('projefarma_tutorial_seen')
+    if (!seen) {
+      setShowTutorial(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -1043,6 +1082,46 @@ export default function Editor() {
             </div>
           </div>
         </div>
+      )}
+      {/* Botão flutuante de ajuda */}
+      <button 
+        className="tut-help-trigger desktop-only"
+        onClick={() => setShowTutorial(true)}
+        title="Como usar o sistema"
+        style={{
+          position: 'fixed',
+          bottom: '50px',
+          right: '24px',
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: '#10B981',
+          border: '1.5px solid #FCD34D',
+          color: '#fff',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+          zIndex: 999,
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.background = '#059669';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.background = '#10B981';
+        }}
+      >
+        ?
+      </button>
+
+      {showTutorial && (
+        <TutorialOverlay onClose={() => setShowTutorial(false)} />
       )}
     </div>
   )

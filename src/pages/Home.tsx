@@ -414,7 +414,7 @@ export default function Home() {
           <button
             id="btn-cta-final"
             className="btn btn-primary btn-xl glow-pulse"
-            onClick={() => navigate('/editor')}
+            onClick={() => navigate('/novo-layout')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

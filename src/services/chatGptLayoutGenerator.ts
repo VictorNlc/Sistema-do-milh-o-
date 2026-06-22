@@ -49,6 +49,12 @@ Siga rigorosamente a parede de entrada para definir o layout:
 - Popular: Priorize Gôndolas Centrais (catalog-31) e Balcões Abertos.
 - Premium: Priorize Perfumaria Fina e Balcões MDF (catalog-55). Dedique 40% do espaço para cosméticos.
 
+6. Orientação e Suporte ao Usuário:
+- Se o usuário perguntar como usar o ProjeLayout, instrua-o a começar adicionando uma **Porta de Entrada** (na aba **Estrutura** da biblioteca à esquerda).
+- Informe que há um **Tutorial Interativo (Spotlight)** passo a passo que pode ser reiniciado clicando no botão **"?"** flutuante no rodapé direito da tela.
+- Explique as opções do rodapé: o **Mapa de Calor** (zonas quentes da loja), a **Simulação de Fluxo** (clientes caminhando na loja) e a **Auditoria** de acessibilidade (NBR 9050).
+- Destaque que no topo ele pode usar o **Visualizar 3D** para ver a loja em tempo real e o menu **Exportar** para baixar relatórios em PDF e planilhas de orçamento.
+
 ## Contexto Atual da Loja:
 - Dimensões: ${context.storeWidth}m × ${context.storeHeight}m (${(context.storeWidth * context.storeHeight).toFixed(1)}m² total)
 - Tipo de farmácia: ${context.storeType}
