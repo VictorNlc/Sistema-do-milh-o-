@@ -1,0 +1,242 @@
+/* =============================================================================
+   FloorPlanReaderModal.css — Estilos premium para o leitor de plantas baixas
+   ============================================================================= */
+
+.fplan-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.fplan-container {
+  background: rgba(9, 18, 13, 0.94);
+  border: 1.5px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--r-xl);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+  width: 520px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: springIn 0.35s var(--ease-spring);
+}
+
+.fplan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s4) var(--s5);
+  border-bottom: 1.5px solid rgba(16, 185, 129, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.fplan-title {
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.fplan-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  transition: all var(--dur-fast);
+}
+
+.fplan-close:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.fplan-body {
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.fplan-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+/* Zona de Upload */
+.fplan-dropzone {
+  border: 2px dashed rgba(16, 185, 129, 0.25);
+  border-radius: var(--r-lg);
+  padding: var(--s8) var(--s5);
+  text-align: center;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.01);
+  transition: all var(--dur-base) var(--ease-out);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.fplan-dropzone:hover {
+  border-color: var(--green-400);
+  background: rgba(16, 185, 129, 0.05);
+  transform: translateY(-1px);
+}
+
+.fplan-upload-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--green-400);
+  opacity: 0.8;
+  transition: transform var(--dur-base);
+}
+
+.fplan-dropzone:hover .fplan-upload-icon {
+  transform: translateY(-2px);
+  opacity: 1;
+}
+
+.fplan-upload-text {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.fplan-upload-subtext {
+  font-size: var(--fs-2xs);
+  color: var(--text-4);
+}
+
+/* Preview do arquivo */
+.fplan-preview-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+}
+
+.fplan-img-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--r-md);
+  object-fit: contain;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.fplan-filename {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-3);
+  word-break: break-all;
+}
+
+/* Estado de Processamento */
+.fplan-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--s8) 0;
+  gap: var(--s4);
+}
+
+.fplan-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3.5px solid rgba(16, 185, 129, 0.1);
+  border-top-color: var(--green-400);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.fplan-loading-text {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--green-400);
+  animation: pulse 1.8s infinite;
+}
+
+/* Resultados da Análise */
+.fplan-results-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.fplan-results-title {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--text-2);
+  border-left: 3px solid var(--green-400);
+  padding-left: var(--s2);
+}
+
+.fplan-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+
+.fplan-result-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fplan-result-label {
+  font-size: var(--fs-2xs);
+  color: var(--text-4);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fplan-result-value {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.fplan-result-warning {
+  grid-column: 1 / -1;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  font-size: var(--fs-xs);
+  color: #f59e0b;
+  line-height: 1.4;
+}
+
+.fplan-foot {
+  padding: var(--s4) var(--s5);
+  border-top: 1.5px solid rgba(16, 185, 129, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s3);
+}

@@ -11,6 +11,7 @@ import { toast } from '../store/toastStore'
 import BudgetPanel from '../components/canvas/BudgetPanel'
 import ErgonomyPanel from '../components/canvas/ErgonomyPanel'
 import { exportToCSV, exportToXLSX } from '../services/excelExport'
+import FloorPlanReaderModal from '../components/canvas/FloorPlanReaderModal'
 import './Editor.css'
 
 const ThreeDViewer = lazy(() => import('../components/canvas/ThreeDViewer'))
@@ -61,6 +62,7 @@ export default function Editor() {
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [showSimulation, setShowSimulation] = useState(false)
   const [showAuditoria, setShowAuditoria] = useState(false)
+  const [showFloorPlanReader, setShowFloorPlanReader] = useState(false)
 
   const store = useCanvasStore()
   const {
@@ -309,6 +311,21 @@ export default function Editor() {
                     value={storeHeight} onChange={e => setStoreDimensions(storeWidth, +e.target.value || 12)} />
                 </div>
               </div>
+              <button 
+                className="btn btn-primary btn-sm btn-full" 
+                style={{ background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, margin: '8px 0' }}
+                onClick={() => {
+                  setShowFloorPlanReader(true)
+                  setShowSettings(false)
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Importar Planta Baixa (IA)
+              </button>
               {/* Tipo premium fixo — não exibe selector */}
               <div className="form-group" style={{ gap: 5 }}>
                 <label className="label">Linha</label>
@@ -805,6 +822,7 @@ export default function Editor() {
       {showAuditoria && (
         <ErgonomyPanel onClose={() => setShowAuditoria(false)} />
       )}
+      <FloorPlanReaderModal isOpen={showFloorPlanReader} onClose={() => setShowFloorPlanReader(false)} />
     </div>
   )
 }
