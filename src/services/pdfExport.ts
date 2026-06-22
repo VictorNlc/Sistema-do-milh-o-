@@ -6,7 +6,7 @@ type RgbTuple = [number, number, number]
 
 export function exportLayoutToPDF(
   layout: { storeWidth: number; storeHeight: number; storeType: string; items: CanvasItem[]; layoutName?: string },
-  stageRef: React.RefObject<{ toDataURL: (opts: Record<string, unknown>) => string } | null>
+  layoutImageDataUrl?: string
 ): boolean {
   try {
     const { storeWidth, storeHeight, storeType, items, layoutName } = layout
@@ -107,17 +107,21 @@ export function exportLayoutToPDF(
     doc.setDrawColor(...borderGray)
     doc.roundedRect(margin, y, contentW, previewH, 3, 3, 'D')
 
-    if (stageRef?.current) {
+    if (layoutImageDataUrl) {
       try {
-        const uri = stageRef.current.toDataURL({ pixelRatio: 2 })
-        doc.addImage(uri, 'PNG', margin + 5, y + 5, contentW - 10, previewH - 10)
+        doc.addImage(layoutImageDataUrl, 'PNG', margin + 5, y + 5, contentW - 10, previewH - 10)
       } catch (err) {
         console.error('Error adding layout image to PDF:', err)
         doc.setFont('Helvetica', 'normal')
         doc.setFontSize(10)
         doc.setTextColor(...grayText)
-        doc.text('[Imagem do Layout]', margin + contentW / 2 - 15, y + previewH / 2)
+        doc.text('[Imagem n\u00e3o dispon\u00edvel]', margin + contentW / 2 - 15, y + previewH / 2)
       }
+    } else {
+      doc.setFont('Helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(...grayText)
+      doc.text('[Sem imagem]', margin + contentW / 2 - 10, y + previewH / 2)
     }
 
     // Stats Bar

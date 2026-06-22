@@ -4,7 +4,7 @@
 
 .schedule-page {
   min-height: 100vh;
-  background: radial-gradient(circle at 50% 0%, rgba(16, 124, 63, 0.15) 0%, var(--surface-base) 70%);
+  background: radial-gradient(circle at 50% 0%, rgba(197, 160, 40, 0.08) 0%, var(--surface-base) 70%);
   display: flex;
   flex-direction: column;
 }
@@ -14,24 +14,30 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--s4) var(--s6);
-  background: rgba(3, 7, 5, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--verde-escuro);
+  border-bottom: 1.5px solid var(--dourado);
+  box-shadow: var(--sh-sm);
+}
+
+.schedule-header .btn-ghost {
+  color: white !important;
+}
+.schedule-header .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .schedule-logo-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  background: var(--dourado);
   border-radius: var(--r-md);
-  color: white;
+  color: var(--verde-escuro);
   font-weight: 900;
   font-size: var(--fs-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--sh-green-sm);
+  box-shadow: var(--sh-sm);
 }
 
 .schedule-content {
@@ -64,7 +70,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-card);
   border: 1.5px solid var(--border-sm);
   color: var(--text-3);
   font-size: var(--fs-sm);
@@ -90,9 +96,9 @@
 }
 
 .schedule-step.done .step-dot {
-  background: rgba(16, 124, 63, 0.2);
+  background: var(--primary-glow);
   border-color: var(--primary);
-  color: var(--green-300);
+  color: var(--primary);
 }
 
 .step-label {
@@ -102,7 +108,7 @@
   white-space: nowrap;
 }
 
-.schedule-step.active .step-label { color: var(--green-300); font-weight: 700; }
+.schedule-step.active .step-label { color: var(--primary); font-weight: 700; }
 .schedule-step.done .step-label { color: var(--text-2); }
 
 .step-line {
@@ -118,17 +124,15 @@
 /* === FORM CARD === */
 .schedule-form {
   overflow: visible;
-  background: rgba(7, 15, 11, 0.6) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--surface-card) !important;
+  border: 1.5px solid var(--border-sm);
+  box-shadow: var(--sh-xl);
   border-radius: var(--r-xl);
 }
 
 .schedule-form-header {
   padding: var(--s6) var(--s6) var(--s4);
-  border-bottom: 1px solid var(--border-xs);
+  border-bottom: 1.5px solid var(--border-sm);
 }
 
 .schedule-form-title {
@@ -181,7 +185,7 @@
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-2);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-subtle);
   border: 1.5px solid var(--border-sm);
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
@@ -194,7 +198,7 @@
 .time-slot:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(16, 124, 63, 0.1);
+  background: var(--primary-glow);
 }
 
 .time-slot.active {
@@ -207,8 +211,8 @@
 /* Layout preview card */
 .layout-preview-card {
   padding: var(--s4);
-  background: rgba(16, 124, 63, 0.08);
-  border: 1px solid rgba(16, 124, 63, 0.25);
+  background: var(--primary-glow);
+  border: 1px solid var(--border-sm);
   border-radius: var(--r-md);
   margin-bottom: var(--s1);
 }
@@ -238,19 +242,19 @@
 .confirmation-grid { display: flex; flex-direction: column; gap: var(--s4); }
 
 .confirm-section {
-  border: 1px solid var(--border-sm);
+  border: 1.5px solid var(--border-sm);
   border-radius: var(--r-md);
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--surface-subtle);
 }
 
 .confirm-section-title {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: var(--text-2);
+  color: var(--text-1);
   padding: var(--s3) var(--s4);
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--border-sm);
+  background: var(--surface-muted);
+  border-bottom: 1.5px solid var(--border-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: flex;
@@ -279,11 +283,11 @@
 .confirm-row span:last-child { font-weight: 700; color: var(--text-1); }
 
 .confirm-notes {
-  padding: var(--s4) var(--s4);
+  padding: var(--s4);
   font-size: var(--fs-sm);
   color: var(--text-2);
   line-height: 1.6;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--surface-muted);
 }
 
 /* Form actions */
@@ -292,8 +296,8 @@
   justify-content: flex-end;
   gap: var(--s3);
   padding: var(--s4) var(--s6);
-  border-top: 1px solid var(--border-xs);
-  background: rgba(255, 255, 255, 0.02);
+  border-top: 1.5px solid var(--border-sm);
+  background: var(--surface-subtle);
 }
 
 /* === SUCCESS PAGE === */
@@ -306,12 +310,10 @@
   flex-direction: column;
   align-items: center;
   gap: var(--s5);
-  background: rgba(7, 15, 11, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface-card);
   border-radius: var(--r-xl);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  border: 1.5px solid var(--border-sm);
+  box-shadow: var(--sh-xl);
 }
 
 .success-icon {
@@ -322,7 +324,6 @@
   align-items: center;
   justify-content: center;
   margin-bottom: var(--s2);
-  animation: floatUp 3s ease-in-out infinite;
 }
 
 .success-icon svg {
@@ -345,11 +346,11 @@
 
 .success-email {
   font-size: var(--fs-sm);
-  color: var(--green-300);
-  background: rgba(16, 124, 63, 0.1);
+  color: var(--primary);
+  background: var(--primary-glow);
   padding: var(--s3) var(--s4);
   border-radius: var(--r-md);
-  border: 1px solid rgba(16, 124, 63, 0.25);
+  border: 1.5px solid var(--border-sm);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -365,9 +366,9 @@
 .success-details {
   width: 100%;
   text-align: left;
-  border: 1px solid var(--border-sm);
+  border: 1.5px solid var(--border-sm);
   border-radius: var(--r-md);
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--surface-subtle);
   overflow: hidden;
 }
 
@@ -409,6 +410,24 @@
   color: var(--text-3);
   text-align: center;
   font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .step-label {
+    display: none;
+  }
+  .schedule-step.active .step-label {
+    display: block;
+    font-size: var(--fs-2xs);
+  }
+}
+
+.schedule-form-desc,
+.success-desc,
+.confirm-notes {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 @media (max-width: 480px) {

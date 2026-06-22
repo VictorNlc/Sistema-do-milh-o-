@@ -9,8 +9,8 @@
 /* Category Vertical Strip */
 .lib-nav-vertical {
   width: 72px;
-  background: #0f1813; /* Dark midnight emerald background */
-  border-right: 1.5px solid rgba(16, 185, 129, 0.1);
+  background: var(--surface-subtle);
+  border-right: 1.5px solid var(--border-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -29,21 +29,21 @@
   border-radius: var(--r-md);
   background: transparent;
   border: 1.5px solid transparent;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-3);
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
   gap: 4px;
 }
 
 .lib-nav-item:hover {
-  color: var(--green-400);
-  background: rgba(16, 185, 129, 0.06);
+  color: var(--primary);
+  background: var(--primary-glow);
 }
 
 .lib-nav-item.active {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
-  color: #FCD34D; /* Yellow highlight for active category icon/text */
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--dourado); /* Gold highlight for active category icon/text */
 }
 
 .lib-nav-item:active {
@@ -79,7 +79,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: rgba(5, 10, 8, 0.7);
+  background: var(--surface-card);
 }
 
 /* Search */
@@ -113,8 +113,8 @@
   padding-left: 2rem;
   padding-right: var(--s2);
   border-radius: var(--r-md);
-  border: 1.5px solid rgba(16, 185, 129, 0.15);
-  background: rgba(0, 0, 0, 0.2);
+  border: 1.5px solid var(--border-sm);
+  background: var(--surface-base);
   font-size: 11px;
   color: var(--text-1);
   transition: all var(--dur-fast);
@@ -122,12 +122,12 @@
 }
 .lib-search-input:focus {
   outline: none;
-  background: rgba(0, 0, 0, 0.3);
-  border-color: var(--green-500);
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+  background: var(--surface-card);
+  border-color: var(--dourado);
+  box-shadow: 0 0 0 2px rgba(197, 160, 40, 0.15);
 }
 .lib-search-input::placeholder {
-  color: var(--text-4);
+  color: var(--text-3);
 }
 
 /* Item List Grid */
@@ -150,8 +150,8 @@
   text-align: center;
   padding: var(--s2);
   border-radius: var(--r-md);
-  border: 1px solid rgba(16, 185, 129, 0.1);
-  background: rgba(7, 15, 11, 0.35);
+  border: 1.5px solid var(--border-sm);
+  background: var(--surface-subtle);
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
   user-select: none;
@@ -163,9 +163,9 @@
 }
 
 .lib-item:hover {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.08);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border-color: var(--primary);
+  background: var(--primary-glow);
+  box-shadow: var(--sh-sm);
 }
 .lib-item:active {
   transform: scale(0.97);
@@ -200,7 +200,7 @@
 .lib-meta {
   display: block;
   font-size: 8px;
-  color: var(--text-4);
+  color: var(--text-3);
   margin-top: 1px;
 }
 
@@ -231,11 +231,11 @@
 .lib-footer {
   padding: var(--s2);
   font-size: 9px;
-  color: var(--text-4);
+  color: var(--text-3);
   text-align: center;
   flex-shrink: 0;
-  border-top: 1.5px solid rgba(16, 185, 129, 0.1);
-  background: rgba(0, 0, 0, 0.2);
+  border-top: 1.5px solid var(--border-sm);
+  background: var(--surface-subtle);
 }
 
 /* ══════════ SUBFILTERS & IA CARD ══════════ */
@@ -259,30 +259,30 @@
   font-size: 10px;
   font-weight: 700;
   color: var(--text-3);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface-subtle);
+  border: 1.5px solid var(--border-sm);
   cursor: pointer;
   transition: all var(--dur-fast);
 }
 .lib-subfilter-pill:hover {
-  color: var(--text-2);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-1);
+  background: var(--surface-muted);
+  border-color: var(--border-sm);
 }
 .lib-subfilter-pill.active {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
-  box-shadow: var(--sh-green-sm);
+  box-shadow: var(--sh-sm);
 }
 
 .lib-ia-card {
   margin: var(--s4) var(--s3);
   padding: var(--s4);
   border-radius: var(--r-lg);
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(6, 44, 22, 0.1) 100%);
-  border: 1.5px solid rgba(16, 185, 129, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, rgba(197, 160, 40, 0.06) 0%, rgba(11, 61, 46, 0.03) 100%);
+  border: 1.5px solid var(--border-md);
+  box-shadow: var(--sh-sm);
 }
 .lib-ia-card-head {
   display: flex;
@@ -292,16 +292,16 @@
 }
 .lib-ia-sparkle {
   font-size: 13px;
-  color: var(--green-400);
+  color: var(--dourado);
 }
 .lib-ia-title {
   font-size: 11px;
   font-weight: 800;
-  color: white;
+  color: var(--text-1);
   letter-spacing: -0.01em;
 }
 .lib-ia-desc {
   font-size: 9.5px;
   line-height: 1.4;
-  color: var(--text-3);
+  color: var(--text-2);
 }

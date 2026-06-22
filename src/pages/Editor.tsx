@@ -132,22 +132,44 @@ export default function Editor() {
     if (saved) navigate(`/agendar/${saved.id}`)
   }
 
-  const handleExportPNG = () => {
+  const downloadLayoutPNG = useCallback((silent = false) => {
     try {
       const uri = stageRef.current?.toDataURL({ pixelRatio: 2 })
-      if (!uri) return
-      const a = Object.assign(document.createElement('a'), { download: `projelayout-${Date.now()}.png`, href: uri })
+      if (!uri) return false
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const a = Object.assign(document.createElement('a'), { download: `projelayout-imagem-${timestamp}.png`, href: uri })
       a.click()
-      toast.success('Imagem PNG baixada!')
-      setShowExportOptions(false)
-    } catch { toast.error('Erro ao exportar imagem') }
+      if (!silent) {
+        toast.success('Imagem PNG baixada!')
+      }
+      return true
+    } catch {
+      if (!silent) {
+        toast.error('Erro ao exportar imagem')
+      }
+      return false
+    }
+  }, [])
+
+  const handleExportPNG = () => {
+    downloadLayoutPNG(false)
+    setShowExportOptions(false)
   }
 
   const handleExportPDF = async () => {
     try {
+      // Capture image BEFORE async import so the Konva stage is guaranteed to be mounted
+      let layoutImageDataUrl: string | undefined
+      try {
+        layoutImageDataUrl = stageRef.current?.toDataURL({ pixelRatio: 2 }) ?? undefined
+      } catch { /* canvas may be tainted — proceed without image */ }
+
+      // Also download the PNG file separately
+      downloadLayoutPNG(true)
+
       const { exportLayoutToPDF } = await import('../services/pdfExport')
       const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: store.layoutName || 'Meu Layout' }
-      const success = exportLayoutToPDF(layoutData, stageRef)
+      const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
         toast.success('Relatório PDF gerado!')
       } else {
@@ -159,6 +181,7 @@ export default function Editor() {
 
   const handleExportCSV = () => {
     try {
+      downloadLayoutPNG(true)
       exportToCSV(items, store.layoutName || 'Meu Layout')
       toast.success('Orçamento CSV baixado!')
       setShowExportOptions(false)
@@ -167,6 +190,7 @@ export default function Editor() {
 
   const handleExportXLSX = async () => {
     try {
+      downloadLayoutPNG(true)
       await exportToXLSX(items, store.layoutName || 'Meu Layout', storeWidth, storeHeight)
       toast.success('Orçamento Excel gerado!')
       setShowExportOptions(false)
@@ -283,29 +307,14 @@ export default function Editor() {
               </>
             )}
           </div>
-          <button id="btn-projects" className="tb-btn" onClick={() => navigate('/meus-projetos')}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            <span>Projetos</span>
-          </button>
-          <button id="btn-heatmap" className={`tb-btn ${showHeatmap ? 'active' : ''}`} onClick={() => setShowHeatmap(!showHeatmap)} style={showHeatmap ? { background: 'rgba(239, 68, 68, 0.25)', borderColor: '#ef4444', color: '#fff' } : {}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M12 2c-4 0-7 3.3-7 7 0 3.3 2.7 6 6 8.5V22h2v-4.5c3.3-2.5 6-5.2 6-8.5 0-3.7-3-7-7-7z"/><path d="M12 11c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-            <span>{showHeatmap ? 'Ocultar Calor' : 'Mapa de Calor'}</span>
-          </button>
-          <button id="btn-simulation" className={`tb-btn ${showSimulation ? 'active' : ''}`} onClick={() => setShowSimulation(!showSimulation)} style={showSimulation ? { background: 'rgba(59, 130, 246, 0.25)', borderColor: '#3b82f6', color: '#fff' } : {}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span>{showSimulation ? 'Parar Fluxo' : 'Simular Fluxo'}</span>
-          </button>
-          <button id="btn-auditoria" className={`tb-btn ${showAuditoria ? 'active' : ''}`} onClick={() => setShowAuditoria(!showAuditoria)} style={showAuditoria ? { background: 'rgba(16, 185, 129, 0.25)', borderColor: '#10b981', color: '#fff' } : {}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span>Auditoria</span>
-          </button>
-          <button id="btn-3d" className="tb-btn" onClick={handleOpen3D}>
+
+          <button id="btn-3d" className="tb-btn desktop-only" onClick={handleOpen3D}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Visualizar 3D</span>
           </button>
           <button 
             id="btn-topbar-floorplan" 
-            className="tb-btn" 
+            className="tb-btn desktop-only" 
             onClick={() => setShowFloorPlanReader(true)}
             style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#34d399' }}
           >
@@ -316,11 +325,11 @@ export default function Editor() {
             </svg>
             <span>Planta Baixa (IA)</span>
           </button>
-          <button id="btn-save" className="tb-btn" onClick={handleSave}>
+          <button id="btn-save" className="tb-btn desktop-only" onClick={handleSave}>
             <I.Save />
             <span className="desktop-only">Salvar</span>
           </button>
-          <button id="btn-schedule" className="tb-btn tb-btn-primary" onClick={handleSchedule}>
+          <button id="btn-schedule" className="tb-btn tb-btn-primary desktop-only" onClick={handleSchedule}>
             <I.Cal /> Agendar
           </button>
         </div>
@@ -703,6 +712,20 @@ export default function Editor() {
         </div>
         <div className="statusbar-item">
           <span>{stats.itemCount} itens (R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) · {stats.pillars} pilares · {stats.occupancyRate}% ocupado</span>
+        </div>
+        <div className="statusbar-tools">
+          <button className={`statusbar-btn ${showHeatmap ? 'active-heatmap' : ''}`} onClick={() => setShowHeatmap(!showHeatmap)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2c-4 0-7 3.3-7 7 0 3.3 2.7 6 6 8.5V22h2v-4.5c3.3-2.5 6-5.2 6-8.5 0-3.7-3-7-7-7z"/><path d="M12 11c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+            <span>{showHeatmap ? 'Ocultar Calor' : 'Mapa de Calor'}</span>
+          </button>
+          <button className={`statusbar-btn ${showSimulation ? 'active-simulation' : ''}`} onClick={() => setShowSimulation(!showSimulation)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>{showSimulation ? 'Parar Fluxo' : 'Simular Fluxo'}</span>
+          </button>
+          <button className={`statusbar-btn ${showAuditoria ? 'active-auditoria' : ''}`} onClick={() => setShowAuditoria(!showAuditoria)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Auditoria</span>
+          </button>
         </div>
         <div className="statusbar-item statusbar-right">
           <span>Scroll = zoom · Arrastar canvas = mover · Del = remover</span>

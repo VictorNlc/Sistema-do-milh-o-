@@ -4,7 +4,7 @@
 
 .shared-layout-page {
   min-height: 100vh;
-  background: radial-gradient(circle at 50% 0%, rgba(16, 124, 63, 0.15) 0%, var(--surface-base) 70%);
+  background: radial-gradient(circle at 50% 0%, rgba(197, 160, 40, 0.08) 0%, var(--surface-base) 70%);
 }
 
 .shared-header {
@@ -12,23 +12,22 @@
   align-items: center;
   gap: var(--s3);
   padding: var(--s4) var(--s6);
-  background: rgba(3, 7, 5, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--verde-escuro);
+  border-bottom: 1.5px solid var(--dourado);
+  box-shadow: var(--sh-sm);
 }
 
 .shared-logo-icon {
   width: 36px; height: 36px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  background: var(--dourado);
   border-radius: var(--r-md);
-  color: white; font-weight: 900;
+  color: var(--verde-escuro); font-weight: 900;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--sh-green-sm);
+  box-shadow: var(--sh-sm);
 }
 
-.shared-logo-title { font-size: var(--fs-md); font-weight: 800; color: var(--text-1); letter-spacing: -0.01em; }
-.shared-logo-sub { font-size: var(--fs-2xs); color: var(--text-3); font-weight: 600; text-transform: uppercase; }
+.shared-logo-title { font-size: var(--fs-md); font-weight: 800; color: var(--dourado); letter-spacing: -0.01em; }
+.shared-logo-sub { font-size: var(--fs-2xs); color: var(--text-inv-3); font-weight: 600; text-transform: uppercase; }
 
 .shared-content {
   max-width: 600px;
@@ -38,29 +37,36 @@
 
 .shared-info-card {
   overflow: visible;
-  background: rgba(7, 15, 11, 0.6) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--surface-card) !important;
+  border: 1.5px solid var(--border-sm);
+  box-shadow: var(--sh-xl);
   border-radius: var(--r-xl);
 }
 
 .shared-info-header {
   padding: var(--s6);
-  border-bottom: 1px solid var(--border-xs);
+  border-bottom: 1.5px solid var(--border-sm);
 }
 
-.shared-title { font-size: var(--fs-xl); font-weight: 800; color: var(--text-1); margin-bottom: var(--s3); letter-spacing: -0.01em; }
+.shared-title {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--text-1);
+  margin-bottom: var(--s3);
+  letter-spacing: -0.01em;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
 
 .shared-badges { display: flex; gap: var(--s2); flex-wrap: wrap; }
 
-.shared-thumb { width: 100%; max-height: 300px; object-fit: contain; background: var(--surface-canvas); border-bottom: 1px solid var(--border-xs); }
+.shared-thumb { width: 100%; max-height: 300px; object-fit: contain; background: var(--surface-canvas); border-bottom: 1.5px solid var(--border-sm); }
 
 .shared-stats {
   display: flex;
   padding: var(--s4) var(--s6);
-  border-bottom: 1px solid var(--border-xs);
+  border-bottom: 1.5px solid var(--border-sm);
   gap: var(--s6);
 }
 
@@ -93,10 +99,18 @@
   font-size: var(--fs-sm);
   color: var(--text-2);
   padding: var(--s3) var(--s4);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-xs);
+  background: var(--surface-subtle);
+  border: 1.5px solid var(--border-sm);
   border-radius: var(--r-md);
   font-weight: 500;
+  min-width: 0;
+}
+.shared-item > span:nth-of-type(2) {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+  flex: 1;
 }
 
 .shared-item-icon {
@@ -133,7 +147,7 @@
   justify-content: center;
   text-align: center;
   padding: var(--s6);
-  background: radial-gradient(circle at 50% 50%, rgba(16, 124, 63, 0.1) 0%, var(--surface-base) 100%);
+  background: radial-gradient(circle at 50% 50%, rgba(197, 160, 40, 0.08) 0%, var(--surface-base) 100%);
 }
 
 .not-found-icon {
@@ -141,7 +155,9 @@
   height: 64px;
   margin: 0 auto var(--s4);
   color: var(--text-4);
-  animation: floatUp 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .not-found-icon svg {

@@ -12,6 +12,11 @@
   font-family: var(--font);
   overflow: hidden;
   overscroll-behavior: none;
+  /* Local overrides to force high-contrast white text on WebGL dark HUD */
+  --text-1: #ffffff;
+  --text-2: rgba(255, 255, 255, 0.85);
+  --text-3: rgba(255, 255, 255, 0.65);
+  --text-4: rgba(255, 255, 255, 0.4);
 }
 
 .three-container {

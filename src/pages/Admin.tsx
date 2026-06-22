@@ -296,10 +296,10 @@ export default function Admin() {
         {activeTab === 'sketchup' && (
           <div className="admin-section">
             <div style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)', marginBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.5rem' }}>
                 📥 Importar Modelos do SketchUp
               </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
                 Faça upload do print de cima dos layouts criados pelos seus projetistas no SketchUp.
                 A IA analisará a imagem, detectará os móveis e aprenderá os padrões para usar nos próximos projetos.
               </p>

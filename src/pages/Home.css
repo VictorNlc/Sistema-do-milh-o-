@@ -15,14 +15,14 @@
   position: sticky;
   top: 16px;
   z-index: var(--z-sticky);
-  background: rgba(7, 15, 11, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  border: 1.5px solid var(--border-sm);
   border-radius: var(--r-xl);
   margin: 16px var(--s5) 0;
   padding: var(--s3) 0;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 30px rgba(11, 61, 46, 0.04);
   transition: all var(--dur-base) var(--ease-out);
 }
 
@@ -460,14 +460,14 @@
   align-items: center;
   gap: var(--s4);
   padding: var(--s8) var(--s5);
-  background: rgba(7, 15, 11, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-sm);
   border-radius: var(--r-xl);
   cursor: pointer;
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: var(--sh-md);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
 }
@@ -499,8 +499,8 @@
 .store-type-card:hover {
   border-color: var(--type-color);
   transform: translateY(-10px) scale(1.02);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 25px rgba(255, 255, 255, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  background: rgba(10, 20, 16, 0.7);
+  box-shadow: var(--sh-xl), 0 0 25px rgba(197, 160, 40, 0.05);
+  background: var(--surface-subtle);
 }
 
 .store-type-card:hover::before {
@@ -593,13 +593,13 @@
 
 .feature-card {
   padding: var(--s8);
-  background: rgba(10, 20, 16, 0.55);
+  background: var(--surface-card);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-radius: var(--r-xl);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1.5px solid var(--border-sm);
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: var(--sh-md);
   position: relative;
 }
 
@@ -616,9 +616,9 @@
 
 .feature-card:hover {
   transform: translateY(-8px) scale(1.015);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45), 0 0 20px rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(10, 22, 16, 0.85);
+  box-shadow: var(--sh-xl);
+  border-color: var(--primary);
+  background: var(--surface-subtle);
 }
 
 .feature-card:hover::before {
@@ -709,17 +709,17 @@
   margin-bottom: var(--s4);
   width: 86px;
   height: 86px;
-  background: rgba(10, 20, 16, 0.65);
+  background: var(--surface-subtle);
   backdrop-filter: blur(12px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  box-shadow: var(--sh-md);
+  border: 1.5px solid var(--border-sm);
   transition: all var(--dur-slow) var(--ease-spring);
   position: relative;
-  color: var(--green-400);
+  color: var(--primary);
 }
 
 .step-icon svg {
@@ -813,20 +813,20 @@
 
 .testimonial-card {
   padding: var(--s8);
-  background: rgba(10, 20, 16, 0.55);
+  background: var(--surface-card);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-radius: var(--r-xl);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1.5px solid var(--border-sm);
+  box-shadow: var(--sh-md);
   transition: all var(--dur-slow) var(--ease-spring);
 }
 
 .testimonial-card:hover {
   transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4), 0 0 15px rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.25);
-  background: rgba(10, 20, 16, 0.85);
+  box-shadow: var(--sh-xl);
+  border-color: var(--primary);
+  background: var(--surface-subtle);
 }
 
 .testimonial-stars {
@@ -882,12 +882,12 @@
 .cta-section {
   margin: 0 var(--s5) var(--s16);
   padding: var(--s16) var(--s8);
-  background: linear-gradient(135deg, var(--green-900) 0%, #083c1d 100%);
+  background: linear-gradient(135deg, var(--verde-escuro) 0%, #165643 100%);
   position: relative;
   overflow: hidden;
   border-radius: var(--r-2xl);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1.5px solid var(--dourado);
+  box-shadow: var(--sh-xl);
 }
 
 .cta-section::before {
@@ -946,8 +946,8 @@
 /* === FOOTER === */
 .home-footer {
   padding: var(--s10) 0;
-  background: #030705;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--verde-escuro);
+  border-top: 1.5px solid var(--dourado);
 }
 
 .home-footer-inner {
@@ -960,7 +960,7 @@
 
 .footer-copy {
   font-size: var(--fs-2xs);
-  color: var(--text-3);
+  color: var(--text-inv-3);
   font-weight: 600;
   letter-spacing: 0.01em;
 }
