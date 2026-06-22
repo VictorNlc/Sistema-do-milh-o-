@@ -116,7 +116,7 @@ export default function Editor() {
       }
 
       if (intake.pharmacyName) {
-        useCanvasStore.getState().loadLayout({ layoutName: intake.pharmacyName })
+        useCanvasStore.getState().setLayoutName(intake.pharmacyName)
       }
     } catch {
       // ignore malformed data

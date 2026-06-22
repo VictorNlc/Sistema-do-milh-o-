@@ -77,6 +77,7 @@ interface CanvasState {
   sendToBack: (id: string) => void
   clearCanvas: () => void
   loadLayout: (layoutData: Partial<CanvasState> & { items?: CanvasItem[] }) => void
+  setLayoutName: (name: string) => void
   getSelectedItem: () => CanvasItem | null
   getPillars: () => CanvasItem[]
   getStats: () => LayoutStats
@@ -461,6 +462,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       selectedItemId: null,
       isDirty: false,
     })
+  },
+
+  setLayoutName: (name) => {
+    set({ layoutName: name, isDirty: true })
   },
 
   getSelectedItem: () => {
