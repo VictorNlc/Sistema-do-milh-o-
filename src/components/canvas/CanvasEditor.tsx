@@ -645,7 +645,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     })
 
     return elements
-  }, [items, scale, storeWidth, storeHeight, showMeasures, handleCorridorLabelClick])
+  }, [items, storeWidth, storeHeight, showMeasures, handleCorridorLabelClick])
 
   // Unused but left for future: activeTool reference
   void activeTool

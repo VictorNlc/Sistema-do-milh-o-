@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
+import { useShallow } from 'zustand/react/shallow'
 import './BudgetPanel.css'
 
 interface GroupedBudgetItem {
@@ -13,7 +14,15 @@ interface GroupedBudgetItem {
 }
 
 export default function BudgetPanel() {
-  const { items, storeWidth, storeHeight, storeType, layoutName } = useCanvasStore()
+  const { items, storeWidth, storeHeight, storeType, layoutName } = useCanvasStore(
+    useShallow(state => ({
+      items: state.items,
+      storeWidth: state.storeWidth,
+      storeHeight: state.storeHeight,
+      storeType: state.storeType,
+      layoutName: state.layoutName,
+    }))
+  )
 
   // Filter items that are commercial (have a price > 0 or a code)
   const commercialItems = useMemo(() => {

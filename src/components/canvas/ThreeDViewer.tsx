@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useCanvasStore } from '../../store/canvasStore'
+import { useShallow } from 'zustand/react/shallow'
 import { getRotatedBounds } from '../../utils/geometry'
 import { generateCustomersSimulation, CustomerData } from '../../services/customerSimulation'
 import './ThreeDViewer.css'
@@ -331,7 +332,14 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
   const [initialized, setInitialized] = useState(false)
   const initializedRef = useRef(false)
 
-  const { storeWidth, storeHeight, items, storeType } = useCanvasStore()
+  const { storeWidth, storeHeight, items, storeType } = useCanvasStore(
+    useShallow(state => ({
+      storeWidth: state.storeWidth,
+      storeHeight: state.storeHeight,
+      items: state.items,
+      storeType: state.storeType,
+    }))
+  )
   const [requiredKeys] = useState(() => getRequiredModelKeys(items))
   
   const [isLocked, setIsLocked] = useState(false)

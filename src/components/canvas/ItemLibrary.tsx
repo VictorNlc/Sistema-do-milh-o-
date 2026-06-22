@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { PHARMACY_ITEMS } from '../../data/items'
 import { cleanItemName } from '../../utils/labels'
 import { useCanvasStore } from '../../store/canvasStore'
+import { useShallow } from 'zustand/react/shallow'
 import { toast } from '../../store/toastStore'
 import { generateAILayout } from '../../services/heuristicLayoutGenerator'
 import type { ItemCategory, PharmacyItemTemplate } from '../../types'
@@ -225,7 +226,14 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('shelving')
   const [subFilter, setSubFilter] = useState<'all' | 'shelves' | 'counters' | 'displays' | 'furniture'>('all')
-  const { addItem, storeWidth, storeHeight, storeType } = useCanvasStore()
+  const { addItem, storeWidth, storeHeight, storeType } = useCanvasStore(
+    useShallow(state => ({
+      addItem: state.addItem,
+      storeWidth: state.storeWidth,
+      storeHeight: state.storeHeight,
+      storeType: state.storeType,
+    }))
+  )
 
   const handleDragStart = (e: React.DragEvent, item: PharmacyItemTemplate) => {
     e.dataTransfer.setData('application/json', JSON.stringify(item))

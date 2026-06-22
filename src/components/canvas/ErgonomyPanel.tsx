@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { validateLayout, type ErgonomyIssue } from '../../services/ergonomyValidator'
 import { useCanvasStore } from '../../store/canvasStore'
+import { useShallow } from 'zustand/react/shallow'
 import './ErgonomyPanel.css'
 
 const LEVEL_ICON: Record<string, string> = {
@@ -20,7 +21,13 @@ interface Props {
 }
 
 export default function ErgonomyPanel({ onClose }: Props) {
-  const { items, storeWidth, storeHeight } = useCanvasStore()
+  const { items, storeWidth, storeHeight } = useCanvasStore(
+    useShallow(state => ({
+      items: state.items,
+      storeWidth: state.storeWidth,
+      storeHeight: state.storeHeight,
+    }))
+  )
   const [issues, setIssues] = useState<ErgonomyIssue[]>(() =>
     validateLayout(items, storeWidth, storeHeight)
   )

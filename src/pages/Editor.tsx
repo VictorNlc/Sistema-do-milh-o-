@@ -6,6 +6,7 @@ import CanvasEditor from '../components/canvas/CanvasEditor'
 import ItemLibrary from '../components/canvas/ItemLibrary'
 import AiChat from '../components/ai/AiChat'
 import { useCanvasStore } from '../store/canvasStore'
+import { useShallow } from 'zustand/react/shallow'
 import { saveLayout, getLayoutById } from '../services/storage'
 import { toast } from '../store/toastStore'
 import TutorialOverlay from '../components/ui/TutorialOverlay'
@@ -62,6 +63,30 @@ function isWebGLAvailable(): boolean {
   }
 }
 
+function ZoomControls() {
+  const scale = useCanvasStore(state => state.scale)
+  const setScale = useCanvasStore(state => state.setScale)
+  return (
+    <div className="tb-zoom desktop-only">
+      <button className="tb-zoom-btn" onClick={() => setScale(Math.max(0.2, scale / 1.2))}>−</button>
+      <span className="tb-zoom-val">{Math.round(scale * 100)}%</span>
+      <button className="tb-zoom-btn" onClick={() => setScale(Math.min(4, scale * 1.2))}>+</button>
+    </div>
+  )
+}
+
+function MobileZoomControls() {
+  const scale = useCanvasStore(state => state.scale)
+  const setScale = useCanvasStore(state => state.setScale)
+  return (
+    <div className="mobile-top-zoom">
+      <button className="mt-zoom-btn" onClick={() => setScale(Math.max(0.2, scale / 1.2))}>−</button>
+      <span className="mt-zoom-val">{Math.round(scale * 100)}%</span>
+      <button className="mt-zoom-btn" onClick={() => setScale(Math.min(4, scale * 1.2))}>+</button>
+    </div>
+  )
+}
+
 export default function Editor() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -78,16 +103,51 @@ export default function Editor() {
   const [showFloorPlanReader, setShowFloorPlanReader] = useState(false)
   const [showWebGLWarning, setShowWebGLWarning] = useState(false)
 
-  const store = useCanvasStore()
   const {
     storeWidth, storeHeight, storeType, layoutDensity, items, selectedItemId,
     entrance, emergencyExit, pillars,
-    snapToGrid, showGrid, showMeasures, scale,
+    snapToGrid, showGrid, showMeasures,
     setStoreDimensions, setStoreType, setLayoutDensity, setPillars, setEntrance, setEmergencyExit,
-    toggleSnapToGrid, toggleGrid, toggleMeasures, setScale,
+    toggleSnapToGrid, toggleGrid, toggleMeasures,
     deleteSelected, undo, redo, canUndo, canRedo,
     getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas, loadLayout,
-  } = store
+  } = useCanvasStore(
+    useShallow(state => ({
+      storeWidth: state.storeWidth,
+      storeHeight: state.storeHeight,
+      storeType: state.storeType,
+      layoutDensity: state.layoutDensity,
+      items: state.items,
+      selectedItemId: state.selectedItemId,
+      entrance: state.entrance,
+      emergencyExit: state.emergencyExit,
+      pillars: state.pillars,
+      snapToGrid: state.snapToGrid,
+      showGrid: state.showGrid,
+      showMeasures: state.showMeasures,
+      setStoreDimensions: state.setStoreDimensions,
+      setStoreType: state.setStoreType,
+      setLayoutDensity: state.setLayoutDensity,
+      setPillars: state.setPillars,
+      setEntrance: state.setEntrance,
+      setEmergencyExit: state.setEmergencyExit,
+      toggleSnapToGrid: state.toggleSnapToGrid,
+      toggleGrid: state.toggleGrid,
+      toggleMeasures: state.toggleMeasures,
+      deleteSelected: state.deleteSelected,
+      undo: state.undo,
+      redo: state.redo,
+      canUndo: state.canUndo,
+      canRedo: state.canRedo,
+      getSelectedItem: state.getSelectedItem,
+      getStats: state.getStats,
+      duplicateItem: state.duplicateItem,
+      rotateItem: state.rotateItem,
+      clearCanvas: state.clearCanvas,
+      loadLayout: state.loadLayout,
+      layoutName: state.layoutName,
+    }))
+  )
 
   const selectedItem = getSelectedItem()
   const stats = getStats()
@@ -306,11 +366,7 @@ export default function Editor() {
         </div>
 
         {/* Zoom */}
-        <div className="tb-zoom desktop-only">
-          <button className="tb-zoom-btn" onClick={() => setScale(Math.max(0.2, scale / 1.2))}>−</button>
-          <span className="tb-zoom-val">{Math.round(scale * 100)}%</span>
-          <button className="tb-zoom-btn" onClick={() => setScale(Math.min(4, scale * 1.2))}>+</button>
-        </div>
+        <ZoomControls />
 
         {/* Actions */}
         <div className="tb-right">
@@ -676,11 +732,7 @@ export default function Editor() {
         {activeMobileTab === 'layout' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
             {/* Mobile zoom widget */}
-            <div className="mobile-top-zoom">
-              <button className="mt-zoom-btn" onClick={() => setScale(Math.max(0.2, scale / 1.2))}>−</button>
-              <span className="mt-zoom-val">{Math.round(scale * 100)}%</span>
-              <button className="mt-zoom-btn" onClick={() => setScale(Math.min(4, scale * 1.2))}>+</button>
-            </div>
+            <MobileZoomControls />
             
             {/* Canvas */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

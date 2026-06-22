@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
+import { useShallow } from 'zustand/react/shallow'
 import { generateAILayout } from '../../services/heuristicLayoutGenerator'
 import { sendChatGPTMessage, isApiKeyConfigured, generateLayoutWithGPT } from '../../services/chatGptLayoutGenerator'
 import { getItemById } from '../../data/items'
@@ -225,7 +226,17 @@ export default function AiChat({ onClose }: AiChatProps) {
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { storeWidth, storeHeight, storeType, items, pillars, entrance, emergencyExit } = useCanvasStore()
+  const { storeWidth, storeHeight, storeType, items, pillars, entrance, emergencyExit } = useCanvasStore(
+    useShallow(state => ({
+      storeWidth: state.storeWidth,
+      storeHeight: state.storeHeight,
+      storeType: state.storeType,
+      items: state.items,
+      pillars: state.pillars,
+      entrance: state.entrance,
+      emergencyExit: state.emergencyExit,
+    }))
+  )
   const canvasStore = useCanvasStore
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
