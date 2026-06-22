@@ -2454,6 +2454,53 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
           pillarMesh.receiveShadow = true
           subGroup.add(pillarMesh)
         } 
+        else if (item.isObstacle) {
+          const wallThickness = 0.15
+          const wallColor = 0xbababa
+          const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.8 })
+
+          if (itemW > wallThickness && itemD > wallThickness) {
+            // Parede Fundo (Back)
+            const backGeo = new THREE.BoxGeometry(itemW, itemH, wallThickness)
+            const backMesh = new THREE.Mesh(backGeo, wallMat)
+            backMesh.position.set(0, itemH / 2, -itemD / 2 + wallThickness / 2)
+            backMesh.castShadow = true
+            backMesh.receiveShadow = true
+            subGroup.add(backMesh)
+
+            // Parede Frente (Front)
+            const frontGeo = new THREE.BoxGeometry(itemW, itemH, wallThickness)
+            const frontMesh = new THREE.Mesh(frontGeo, wallMat)
+            frontMesh.position.set(0, itemH / 2, itemD / 2 - wallThickness / 2)
+            frontMesh.castShadow = true
+            frontMesh.receiveShadow = true
+            subGroup.add(frontMesh)
+
+            // Parede Esquerda (Left)
+            const leftGeo = new THREE.BoxGeometry(wallThickness, itemH, Math.max(0.01, itemD - 2 * wallThickness))
+            const leftMesh = new THREE.Mesh(leftGeo, wallMat)
+            leftMesh.position.set(-itemW / 2 + wallThickness / 2, itemH / 2, 0)
+            leftMesh.castShadow = true
+            leftMesh.receiveShadow = true
+            subGroup.add(leftMesh)
+
+            // Parede Direita (Right)
+            const rightGeo = new THREE.BoxGeometry(wallThickness, itemH, Math.max(0.01, itemD - 2 * wallThickness))
+            const rightMesh = new THREE.Mesh(rightGeo, wallMat)
+            rightMesh.position.set(itemW / 2 - wallThickness / 2, itemH / 2, 0)
+            rightMesh.castShadow = true
+            rightMesh.receiveShadow = true
+            subGroup.add(rightMesh)
+          } else {
+            // Fallback para divisórias muito finas: renderiza uma parede sólida única
+            const solidGeo = new THREE.BoxGeometry(itemW, itemH, itemD)
+            const solidMesh = new THREE.Mesh(solidGeo, wallMat)
+            solidMesh.position.y = itemH / 2
+            solidMesh.castShadow = true
+            solidMesh.receiveShadow = true
+            subGroup.add(solidMesh)
+          }
+        }
         else if (item.category === 'GONDOLAS' || item.category === 'PERFUMARIA') {
           const backGeo = new THREE.BoxGeometry(itemW, itemH, 0.08)
           const backMat = new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6 })

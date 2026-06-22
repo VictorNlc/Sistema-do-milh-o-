@@ -408,7 +408,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   const badgeW = Math.max(30, charCount * 5.5 + 8)
   const badgeX = (w - badgeW) / 2
   const badgeY = -16
-  const showBadge = w >= 25 && h >= 12
+  const isObstacle = item.isObstacle ?? item.id?.includes('obstacle')
+  const showBadge = w >= 25 && h >= 12 && !isObstacle
 
   return (
     <Group
@@ -426,9 +427,9 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     >
       <Rect
         width={w} height={h}
-        fill={dynamicFill}
-        stroke={dynamicStroke}
-        strokeWidth={strokeBorderWidth}
+        fill={isObstacle ? '#f8fafc' : dynamicFill}
+        stroke={isObstacle ? '#334155' : dynamicStroke}
+        strokeWidth={isObstacle ? 5 : strokeBorderWidth}
         cornerRadius={cRadius}
         shadowEnabled={!isDragging}
         shadowBlur={isSelected ? 12 : 2}
@@ -635,6 +636,32 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
               <Line points={[w * 0.3, h * 0.6, w * 0.5, h * 0.8, w * 0.7, h * 0.6]} stroke={item.strokeColor || '#F59E0B'} strokeWidth={1.2} strokeLinecap="round" />
             </>
           )}
+        </>
+      )}
+
+      {/* H. OBSTACULO / SALAS E DIVISORIAS: Borda dupla e Nome Central */}
+      {!isSmall && isObstacle && (
+        <>
+          <Rect
+            x={5} y={5}
+            width={w - 10} height={h - 10}
+            stroke="#94a3b8"
+            strokeWidth={0.8}
+            opacity={0.7}
+            listening={false}
+          />
+          <Text
+            x={6}
+            y={h / 2 - 5}
+            width={w - 12}
+            text={labelText.toUpperCase()}
+            fontSize={9}
+            fontStyle="bold"
+            fill="#1e293b"
+            align="center"
+            opacity={0.9}
+            listening={false}
+          />
         </>
       )}
 

@@ -4,6 +4,7 @@ import { toast } from '../../store/toastStore'
 import { readFloorPlanImage, fileToBase64, FloorPlanData } from '../../services/floorPlanReader'
 import { PHARMACY_ITEMS } from '../../data/items'
 import { v4 as uuidv4 } from 'uuid'
+import { generateAILayout } from '../../services/heuristicLayoutGenerator'
 import './FloorPlanReaderModal.css'
 
 interface FloorPlanReaderModalProps {
@@ -165,6 +166,28 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
 
     toast.success('Configurações e estruturas da planta aplicadas com sucesso!')
     onClose()
+
+    // 6. Gerar layout otimizado da IA automaticamente baseado na nova planta
+    setTimeout(async () => {
+      try {
+        const currentItems = useCanvasStore.getState().items
+        const density = useCanvasStore.getState().layoutDensity || 'normal'
+        const storeType = useCanvasStore.getState().storeType || 'premium'
+        const w = useCanvasStore.getState().storeWidth
+        const h = useCanvasStore.getState().storeHeight
+
+        const result = await generateAILayout(w, h, storeType, currentItems, density)
+        if (result.valid || result.items.length > 0) {
+          const structural = currentItems.filter(i => 
+            i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA'
+          )
+          useCanvasStore.setState({ items: [...structural, ...result.items], isDirty: true })
+          toast.success('Layout otimizado gerado automaticamente pela IA!')
+        }
+      } catch (err) {
+        console.error('Erro ao gerar layout automático:', err)
+      }
+    }, 50)
   }
 
   const handleClearFile = () => {

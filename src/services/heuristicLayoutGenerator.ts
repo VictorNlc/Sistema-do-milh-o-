@@ -197,6 +197,57 @@ export async function generateAILayout(
 
   const generatedItems: Partial<CanvasItem>[] = []
 
+  // 1. Calcular o "salão de vendas" útil dinamicamente com base em salas e divisórias
+  let storeLeft = 0
+  let storeRight = storeWidth
+  let storeTop = 0
+  let storeBottom = storeHeight
+
+  // Filtrar as salas (obstáculos que não são pilares nem portas)
+  const rooms = existingObstacles.filter(o => 
+    (o.isObstacle || o.isRoom || o.category === 'ESTRUTURA') && 
+    !o.isPillar && 
+    !o.isDoor && 
+    !o.itemId?.includes('door') && 
+    !o.itemId?.includes('porta')
+  )
+
+  rooms.forEach(r => {
+    const rx = r.x ?? 0
+    const ry = r.y ?? 0
+    const rw = r.width ?? 1
+    const rh = r.height ?? 1
+    const rRight = rx + rw
+    const rBottom = ry + rh
+
+    // Encostado na esquerda
+    if (rx <= 0.25 && rw >= 1.0) {
+      storeLeft = Math.max(storeLeft, rRight)
+    }
+    // Encostado na direita
+    if (rRight >= storeWidth - 0.25 && rw >= 1.0) {
+      storeRight = Math.min(storeRight, rx)
+    }
+    // Encostado no topo
+    if (ry <= 0.25 && rh >= 1.0) {
+      storeTop = Math.max(storeTop, rBottom)
+    }
+    // Encostado no fundo
+    if (rBottom >= storeHeight - 0.25 && rh >= 1.0) {
+      storeBottom = Math.min(storeBottom, ry)
+    }
+  })
+
+  // Garantir limites mínimos razoáveis para a área central
+  if (storeRight - storeLeft < 3.0) {
+    storeLeft = 0
+    storeRight = storeWidth
+  }
+  if (storeBottom - storeTop < 3.0) {
+    storeTop = 0
+    storeBottom = storeHeight
+  }
+
   // Helper para verificar colisões com pilares/obstáculos/portas e itens já gerados
   const collidesWithObstacle = (x: number, y: number, w: number, h: number, rot: number) => {
     const boxA = getRotatedBounds(x, y, w, h, rot)
@@ -316,10 +367,10 @@ export async function generateAILayout(
 
   // Variáveis para controlar os limites centrais (corredores baseados na densidade)
   const sideOffset = WALL_SHELF_DEPTH + minCorridor
-  let centralMinX = sideOffset
-  let centralMaxX = storeWidth - sideOffset
-  let centralMinY = sideOffset
-  let centralMaxY = storeHeight - sideOffset
+  let centralMinX = storeLeft + sideOffset
+  let centralMaxX = storeRight - sideOffset
+  let centralMinY = storeTop + sideOffset
+  let centralMaxY = storeBottom - sideOffset
 
   const medShelfDepth = MEDICINE_SHELF_DEPTH
   const operatorSpace = OPERATOR_SPACE
@@ -328,8 +379,8 @@ export async function generateAILayout(
 
   // Helper para posicionar gôndolas em layout horizontal (rxWall = Top ou Bottom)
   const placeHorizontalLayoutGondolas = (yStart: number, yEnd: number, leftLimitOverride?: number, rightLimitOverride?: number) => {
-    const leftLimit = leftLimitOverride ?? WALL_SHELF_DEPTH
-    const rightLimit = rightLimitOverride ?? (storeWidth - WALL_SHELF_DEPTH)
+    const leftLimit = leftLimitOverride ?? (storeLeft + WALL_SHELF_DEPTH)
+    const rightLimit = rightLimitOverride ?? (storeRight - WALL_SHELF_DEPTH)
     const availableWidth = rightLimit - leftLimit
     
     let numColumns = 0
@@ -454,8 +505,8 @@ export async function generateAILayout(
 
   // Helper para posicionar gôndolas em layout vertical (rxWall = Left ou Right)
   const placeVerticalLayoutGondolas = (xStart: number, xEnd: number, topLimitOverride?: number, bottomLimitOverride?: number) => {
-    const topLimit = topLimitOverride ?? WALL_SHELF_DEPTH
-    const bottomLimit = bottomLimitOverride ?? (storeHeight - WALL_SHELF_DEPTH)
+    const topLimit = topLimitOverride ?? (storeTop + WALL_SHELF_DEPTH)
+    const bottomLimit = bottomLimitOverride ?? (storeBottom - WALL_SHELF_DEPTH)
     const availableHeight = bottomLimit - topLimit
     
     let numRows = 0
@@ -829,12 +880,11 @@ export async function generateAILayout(
 
     const placeOne = (item: WallSeqItem, val: number) => {
       const d = item.depth ?? WALL_SHELF_DEPTH
-      // For left/right wall items (rot=90/270), adjust fixedCoord so item stays against the wall
-      // rot=90 (left wall): item extends LEFT by depth from posX → posX must equal depth
-      // rot=270 (right wall): item extends RIGHT by depth from posX → posX must equal storeWidth-depth
       let adjusted = fixedCoord
-      if (rot === 90) adjusted = d
-      else if (rot === 270) adjusted = fixedCoord + (WALL_SHELF_DEPTH - d)
+      if (rot === 90) adjusted = storeLeft
+      else if (rot === 270) adjusted = storeRight - d
+      else if (rot === 0) adjusted = storeTop
+      else if (rot === 180) adjusted = storeBottom - d
       const itemVal = getPos(val, item.w, rot, sign)
       const posX = axis === 'x' ? itemVal : adjusted
       const posY = axis === 'y' ? itemVal : adjusted
@@ -1180,10 +1230,10 @@ export async function generateAILayout(
 
   // 3. Gerar Zonas Conforme Case
   if (rxWall === 'Top') {
-    // Back wall medicines along y = 0
-    const backWallY = 0
-    const backWallStart = 0.0
-    const backWallEnd = storeWidth
+    // Back wall medicines along y = storeTop
+    const backWallY = storeTop
+    const backWallStart = storeLeft
+    const backWallEnd = storeRight
     let currentX = backWallStart
 
     // Regra 3: armários de medicamentos controlados (1 a cada 50m²) na parede dos fundos,
@@ -1229,12 +1279,12 @@ export async function generateAILayout(
       currentX += w
     }
 
-    // Counters facing UP (rotation 180) at y = medShelfDepth + operatorSpace + balcaoDepth
-    const balcaoY = medShelfDepth + operatorSpace + balcaoDepth
+    // Counters facing UP (rotation 180) at y = storeTop + medShelfDepth + operatorSpace + balcaoDepth
+    const balcaoY = storeTop + medShelfDepth + operatorSpace + balcaoDepth
 
     // Left and Right limits for the counter line (aligned with side wall shelves)
-    const leftLimit = 0
-    const rightLimit = storeWidth
+    const leftLimit = storeLeft
+    const rightLimit = storeRight
     const availableWidth = rightLimit - leftLimit
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
@@ -1257,18 +1307,18 @@ export async function generateAILayout(
 
       // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
       //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
-      // Braço vertical (encosta na parede de entrada y=storeHeight) — quadrante inf. direito (Top)
-      if (!collidesWithObstacle(checkoutX, storeHeight - 1.0, 1.0, BALCAO_DEPTH, 90)) {
+      // Braço vertical (encosta na parede de entrada y=storeBottom) — quadrante inf. direito (Top)
+      if (!collidesWithObstacle(checkoutX, storeBottom - 1.0, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          checkoutX, storeHeight - 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
+          checkoutX, storeBottom - 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
       // Braço horizontal — quadrante sup. esquerdo, tocando o vertical só no canto
-      if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
+      if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, storeBottom - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          checkoutX - 1.0 - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
+          checkoutX - 1.0 - BALCAO_DEPTH, storeBottom - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
 
@@ -1276,10 +1326,10 @@ export async function generateAILayout(
       //    vértice perfumaria(esq)×entrada(baixo). Borda esquerda a 1,2m da face das fraldas
       //    (FRALDA_DEPTH). Gôndolas reposicionadas à direita com ≥1m de corredor.
       const numRowsLoc = (storeWidth * storeHeight) >= 60 ? 2 : 1
-      const gondolaYEndLoc = (storeHeight - ENTRANCE_ISLAND_OFFSET - numRowsLoc * CESTAO_SIZE) - minCorridor
+      const gondolaYEndLoc = (storeBottom - ENTRANCE_ISLAND_OFFSET - numRowsLoc * CESTAO_SIZE) - minCorridor
       const newCheckoutY = (gondolaYEndLoc + 0.6) - STANDARD_PASSAGE_WIDTH
-      const checkoutLLeftX = FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
-      const checkoutFits = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43 <= storeWidth - WALL_SHELF_DEPTH
+      const checkoutLLeftX = storeLeft + FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
+      const checkoutFits = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43 <= storeRight - WALL_SHELF_DEPTH
       if (newCheckoutY >= balcaoY + minCorridor && checkoutFits) {
         if (!collidesWithObstacle(checkoutLLeftX, gondolaYEndLoc + 0.6, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 270)) {
           generatedItems.push(makeItem(
@@ -1304,19 +1354,19 @@ export async function generateAILayout(
       }
 
       // 3. Painel canaletado na parede de entrada (atrás da área dos BA)
-      placeCheckoutSurroundings(checkoutX, storeHeight - STANDARD_PASSAGE_WIDTH, 90, placeOnLeft, 'Top')
+      placeCheckoutSurroundings(checkoutX, storeBottom - STANDARD_PASSAGE_WIDTH, 90, placeOnLeft, 'Top')
 
       // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA (sobre o BA vertical, à direita do horizontal)
-      if (!collidesWithObstacle(checkoutX - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+      if (!collidesWithObstacle(checkoutX - BALCAO_DEPTH, storeBottom - 1.0 - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, 0)) {
         generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
-          checkoutX - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          checkoutX - BALCAO_DEPTH, storeBottom - 1.0 - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
       }
     }
 
     // Ilha de cestões na entrada: primeiro item que o cliente vê ao entrar (1.2m da parede)
     {
       const entX = entrance?.x ?? (storeWidth / 2)
-      placeEntranceIsland('y', storeHeight, 'x', entX, -1, checkoutIslandMin, checkoutIslandMax)
+      placeEntranceIsland('y', storeBottom, 'x', entX, -1, checkoutIslandMin, checkoutIslandMax)
     }
 
     // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
@@ -1508,25 +1558,25 @@ export async function generateAILayout(
     }
 
     // Wrap around side walls: Top section of Left and Right walls
-    placeWrapAroundShelves(MEDICINE_SHELF_DEPTH, 'y', 90, medShelfDepth, balcaoY, 1)
-    placeWrapAroundShelves(storeWidth - MEDICINE_SHELF_DEPTH, 'y', 270, medShelfDepth, balcaoY, 1)
+    placeWrapAroundShelves(storeLeft + MEDICINE_SHELF_DEPTH, 'y', 90, medShelfDepth + storeTop, balcaoY, 1)
+    placeWrapAroundShelves(storeRight - MEDICINE_SHELF_DEPTH, 'y', 270, medShelfDepth + storeTop, balcaoY, 1)
 
     // 3. Paredes laterais: esquerda (MIP + fralda no final) / direita (beleza)
-    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, storeHeight - 0.40, 1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
-    placeSmartWallSequence(storeWidth - WALL_SHELF_DEPTH, 'y', 270, balcaoY, storeHeight - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
+    placeSmartWallSequence(storeLeft + WALL_SHELF_DEPTH, 'y', 90, balcaoY, storeBottom - 0.40, 1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
+    placeSmartWallSequence(storeRight - WALL_SHELF_DEPTH, 'y', 270, balcaoY, storeBottom - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
     {
       const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
       // Borda interna da ilha (âncora da fileira mais profunda na loja)
-      const islandInnerY = storeHeight - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
+      const islandInnerY = storeBottom - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
       const gondolaYEnd = islandInnerY - minCorridor
       placeHorizontalLayoutGondolas(balcaoY + minCorridor, gondolaYEnd, gondolaReserveLeft)
 
       if (gondolaReserveLeft) {
         const spaceMinY = balcaoY + minCorridor
         const spaceMaxY = gondolaYEnd
-        const spaceMinX = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMinX = storeLeft + WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
         const spaceMaxX = gondolaReserveLeft
 
         fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, false)
@@ -1534,22 +1584,22 @@ export async function generateAILayout(
     }
 
     centralMinY = balcaoY + minCorridor
-    centralMaxY = storeHeight - minCorridor
+    centralMaxY = storeBottom - minCorridor
   }
   else if (rxWall === 'Bottom') {
-    // Back wall medicines along y = storeHeight
-    const backWallY = storeHeight - medShelfDepth
-    const backWallStart = 0.0
-    const backWallEnd = storeWidth
+    // Back wall medicines along y = storeBottom
+    const backWallY = storeBottom - medShelfDepth
+    const backWallStart = storeLeft
+    const backWallEnd = storeRight
     let currentX = backWallStart
 
     // Regra 3: armários de controlados (1 a cada 50m²) na parede dos fundos, lado esquerdo.
     const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
     for (let c = 0; c < controlledCount && currentX + 0.5 <= backWallEnd - 1.0; c++) {
-      if (!collidesWithObstacle(currentX + 0.5, storeHeight, 0.5, medShelfDepth, 180)) {
+      if (!collidesWithObstacle(currentX + 0.5, storeBottom, 0.5, medShelfDepth, 180)) {
         generatedItems.push(makeItem(
           `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
-          currentX + 0.5, storeHeight, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          currentX + 0.5, storeBottom, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
           { rotation: 180, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
         ))
       }
@@ -1568,13 +1618,13 @@ export async function generateAILayout(
         w = 0.807
       }
       
-      if (!collidesWithObstacle(currentX + w, storeHeight, w, medShelfDepth, 180)) {
+      if (!collidesWithObstacle(currentX + w, storeBottom, w, medShelfDepth, 180)) {
         generatedItems.push(makeItem(
           itemId,
           'Prateleira Medicamentos',
           '💊',
           currentX + w,
-          storeHeight,
+          storeBottom,
           w,
           medShelfDepth,
           '#FDF8F0',
@@ -1585,11 +1635,11 @@ export async function generateAILayout(
       currentX += w
     }
 
-    const balcaoY = storeHeight - medShelfDepth - operatorSpace - balcaoDepth
+    const balcaoY = storeBottom - medShelfDepth - operatorSpace - balcaoDepth
 
     // Left and Right limits
-    const leftLimit = 0
-    const rightLimit = storeWidth
+    const leftLimit = storeLeft
+    const rightLimit = storeRight
     const availableWidth = rightLimit - leftLimit
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
@@ -1612,29 +1662,29 @@ export async function generateAILayout(
 
       // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
       //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
-      // Braço vertical (encosta na parede de entrada y=0) — desce para o interior
-      if (!collidesWithObstacle(checkoutX, 0, 1.0, BALCAO_DEPTH, 90)) {
+      // Braço vertical (encosta na parede de entrada y=storeTop) — desce para o interior
+      if (!collidesWithObstacle(checkoutX, storeTop, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          checkoutX, 0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
+          checkoutX, storeTop, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
       // Braço horizontal — tocando o vertical só no canto inferior
-      if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, 1.0, 1.0, BALCAO_DEPTH, 0)) {
+      if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, storeTop + 1.0, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          checkoutX - 1.0 - BALCAO_DEPTH, 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
+          checkoutX - 1.0 - BALCAO_DEPTH, storeTop + 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
 
       // 2. Checkout L no corredor lateral da perfumaria — orientação rot 0, canto no
-      //    vértice perfumaria(esq)×entrada(cima). Borda esquerda a 1,2m das fraldas;
+      //    vértice perfumaria(cima)×entrada(cima). Borda esquerda a 1,2m das fraldas;
       //    gôndolas reposicionadas à direita com ≥1m de corredor.
       const numRowsLoc = (storeWidth * storeHeight) >= 60 ? 2 : 1
-      const gondolaYStartLoc = (ENTRANCE_ISLAND_OFFSET + numRowsLoc * CESTAO_SIZE) + minCorridor
+      const gondolaYStartLoc = storeTop + (ENTRANCE_ISLAND_OFFSET + numRowsLoc * CESTAO_SIZE) + minCorridor
       const newCheckoutY = (gondolaYStartLoc - 0.6) + STANDARD_PASSAGE_WIDTH
-      const checkoutLLeftX = FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
-      const checkoutFits = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43 <= storeWidth - WALL_SHELF_DEPTH
+      const checkoutLLeftX = storeLeft + FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
+      const checkoutFits = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43 <= storeRight - WALL_SHELF_DEPTH
       if (newCheckoutY <= balcaoY - minCorridor && checkoutFits) {
         if (!collidesWithObstacle(checkoutLLeftX, gondolaYStartLoc - 0.6, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 0)) {
           generatedItems.push(makeItem(
@@ -1659,19 +1709,19 @@ export async function generateAILayout(
       }
 
       // 3. Painel canaletado na parede de entrada (atrás da área dos BA)
-      placeCheckoutSurroundings(checkoutX, STANDARD_PASSAGE_WIDTH, 180, placeOnLeft, 'Bottom')
+      placeCheckoutSurroundings(checkoutX, storeTop + STANDARD_PASSAGE_WIDTH, 180, placeOnLeft, 'Bottom')
 
       // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA (sob o BA vertical, à direita do horizontal)
-      if (!collidesWithObstacle(checkoutX - BALCAO_DEPTH, 1.0, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+      if (!collidesWithObstacle(checkoutX - BALCAO_DEPTH, storeTop + 1.0, CESTAO_SIZE, CESTAO_SIZE, 0)) {
         generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
-          checkoutX - BALCAO_DEPTH, 1.0, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          checkoutX - BALCAO_DEPTH, storeTop + 1.0, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
       }
     }
 
     // Ilha de cestões na entrada: primeiro item que o cliente vê ao entrar (1.2m da parede)
     {
       const entX = entrance?.x ?? (storeWidth / 2)
-      placeEntranceIsland('y', 0, 'x', entX, 1, checkoutIslandMin, checkoutIslandMax)
+      placeEntranceIsland('y', storeTop, 'x', entX, 1, checkoutIslandMin, checkoutIslandMax)
     }
 
     // 2. Place Counter Line (completely closed, leaving exactly 1.20m passage, no gaps at the ends)
@@ -1855,48 +1905,48 @@ export async function generateAILayout(
       }
     }
 
-    placeWrapAroundShelves(MEDICINE_SHELF_DEPTH, 'y', 90, storeHeight - medShelfDepth, balcaoY, -1)
-    placeWrapAroundShelves(storeWidth - MEDICINE_SHELF_DEPTH, 'y', 270, storeHeight - medShelfDepth, balcaoY, -1)
+    placeWrapAroundShelves(storeLeft + MEDICINE_SHELF_DEPTH, 'y', 90, storeBottom - medShelfDepth, balcaoY, -1)
+    placeWrapAroundShelves(storeRight - MEDICINE_SHELF_DEPTH, 'y', 270, storeBottom - medShelfDepth, balcaoY, -1)
 
     // 3. Paredes laterais: esquerda (MIP + fralda no final) / direita (beleza)
-    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, 0.40, -1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
-    placeSmartWallSequence(storeWidth - WALL_SHELF_DEPTH, 'y', 270, balcaoY, CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
+    placeSmartWallSequence(storeLeft + WALL_SHELF_DEPTH, 'y', 90, balcaoY, storeTop + 0.40, -1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
+    placeSmartWallSequence(storeRight - WALL_SHELF_DEPTH, 'y', 270, balcaoY, storeTop + CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
     {
       const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
       // Borda interna da ilha (borda inferior da fileira mais profunda na loja)
-      const islandHighY = ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
+      const islandHighY = storeTop + ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
       const gondolaYStart = islandHighY + minCorridor
       placeHorizontalLayoutGondolas(gondolaYStart, balcaoY - minCorridor, gondolaReserveLeft)
 
       if (gondolaReserveLeft) {
         const spaceMinY = gondolaYStart + STANDARD_PASSAGE_WIDTH + minCorridor
         const spaceMaxY = balcaoY - minCorridor
-        const spaceMinX = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMinX = storeLeft + WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
         const spaceMaxX = gondolaReserveLeft
 
         fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, false)
       }
     }
 
-    centralMinY = minCorridor
+    centralMinY = storeTop + minCorridor
     centralMaxY = balcaoY - minCorridor
   }
   else if (rxWall === 'Left') {
-    // Back wall medicines along x = 0
-    const backWallX = 0
-    const backWallStart = 0.0
-    const backWallEnd = storeHeight
+    // Back wall medicines along x = storeLeft
+    const backWallX = storeLeft
+    const backWallStart = storeTop
+    const backWallEnd = storeBottom
     let currentY = backWallStart
 
     // Regra 3: armários de controlados (1 a cada 50m²) na parede dos fundos (medicamentos).
     const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
     for (let c = 0; c < controlledCount && currentY + 0.5 <= backWallEnd - 1.0; c++) {
-      if (!collidesWithObstacle(MEDICINE_SHELF_DEPTH, currentY, 0.5, medShelfDepth, 90)) {
+      if (!collidesWithObstacle(storeLeft + MEDICINE_SHELF_DEPTH, currentY, 0.5, medShelfDepth, 90)) {
         generatedItems.push(makeItem(
           `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
-          MEDICINE_SHELF_DEPTH, currentY, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          storeLeft + MEDICINE_SHELF_DEPTH, currentY, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
           { rotation: 90, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
         ))
       }
@@ -1915,12 +1965,12 @@ export async function generateAILayout(
         w = 0.807
       }
       
-      if (!collidesWithObstacle(MEDICINE_SHELF_DEPTH, currentY, w, medShelfDepth, 90)) {
+      if (!collidesWithObstacle(storeLeft + MEDICINE_SHELF_DEPTH, currentY, w, medShelfDepth, 90)) {
         generatedItems.push(makeItem(
           itemId,
           'Prateleira Medicamentos',
           '💊',
-          MEDICINE_SHELF_DEPTH,
+          storeLeft + MEDICINE_SHELF_DEPTH,
           currentY,
           w,
           medShelfDepth,
@@ -1932,11 +1982,11 @@ export async function generateAILayout(
       currentY += w
     }
 
-    const balcaoX = medShelfDepth + operatorSpace + balcaoDepth
+    const balcaoX = storeLeft + medShelfDepth + operatorSpace + balcaoDepth
 
     // Top and Bottom limits
-    const topLimit = 0
-    const bottomLimit = storeHeight
+    const topLimit = storeTop
+    const bottomLimit = storeBottom
     const availableHeight = bottomLimit - topLimit
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
@@ -2202,25 +2252,25 @@ export async function generateAILayout(
       }
     }
 
-    placeWrapAroundShelves(0, 'x', 0, medShelfDepth, balcaoX, 1)
-    placeWrapAroundShelves(storeHeight, 'x', 180, medShelfDepth, balcaoX, 1)
+    placeWrapAroundShelves(storeTop, 'x', 0, medShelfDepth + storeLeft, balcaoX, 1)
+    placeWrapAroundShelves(storeBottom, 'x', 180, medShelfDepth + storeLeft, balcaoX, 1)
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    placeSmartWallSequence(0, 'x', 0, balcaoX, storeWidth - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
-    placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, storeWidth - 0.40, 1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
+    placeSmartWallSequence(storeTop, 'x', 0, balcaoX, storeRight - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
+    placeSmartWallSequence(storeBottom, 'x', 180, balcaoX, storeRight - 0.40, 1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
     {
       const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
       // Borda interna da ilha (âncora da fileira mais profunda na loja, lado esquerdo)
-      const islandInnerX = storeWidth - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
+      const islandInnerX = storeRight - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
       const gondolaXEnd = islandInnerX - minCorridor
       placeVerticalLayoutGondolas(balcaoX + minCorridor, gondolaXEnd, undefined, gondolaReserveBottom)
 
       if (gondolaReserveBottom) {
         const spaceMinX = balcaoX + minCorridor
         const spaceMaxX = gondolaXEnd
-        const spaceMinY = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMinY = storeTop + WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
         const spaceMaxY = gondolaReserveBottom
 
         fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, true)
@@ -2228,22 +2278,22 @@ export async function generateAILayout(
     }
 
     centralMinX = balcaoX + minCorridor
-    centralMaxX = storeWidth - minCorridor
+    centralMaxX = storeRight - minCorridor
   } 
   else if (rxWall === 'Right') {
-    // Back wall medicines along x = storeWidth
-    const backWallX = storeWidth - medShelfDepth
-    const backWallStart = 0.0
-    const backWallEnd = storeHeight
+    // Back wall medicines along x = storeRight - medShelfDepth
+    const backWallX = storeRight - medShelfDepth
+    const backWallStart = storeTop
+    const backWallEnd = storeBottom
     let currentY = backWallStart
 
     // Regra 3: armários de controlados (1 a cada 50m²) na parede dos fundos (medicamentos).
     const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
     for (let c = 0; c < controlledCount && currentY + 0.5 <= backWallEnd - 1.0; c++) {
-      if (!collidesWithObstacle(backWallX, currentY + 0.5, 0.5, medShelfDepth, 270)) {
+      if (!collidesWithObstacle(storeRight - medShelfDepth, currentY + 0.5, 0.5, medShelfDepth, 270)) {
         generatedItems.push(makeItem(
           `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
-          backWallX, currentY + 0.5, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          storeRight - medShelfDepth, currentY + 0.5, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
           { rotation: 270, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
         ))
       }
@@ -2262,12 +2312,12 @@ export async function generateAILayout(
         w = 0.807
       }
       
-      if (!collidesWithObstacle(backWallX, currentY + w, w, medShelfDepth, 270)) {
+      if (!collidesWithObstacle(storeRight - medShelfDepth, currentY + w, w, medShelfDepth, 270)) {
         generatedItems.push(makeItem(
           itemId,
           'Prateleira Medicamentos',
           '💊',
-          backWallX,
+          storeRight - medShelfDepth,
           currentY + w,
           w,
           medShelfDepth,
@@ -2279,11 +2329,11 @@ export async function generateAILayout(
       currentY += w
     }
 
-    const balcaoX = storeWidth - medShelfDepth - operatorSpace - balcaoDepth
+    const balcaoX = storeRight - medShelfDepth - operatorSpace - balcaoDepth
 
     // Top and Bottom limits
-    const topLimit = 0
-    const bottomLimit = storeHeight
+    const topLimit = storeTop
+    const bottomLimit = storeBottom
     const availableHeight = bottomLimit - topLimit
 
     const isLarge = storeWidth * storeHeight > 100 // Area > 100m2
@@ -2551,32 +2601,32 @@ export async function generateAILayout(
       }
     }
 
-    placeWrapAroundShelves(0, 'x', 0, storeWidth - medShelfDepth, balcaoX, -1)
-    placeWrapAroundShelves(storeHeight, 'x', 180, storeWidth - medShelfDepth, balcaoX, -1)
+    placeWrapAroundShelves(storeTop, 'x', 0, storeRight - medShelfDepth, balcaoX, -1)
+    placeWrapAroundShelves(storeBottom, 'x', 180, storeRight - medShelfDepth, balcaoX, -1)
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    placeSmartWallSequence(0, 'x', 0, balcaoX, 0.40, -1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
-    placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
+    placeSmartWallSequence(storeTop, 'x', 0, balcaoX, storeLeft + 0.40, -1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
+    placeSmartWallSequence(storeBottom, 'x', 180, balcaoX, storeLeft + CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
     {
       const numIslandRows = (storeWidth * storeHeight) >= 60 ? 2 : 1
       // Borda interna da ilha (borda direita da fileira mais profunda na loja)
-      const islandHighX = ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
+      const islandHighX = storeLeft + ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
       const gondolaXStart = islandHighX + minCorridor
       placeVerticalLayoutGondolas(gondolaXStart, balcaoX - minCorridor, gondolaReserveTop)
 
       if (gondolaReserveTop) {
         const spaceMinX = gondolaXStart + STANDARD_PASSAGE_WIDTH + minCorridor
         const spaceMaxX = balcaoX - minCorridor
-        const spaceMinY = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMinY = storeTop + WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
         const spaceMaxY = gondolaReserveTop
 
         fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, true)
       }
     }
 
-    centralMinX = minCorridor
+    centralMinX = storeLeft + minCorridor
     centralMaxX = balcaoX - minCorridor
   }
 
