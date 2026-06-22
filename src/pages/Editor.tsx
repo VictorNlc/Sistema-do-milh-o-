@@ -239,19 +239,7 @@ export default function Editor() {
           <span className="tb-name" style={{ color: '#FCD34D', fontWeight: 800 }}>Projefarma</span>
         </button>
 
-        <div className="tb-sep desktop-only" />
 
-        <div className="tb-menu desktop-only" style={{ display: 'flex', gap: '16px', marginLeft: '8px' }}>
-          {['File', 'Edit', 'Objects', 'Views', 'Help'].map(m => (
-            <span key={m} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontWeight: 700, cursor: 'pointer' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'white')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.45)')}>
-              {m}
-            </span>
-          ))}
-        </div>
-
-        <div className="tb-sep desktop-only" />
 
         <div className="tb-title desktop-only" style={{ fontSize: '12px', fontWeight: 700, color: 'white', letterSpacing: '-0.01em' }}>
           {store.layoutName || 'New Pharmacy Layout'}
