@@ -282,6 +282,19 @@ export default function Editor() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Visualizar 3D</span>
           </button>
+          <button 
+            id="btn-topbar-floorplan" 
+            className="tb-btn" 
+            onClick={() => setShowFloorPlanReader(true)}
+            style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#34d399' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span>Planta Baixa (IA)</span>
+          </button>
           <button id="btn-save" className="tb-btn" onClick={handleSave}>
             <I.Save />
             <span className="desktop-only">Salvar</span>
@@ -478,7 +491,7 @@ export default function Editor() {
 
         {/* Left Sidebar (Catalog) */}
         <aside className="editor-sidebar-left">
-          <ItemLibrary />
+          <ItemLibrary onOpenFloorPlanReader={() => setShowFloorPlanReader(true)} />
         </aside>
 
         {/* Canvas */}
@@ -638,7 +651,13 @@ export default function Editor() {
         
         {activeMobileTab === 'library' && (
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <ItemLibrary onItemAdded={() => setActiveMobileTab('layout')} />
+            <ItemLibrary 
+              onItemAdded={() => setActiveMobileTab('layout')} 
+              onOpenFloorPlanReader={() => {
+                setShowFloorPlanReader(true)
+                setActiveMobileTab('layout')
+              }} 
+            />
           </div>
         )}
 
