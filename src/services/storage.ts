@@ -216,8 +216,10 @@ export function syncLayoutToSupabase(layout: SavedLayout): void {
     layoutId: layout.layoutId || null
   }
 
-  supabase.from('layouts')
-    .upsert(dbData)
+  Promise.resolve(
+    supabase.from('layouts')
+      .upsert(dbData)
+  )
     .then(({ error }) => {
       if (error) {
         console.warn('⚠️ Erro ao sincronizar layout com o Supabase:', error.message)
@@ -233,9 +235,11 @@ export function syncLayoutToSupabase(layout: SavedLayout): void {
 export function deleteLayoutFromSupabase(id: string): void {
   if (!supabase || !isSupabaseConfigured) return
 
-  supabase.from('layouts')
-    .delete()
-    .eq('id', id)
+  Promise.resolve(
+    supabase.from('layouts')
+      .delete()
+      .eq('id', id)
+  )
     .then(({ error }) => {
       if (error) {
         console.warn('⚠️ Erro ao deletar layout no Supabase:', error.message)
@@ -268,8 +272,10 @@ export function syncAppointmentToSupabase(appointment: Appointment): void {
     updatedAt: appointment.updatedAt || null
   }
 
-  supabase.from('appointments')
-    .upsert(dbData)
+  Promise.resolve(
+    supabase.from('appointments')
+      .upsert(dbData)
+  )
     .then(({ error }) => {
       if (error) {
         console.warn('⚠️ Erro ao sincronizar agendamento com o Supabase:', error.message)
