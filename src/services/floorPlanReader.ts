@@ -10,6 +10,7 @@ export function isApiKeyConfigured(): boolean {
 }
 
 export interface FloorPlanData {
+  analysis?: string
   storeWidth: number
   storeHeight: number
   entrance: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null
@@ -79,9 +80,10 @@ Você deve identificar na imagem:
 4. Pilares estruturais (pillars): lista de posições centralizadas (x, y) dos pilares que atrapalham o layout interno.
 5. Divisões internas ou salas fechadas (obstacles): como banheiros, consultórios, salas de injetáveis, copa ou paredes internas que já existam. Indicar para cada um: o nome ('Sala de Injeção', 'Parede Divisória', etc.), as coordenadas (x, y) do canto superior esquerdo do obstáculo, sua largura, sua profundidade/altura física e o ângulo de rotação (normalmente 0, 90, 180 ou 270).
 
-Responda APENAS com um objeto JSON válido, sem qualquer texto explicativo, sem markdown de bloco de código (\`\`\`json ... \`\`\`). A resposta deve obedecer estritamente a esta estrutura:
+Responda APENAS com um objeto JSON válido. A resposta deve obedecer estritamente a esta estrutura:
 
 {
+  "analysis": "Explicação detalhada dos elementos visíveis, escala/cotas detectadas na imagem e o raciocínio passo a passo para calcular as coordenadas das divisórias e portas.",
   "storeWidth": 10.0,
   "storeHeight": 12.0,
   "entrance": { "x": 5.0, "y": 12.0, "orientation": "S" },
@@ -126,7 +128,8 @@ Tenha extrema cautela para garantir que as coordenadas fiquem consistentes e den
             ]
           }
         ],
-        temperature: 0.1, // temperatura baixa para maior exatidão no formato JSON
+        response_format: { type: 'json_object' },
+        temperature: 0.0, // temperatura 0 para máxima consistência e determinação
         max_tokens: 1500,
       }),
       signal: controller.signal,

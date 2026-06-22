@@ -8,3 +8,9 @@ export const CESTAO_SIZE = 0.40
 export const FRALDA_WIDTH = 0.807
 export const FRALDA_DEPTH = 0.40
 export const ENTRANCE_ISLAND_OFFSET = 1.20
+/**
+ * Folga de segurança entre qualquer módulo e a face interna das paredes
+ * (externas e divisórias internas). Garante que os móveis nunca fiquem
+ * "em cima" das paredes e que sempre exista um respiro visível.
+ */
+export const WALL_GAP = 0.00

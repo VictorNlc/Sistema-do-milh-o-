@@ -9,6 +9,7 @@ import {
   FRALDA_WIDTH,
   FRALDA_DEPTH,
   ENTRANCE_ISLAND_OFFSET,
+  WALL_GAP,
 } from '../config/layoutDimensions';
 // ============================================
 // AI Layout Assistant — Rule-based + Layouts de Referência (SketchUp)
@@ -198,10 +199,12 @@ export async function generateAILayout(
   const generatedItems: Partial<CanvasItem>[] = []
 
   // 1. Calcular o "salão de vendas" útil dinamicamente com base em salas e divisórias
-  let storeLeft = 0
-  let storeRight = storeWidth
-  let storeTop = 0
-  let storeBottom = storeHeight
+  // Recua WALL_GAP em todas as paredes para que os módulos nunca fiquem colados/por
+  // cima das paredes (a folga é propagada para todas as fileiras encostadas).
+  let storeLeft = WALL_GAP
+  let storeRight = storeWidth - WALL_GAP
+  let storeTop = WALL_GAP
+  let storeBottom = storeHeight - WALL_GAP
 
   // Filtrar as salas (obstáculos que não são pilares nem portas)
   const rooms = existingObstacles.filter(o => 
@@ -240,12 +243,12 @@ export async function generateAILayout(
 
   // Garantir limites mínimos razoáveis para a área central
   if (storeRight - storeLeft < 3.0) {
-    storeLeft = 0
-    storeRight = storeWidth
+    storeLeft = WALL_GAP
+    storeRight = storeWidth - WALL_GAP
   }
   if (storeBottom - storeTop < 3.0) {
-    storeTop = 0
-    storeBottom = storeHeight
+    storeTop = WALL_GAP
+    storeBottom = storeHeight - WALL_GAP
   }
 
   // Helper para verificar colisões com pilares/obstáculos/portas e itens já gerados
@@ -264,11 +267,13 @@ export async function generateAILayout(
 
       const boxB = getRotatedBounds(ox, oy, ow, oh, oRot)
 
+      // Mantém a folga WALL_GAP também das divisórias/obstáculos internos
+      // (mesma regra das paredes externas), para o layout contorná-los.
       return (
-        boxA.x < boxB.x + boxB.width + 0.05 &&
-        boxA.x + boxA.width > boxB.x - 0.05 &&
-        boxA.y < boxB.y + boxB.height + 0.05 &&
-        boxA.y + boxA.height > boxB.y - 0.05
+        boxA.x < boxB.x + boxB.width + WALL_GAP &&
+        boxA.x + boxA.width > boxB.x - WALL_GAP &&
+        boxA.y < boxB.y + boxB.height + WALL_GAP &&
+        boxA.y + boxA.height > boxB.y - WALL_GAP
       )
     })
 
@@ -334,7 +339,7 @@ export async function generateAILayout(
       0.15,
       '#FCA5A5',
       '#991B1B',
-      { rotation: 0 }
+      { rotation: 0, isDoor: true, isEmergency: true }
     )
     generatedItems.push(newExt)
     exit = newExt
@@ -880,11 +885,15 @@ export async function generateAILayout(
 
     const placeOne = (item: WallSeqItem, val: number) => {
       const d = item.depth ?? WALL_SHELF_DEPTH
+      // Âncora perpendicular à parede. Com o pivô de rotação do Konva no canto
+      // superior-esquerdo, itens com rot 90 se estendem para -x e rot 180 para -y;
+      // por isso somamos a profundidade nesses casos para que a face fique encostada
+      // na parede (com a folga já embutida em storeLeft/storeBottom) e não por cima dela.
       let adjusted = fixedCoord
-      if (rot === 90) adjusted = storeLeft
+      if (rot === 90) adjusted = storeLeft + d
       else if (rot === 270) adjusted = storeRight - d
       else if (rot === 0) adjusted = storeTop
-      else if (rot === 180) adjusted = storeBottom - d
+      else if (rot === 180) adjusted = storeBottom
       const itemVal = getPos(val, item.w, rot, sign)
       const posX = axis === 'x' ? itemVal : adjusted
       const posY = axis === 'y' ? itemVal : adjusted
@@ -1046,7 +1055,7 @@ export async function generateAILayout(
       // rot=180 em (checkoutX-STANDARD_PASSAGE_WIDTH+PAINEL_CANAL.w, storeHeight).
       generatedItems.push(makeItem(
         `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
-        checkoutX - STANDARD_PASSAGE_WIDTH + PAINEL_CANAL.w, storeHeight, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 180, isWallItem: true },
+        checkoutX - STANDARD_PASSAGE_WIDTH + PAINEL_CANAL.w, storeBottom, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 180, isWallItem: true },
       ))
     } else if (rxWall === 'Bottom') {
       // Entrada em y=0 (parede norte). Painel grudado nessa parede, atrás do checkout L.
@@ -1054,7 +1063,7 @@ export async function generateAILayout(
       // rot=0 em (checkoutX-STANDARD_PASSAGE_WIDTH, 0): ocupa x=checkoutX-1.2..checkoutX-0.393, y=0..0.26.
       generatedItems.push(makeItem(
         `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
-        checkoutX - STANDARD_PASSAGE_WIDTH, 0, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 0, isWallItem: true },
+        checkoutX - STANDARD_PASSAGE_WIDTH, storeTop, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 0, isWallItem: true },
       ))
     } else if (rxWall === 'Left') {
       // Entrada em x=storeWidth (parede leste). Painel grudado nessa parede, atrás do checkout L.
@@ -1063,7 +1072,7 @@ export async function generateAILayout(
       const painelY = checkoutY - STANDARD_PASSAGE_WIDTH
       generatedItems.push(makeItem(
         `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
-        storeWidth, painelY, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 90, isWallItem: true },
+        storeRight, painelY, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 90, isWallItem: true },
       ))
     } else { // Right — entrada em x=0 (parede oeste)
       // Checkout rot=90 ocupa y=checkoutY..checkoutY+1.2. Painel em y=checkoutY..checkoutY+0.807.
@@ -1071,7 +1080,7 @@ export async function generateAILayout(
       const painelY = checkoutY
       generatedItems.push(makeItem(
         `catalog-141${lineSuffix}`, 'Painel Canaletado', '🌸',
-        WALL_SHELF_DEPTH, painelY, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 90, isWallItem: true },
+        storeLeft + WALL_SHELF_DEPTH, painelY, WALL_SHELF_DEPTH, PAINEL_CANAL.w, '#FFF1F7', '#DB2777', { rotation: 90, isWallItem: true },
       ))
     }
   }
@@ -1092,11 +1101,11 @@ export async function generateAILayout(
     const eh = entrance.height ?? 0.15
 
     if (entranceWall === 'Bottom') {
-      const wallY = storeHeight
+      const wallY = storeBottom
 
       // Lado Direito (Maior X) - Começa no canto direito e vai em direção à porta
       for (let i = 0; i < 2; i++) {
-        const pivotX = storeWidth - i * vitrineW
+        const pivotX = storeRight - i * vitrineW
         const startX = pivotX - vitrineW
         if (startX >= ex + ew + gap) {
           if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 180)) {
@@ -1112,7 +1121,7 @@ export async function generateAILayout(
 
       // Lado Esquerdo (Menor X) - Começa no canto esquerdo e vai em direção à porta (apenas se houver espaço livre)
       for (let i = 0; i < 2; i++) {
-        const pivotX = (i + 1) * vitrineW
+        const pivotX = storeLeft + (i + 1) * vitrineW
         const startX = pivotX - vitrineW
         if (pivotX <= ex - gap) {
           if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 180)) {
@@ -1126,11 +1135,11 @@ export async function generateAILayout(
         }
       }
     } else if (entranceWall === 'Top') {
-      const wallY = 0
+      const wallY = storeTop
 
       // Lado Direito (Maior X) - Começa no canto direito e vai em direção à porta
       for (let i = 0; i < 2; i++) {
-        const pivotX = storeWidth - (i + 1) * vitrineW
+        const pivotX = storeRight - (i + 1) * vitrineW
         if (pivotX >= ex + ew + gap) {
           if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 0)) {
             generatedItems.push(makeItem(
@@ -1145,7 +1154,7 @@ export async function generateAILayout(
 
       // Lado Esquerdo (Menor X) - Começa no canto esquerdo e vai em direção à porta (apenas se houver espaço livre)
       for (let i = 0; i < 2; i++) {
-        const pivotX = i * vitrineW
+        const pivotX = storeLeft + i * vitrineW
         const endX = pivotX + vitrineW
         if (endX <= ex - gap) {
           if (!collidesWithObstacle(pivotX, wallY, vitrineW, vitrineH, 0)) {
@@ -1159,11 +1168,11 @@ export async function generateAILayout(
         }
       }
     } else if (entranceWall === 'Left') {
-      const wallX = WALL_SHELF_DEPTH
+      const wallX = storeLeft + WALL_SHELF_DEPTH
 
       // Lado Direito (Maior Y) - Começa no canto inferior e vai em direção à porta
       for (let i = 0; i < 2; i++) {
-        const pivotY = storeHeight - (i + 1) * vitrineW
+        const pivotY = storeBottom - (i + 1) * vitrineW
         if (pivotY >= ey + eh + gap) {
           if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 90)) {
             generatedItems.push(makeItem(
@@ -1178,7 +1187,7 @@ export async function generateAILayout(
 
       // Lado Esquerdo (Menor Y) - Começa no canto superior e vai em direção à porta (apenas se houver espaço livre)
       for (let i = 0; i < 2; i++) {
-        const pivotY = i * vitrineW
+        const pivotY = storeTop + i * vitrineW
         const endY = pivotY + vitrineW
         if (endY <= ey - gap) {
           if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 90)) {
@@ -1192,11 +1201,11 @@ export async function generateAILayout(
         }
       }
     } else if (entranceWall === 'Right') {
-      const wallX = storeWidth - WALL_SHELF_DEPTH
+      const wallX = storeRight - WALL_SHELF_DEPTH
 
       // Lado Direito (Maior Y) - Começa no canto inferior e vai em direção à porta
       for (let i = 0; i < 2; i++) {
-        const pivotY = storeHeight - i * vitrineW
+        const pivotY = storeBottom - i * vitrineW
         const startY = pivotY - vitrineW
         if (startY >= ey + eh + gap) {
           if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 270)) {
@@ -1212,7 +1221,7 @@ export async function generateAILayout(
 
       // Lado Esquerdo (Menor Y) - Começa no canto superior e vai em direção à porta (apenas se houver espaço livre)
       for (let i = 0; i < 2; i++) {
-        const pivotY = (i + 1) * vitrineW
+        const pivotY = storeTop + (i + 1) * vitrineW
         const startY = pivotY - vitrineW
         if (pivotY <= ey - gap) {
           if (!collidesWithObstacle(wallX, pivotY, vitrineW, vitrineH, 270)) {
@@ -2010,17 +2019,17 @@ export async function generateAILayout(
       // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
       //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
       // Braço perpendicular (encosta em x=storeWidth, entra na loja)
-      if (!collidesWithObstacle(storeWidth - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
+      if (!collidesWithObstacle(storeRight - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          storeWidth - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
+          storeRight - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
       // Braço paralelo — tocando o perpendicular só no canto
-      if (!collidesWithObstacle(storeWidth - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
+      if (!collidesWithObstacle(storeRight - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          storeWidth - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
+          storeRight - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
 
@@ -2060,9 +2069,9 @@ export async function generateAILayout(
       placeCheckoutSurroundings(storeWidth - STANDARD_PASSAGE_WIDTH, checkoutY, 270, placeOnLeft, 'Left')
 
       // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA
-      if (!collidesWithObstacle(storeWidth - 1.0 - BALCAO_DEPTH, checkoutY - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+      if (!collidesWithObstacle(storeRight - 1.0 - BALCAO_DEPTH, checkoutY - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, 0)) {
         generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
-          storeWidth - 1.0 - BALCAO_DEPTH, checkoutY - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          storeRight - 1.0 - BALCAO_DEPTH, checkoutY - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
       }
     }
 
@@ -2357,17 +2366,17 @@ export async function generateAILayout(
       // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
       //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
       // Braço perpendicular (encosta em x=0, entra na loja)
-      if (!collidesWithObstacle(0, checkoutY, 1.0, BALCAO_DEPTH, 0)) {
+      if (!collidesWithObstacle(storeLeft, checkoutY, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          0, checkoutY, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
+          storeLeft, checkoutY, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
       // Braço paralelo — tocando o perpendicular só no canto
-      if (!collidesWithObstacle(1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
+      if (!collidesWithObstacle(storeLeft + 1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
           `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
-          1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
+          storeLeft + 1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
 
@@ -2407,9 +2416,9 @@ export async function generateAILayout(
       placeCheckoutSurroundings(STANDARD_PASSAGE_WIDTH, checkoutY, 90, placeOnLeft, 'Right')
 
       // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA
-      if (!collidesWithObstacle(1.0, checkoutY, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+      if (!collidesWithObstacle(storeLeft + 1.0, checkoutY, CESTAO_SIZE, CESTAO_SIZE, 0)) {
         generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
-          1.0, checkoutY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          storeLeft + 1.0, checkoutY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
       }
     }
 

@@ -139,12 +139,12 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         <Rect
           width={w} height={h}
           fill="#1e293b"
-          stroke={isSelected ? '#10B981' : '#334155'}
+          stroke={isSelected ? '#C5A028' : '#334155'}
           strokeWidth={isSelected ? 2 : 1.2}
           cornerRadius={1.5}
           shadowEnabled={!isDragging}
           shadowBlur={isSelected ? 10 : 2}
-          shadowColor={isSelected ? '#10B981' : 'rgba(0,0,0,0.15)'}
+          shadowColor={isSelected ? '#C5A028' : 'rgba(0,0,0,0.15)'}
         />
         <Line points={[0, 0, w, h]} stroke="#475569" strokeWidth={1} opacity={0.4} />
         <Line points={[w, 0, 0, h]} stroke="#475569" strokeWidth={1} opacity={0.4} />
@@ -153,7 +153,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
             x={w + 6} y={2}
             text={`${item.width}m × ${item.height}m`}
             fontSize={9}
-            fill="#10B981"
+            fill="#C5A028"
             fontStyle="600"
           />
         )}
@@ -164,7 +164,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   // 2. DOOR (Sliding Door Style)
   if (isDoor) {
     const isEntranceDoor = item.name?.toLowerCase().includes('entrada') || item.id?.includes('entrada')
-    const strokeColor = item.isEmergency ? '#EF4444' : '#10B981'
+    const strokeColor = item.isEmergency ? '#EF4444' : '#0B3D2E'
 
     return (
       <Group
@@ -198,9 +198,9 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         {/* CAD Entrance Arrow if it is the entrance door */}
         {isEntranceDoor ? (
           <>
-            {/* Neon Green Arrow pointing up (into the store) */}
-            <Line points={[w / 2, 12, w / 2, -12]} stroke="#10b981" strokeWidth={2.5} lineCap="round" opacity={0.85} />
-            <Line points={[w / 2 - 4, -8, w / 2, -12, w / 2 + 4, -8]} stroke="#10b981" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+            {/* Arrow pointing up (into the store) */}
+            <Line points={[w / 2, 12, w / 2, -12]} stroke="#0B3D2E" strokeWidth={2.5} lineCap="round" opacity={0.85} />
+            <Line points={[w / 2 - 4, -8, w / 2, -12, w / 2 + 4, -8]} stroke="#0B3D2E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
             {/* Green label badge */}
             <Text
               x={w / 2 - 30}
@@ -209,7 +209,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
               text="ENTRADA"
               fontSize={8}
               fontStyle="bold"
-              fill="#10b981"
+              fill="#0B3D2E"
               align="center"
             />
           </>
@@ -230,7 +230,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
             x={w + 6} y={2}
             text={`${item.width}m`}
             fontSize={9}
-            fill="#10B981"
+            fill="#C5A028"
             fontStyle="bold"
           />
         )}
@@ -241,7 +241,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   // 2.5. CHECKOUT L (L-shaped checkout)
   const isCheckoutL = item.itemId?.includes('catalog-131') || item.name?.toLowerCase().includes('checkout em l') || item.name?.toLowerCase().includes('checkout l')
   if (isCheckoutL) {
-    const strokeBorderColor = isSelected ? '#10B981' : (item.strokeColor || '#2563EB')
+    const strokeBorderColor = isSelected ? '#C5A028' : (item.strokeColor || '#2563EB')
     const strokeBorderWidth = isSelected ? 2 : 1.2
     const fill = item.fillColor || '#DBEAFE' // Restore distinctive light blue color
     const t = 0.4 * PIXELS_PER_METER
@@ -293,7 +293,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
           strokeWidth={strokeBorderWidth}
           shadowEnabled={!isDragging}
           shadowBlur={isSelected ? 12 : 2}
-          shadowColor={isSelected ? '#10B981' : 'rgba(15, 23, 42, 0.05)'}
+          shadowColor={isSelected ? '#C5A028' : 'rgba(15, 23, 42, 0.05)'}
           shadowOffsetY={isSelected ? 2 : 1}
         />
 
@@ -342,8 +342,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
           y={badgeYL}
           width={badgeWL}
           height={badgeHL}
-          fill="#0c130f"
-          stroke={isSelected ? '#10B981' : (item.strokeColor || '#2563EB')}
+          fill="#0B3D2E"
+          stroke={isSelected ? '#C5A028' : (item.strokeColor || '#2563EB')}
           strokeWidth={1}
           cornerRadius={6.5}
           shadowBlur={3}
@@ -373,7 +373,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
             text={`${item.width}m × ${item.height}m`}
             fontSize={8.5}
             fontStyle="bold"
-            fill="#10B981"
+            fill="#C5A028"
             align="center"
           />
         )}
@@ -381,12 +381,12 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         {/* Selection handles */}
         {isSelected && (
           <>
-            <Circle x={0} y={0} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-            <Circle x={w} y={0} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-            <Circle x={w} y={t} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-            <Circle x={t} y={t} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-            <Circle x={t} y={h} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-            <Circle x={0} y={h} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+            <Circle x={0} y={0} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+            <Circle x={w} y={0} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+            <Circle x={w} y={t} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+            <Circle x={t} y={t} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+            <Circle x={t} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+            <Circle x={0} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
           </>
         )}
       </Group>
@@ -394,13 +394,13 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   }
 
   // 3. GENERAL RETAIL ITEMS
-  const strokeBorderColor = isSelected ? '#10B981' : (item.strokeColor || '#475569')
+  const strokeBorderColor = isSelected ? '#C5A028' : (item.strokeColor || '#475569')
   const strokeBorderWidth = isSelected ? 2 : 1.2
   const cRadius = isRoom ? 5 : (isRound ? Math.min(w, h) / 2 : 3.5)
 
   // Use the highly visible distinctive colors of the catalog (original colors)
   const dynamicFill = item.fillColor || '#E2E8F0'
-  const dynamicStroke = isSelected ? '#10B981' : (item.strokeColor || '#475569')
+  const dynamicStroke = isSelected ? '#C5A028' : (item.strokeColor || '#475569')
 
   const labelText = getDisplayLabel()
   const charCount = labelText.length
@@ -433,7 +433,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         cornerRadius={cRadius}
         shadowEnabled={!isDragging}
         shadowBlur={isSelected ? 12 : 2}
-        shadowColor={isSelected ? '#10B981' : 'rgba(15, 23, 42, 0.05)'}
+        shadowColor={isSelected ? '#C5A028' : 'rgba(15, 23, 42, 0.05)'}
         shadowOffsetY={isSelected ? 2 : 1}
       />
 
@@ -673,8 +673,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
             y={badgeY}
             width={badgeW}
             height={badgeH}
-            fill="#0c130f" // dark slate background
-            stroke={isSelected ? '#10b981' : (item.strokeColor || '#475569')}
+            fill="#0B3D2E" // dark green background
+            stroke={isSelected ? '#C5A028' : (item.strokeColor || '#475569')}
             strokeWidth={1}
             cornerRadius={6.5}
             shadowBlur={4}
@@ -721,7 +721,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
           text={`${item.width}m × ${item.height}m`}
           fontSize={8.5}
           fontStyle="bold"
-          fill="#10B981"
+          fill="#C5A028"
           align="center"
         />
       )}
@@ -729,10 +729,10 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       {/* Corner selection handles */}
       {isSelected && (
         <>
-          <Circle x={0} y={0} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-          <Circle x={w} y={0} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-          <Circle x={0} y={h} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
-          <Circle x={w} y={h} radius={3.5} fill="#10B981" stroke="white" strokeWidth={1} />
+          <Circle x={0} y={0} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+          <Circle x={w} y={0} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+          <Circle x={0} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+          <Circle x={w} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
         </>
       )}
     </Group>

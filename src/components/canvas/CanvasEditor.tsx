@@ -8,10 +8,10 @@ import { generateHeatmap, heatColor } from '../../services/heatmapGenerator'
 import CustomerSimulationLayer from './CustomerSimulationLayer'
 import './CanvasEditor.css'
 
-const WALL_COLOR = '#27272a' // Dark slate structural walls
+const WALL_COLOR = '#0B3D2E' // Dark green structural walls
 const WALL_THICKNESS = 10
-const FLOOR_COLOR = '#080c09'  // Deep dark blueprint green-charcoal
-const FLOOR_SHADOW = 'rgba(0,0,0,0.40)'
+const FLOOR_COLOR = '#ffffff'  // Pure white floor like SketchUp
+const FLOOR_SHADOW = 'rgba(11, 61, 46, 0.12)'
 
 interface CorridorGap {
   id: string
@@ -293,7 +293,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         <Line
           key={`v${x}`}
           points={[x, 0, x, canvasH]}
-          stroke="rgba(58, 230, 160, 0.12)"
+          stroke="rgba(197, 160, 40, 0.18)"
           strokeWidth={0.7}
         />
       )
@@ -302,7 +302,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         <Line
           key={`h${y}`}
           points={[0, y, canvasW, y]}
-          stroke="rgba(58, 230, 160, 0.12)"
+          stroke="rgba(197, 160, 40, 0.18)"
           strokeWidth={0.7}
         />
       )
@@ -314,9 +314,9 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     if (!showMeasures) return []
     const marks = []
     for (let x = 0; x <= storeWidth; x++)
-      marks.push(<Text key={`rx${x}`} x={x * PIXELS_PER_METER - 8} y={-18} text={`${x}`} fontSize={8} fill="rgba(58, 230, 160, 0.75)" fontStyle="600" />)
+      marks.push(<Text key={`rx${x}`} x={x * PIXELS_PER_METER - 8} y={-18} text={`${x}`} fontSize={8} fill="#0B3D2E" fontStyle="600" opacity={0.8} />)
     for (let y = 0; y <= storeHeight; y++)
-      marks.push(<Text key={`ry${y}`} x={-22} y={y * PIXELS_PER_METER - 5} text={`${y}`} fontSize={8} fill="rgba(58, 230, 160, 0.75)" fontStyle="600" />)
+      marks.push(<Text key={`ry${y}`} x={-22} y={y * PIXELS_PER_METER - 5} text={`${y}`} fontSize={8} fill="#0B3D2E" fontStyle="600" opacity={0.8} />)
     return marks
   }
 
@@ -528,23 +528,23 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           placedLabels.push({ x: foundX - 18, y: pY - 5, w: 36, h: 10 })
           elements.push(
             <Group key={`corridor-x-${gap.id}`}>
-              <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
-              <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-              <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+              <Line points={[pX1, pY, pX2, pY]} stroke="#C5A028" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
+              <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#C5A028" strokeWidth={1} opacity={0.65} />
+              <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#C5A028" strokeWidth={1} opacity={0.65} />
               <Rect
-                x={foundX - 18} y={pY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9}
+                x={foundX - 18} y={pY - 5} width={36} height={10} fill="#ffffff" cornerRadius={2} stroke="#C5A028" strokeWidth={0.5} opacity={0.9}
                 onClick={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, foundX, pY) }}
                 onTap={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, foundX, pY) }}
                 onMouseEnter={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
                 onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default' }}
               />
-              <Text listening={false} x={foundX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
+              <Text listening={false} x={foundX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#0B3D2E" align="center" />
             </Group>
           )
         } else {
           elements.push(
             <Group key={`corridor-x-${gap.id}`}>
-              <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.4} />
+              <Line points={[pX1, pY, pX2, pY]} stroke="#C5A028" strokeWidth={1} dash={[3, 3]} opacity={0.4} />
             </Group>
           )
         }
@@ -571,23 +571,23 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           placedLabels.push({ x: pX - 18, y: foundY - 5, w: 36, h: 10 })
           elements.push(
             <Group key={`corridor-y-${gap.id}`}>
-              <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
-              <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-              <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
+              <Line points={[pX, pY1, pX, pY2]} stroke="#C5A028" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
+              <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#C5A028" strokeWidth={1} opacity={0.65} />
+              <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#C5A028" strokeWidth={1} opacity={0.65} />
               <Rect
-                x={pX - 18} y={foundY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9}
+                x={pX - 18} y={foundY - 5} width={36} height={10} fill="#ffffff" cornerRadius={2} stroke="#C5A028" strokeWidth={0.5} opacity={0.9}
                 onClick={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, pX, foundY) }}
                 onTap={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, pX, foundY) }}
                 onMouseEnter={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
                 onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default' }}
               />
-              <Text listening={false} x={pX - 18} y={foundY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
+              <Text listening={false} x={pX - 18} y={foundY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#0B3D2E" align="center" />
             </Group>
           )
         } else {
           elements.push(
             <Group key={`corridor-y-${gap.id}`}>
-              <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.4} />
+              <Line points={[pX, pY1, pX, pY2]} stroke="#C5A028" strokeWidth={1} dash={[3, 3]} opacity={0.4} />
             </Group>
           )
         }
@@ -664,13 +664,13 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           <Line points={[canvasW, -28, canvasW, -16]} stroke="#71717a" strokeWidth={1.2} />
           <Line points={[5, -25, 0, -22, 5, -19]} stroke="#71717a" strokeWidth={1} />
           <Line points={[canvasW - 5, -25, canvasW, -22, canvasW - 5, -19]} stroke="#71717a" strokeWidth={1} />
-          <Rect x={canvasW / 2 - 35} y={-28} width={70} height={12} fill="#080c09" />
+          <Rect x={canvasW / 2 - 35} y={-28} width={70} height={12} fill="#FCF9F2" />
           <Text
             x={canvasW / 2 - 35} y={-26}
             width={70}
             text={`${storeWidth.toFixed(2).replace('.', ',')} m`}
             fontSize={9} fontStyle="bold"
-            fill="#ffffff"
+            fill="#0B3D2E"
             align="center"
           />
 
@@ -680,17 +680,17 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           <Line points={[canvasW + 16, canvasH, canvasW + 28, canvasH]} stroke="#71717a" strokeWidth={1.2} />
           <Line points={[canvasW + 19, 5, canvasW + 22, 0, canvasW + 25, 5]} stroke="#71717a" strokeWidth={1} />
           <Line points={[canvasW + 19, canvasH - 5, canvasW + 22, canvasH, canvasW + 25, canvasH - 5]} stroke="#71717a" strokeWidth={1} />
-          <Rect x={canvasW + 16} y={canvasH / 2 - 35} width={12} height={70} fill="#080c09" />
+          <Rect x={canvasW + 16} y={canvasH / 2 - 35} width={12} height={70} fill="#FCF9F2" />
           <Text
             x={canvasW + 29} y={canvasH / 2 - 35}
             text={`${storeHeight.toFixed(2).replace('.', ',')} m`}
             fontSize={9} fontStyle="bold"
-            fill="#ffffff"
+            fill="#0B3D2E"
             rotation={90}
           />
 
           {/* North indicator */}
-          <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(255, 255, 255, 0.45)" fontStyle="bold" />
+          <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(11, 61, 46, 0.6)" fontStyle="bold" />
         </Layer>
 
         {/* Heatmap overlay — only rendered when showHeatmap is true */}

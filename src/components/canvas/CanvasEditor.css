@@ -5,10 +5,7 @@
   cursor: grab;
   touch-action: none; /* Critical for mobile pinch/pan */
   user-select: none;
-  background:
-    radial-gradient(ellipse at 20% 10%, rgba(16,185,129,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 90%, rgba(16,185,129,0.04) 0%, transparent 40%),
-    #050A08; /* Deep blueprint black */
+  background: #FCF9F2; /* Cream background like SketchUp container */
 }
 
 .ce-wrap:active { cursor: grabbing; }
