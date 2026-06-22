@@ -433,7 +433,7 @@ Por favor, escreva uma análise rápida, extremamente profissional e simpática 
       {/* Header */}
       <div className="aic-head">
         <div className="aic-head-left">
-          <div className="aic-avatar" style={{ background: 'linear-gradient(135deg, #107C3F 0%, #062C16 100%)', boxShadow: '0 4px 10px rgba(16, 124, 63, 0.3)' }}>🤖</div>
+          <div className="aic-avatar" style={{ background: 'linear-gradient(135deg, var(--green-500) 0%, var(--green-900) 100%)', boxShadow: '0 4px 10px rgba(16, 235, 122, 0.3)' }}>🤖</div>
           <div>
             <div className="aic-name">Projefarma AI Assistant</div>
             <div className="aic-status">
@@ -547,7 +547,7 @@ Por favor, escreva uma análise rápida, extremamente profissional e simpática 
             style={{ paddingLeft: '76px', height: '40px', background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
           />
         </div>
-        <button id="aic-send" className="aic-send" onClick={() => send(input)} disabled={!input.trim() || typing} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#107C3F' }}>
+        <button id="aic-send" className="aic-send" onClick={() => send(input)} disabled={!input.trim() || typing} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)' }}>
           {/* Paper plane icon */}
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>

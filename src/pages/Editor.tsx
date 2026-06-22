@@ -9,6 +9,8 @@ import { useCanvasStore } from '../store/canvasStore'
 import { saveLayout } from '../services/storage'
 import { toast } from '../store/toastStore'
 import BudgetPanel from '../components/canvas/BudgetPanel'
+import ErgonomyPanel from '../components/canvas/ErgonomyPanel'
+import { exportToCSV, exportToXLSX } from '../services/excelExport'
 import './Editor.css'
 
 const ThreeDViewer = lazy(() => import('../components/canvas/ThreeDViewer'))
@@ -51,11 +53,14 @@ export default function Editor() {
   const [searchParams] = useSearchParams()
   const stageRef = useRef<Konva.Stage | null>(null)
 
-  const [mobilePanel, setMobilePanel] = useState<'library' | 'ai' | null>(null)
+  const [activeMobileTab, setActiveMobileTab] = useState<'layout' | 'library' | 'ai' | 'budget'>('layout')
   const [showSettings, setShowSettings] = useState(false)
   const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('ai')
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [show3D, setShow3D] = useState(false)
+  const [showHeatmap, setShowHeatmap] = useState(false)
+  const [showSimulation, setShowSimulation] = useState(false)
+  const [showAuditoria, setShowAuditoria] = useState(false)
 
   const store = useCanvasStore()
   const {
@@ -128,7 +133,23 @@ export default function Editor() {
       setShowExportOptions(false)
     } catch { toast.error('Erro ao exportar PDF') }
   }
-  const toggleMobile = (panel: 'library' | 'ai') => setMobilePanel(p => p === panel ? null : panel)
+
+  const handleExportCSV = () => {
+    try {
+      exportToCSV(items, store.layoutName || 'Meu Layout')
+      toast.success('Orçamento CSV baixado!')
+      setShowExportOptions(false)
+    } catch { toast.error('Erro ao exportar CSV') }
+  }
+
+  const handleExportXLSX = async () => {
+    try {
+      await exportToXLSX(items, store.layoutName || 'Meu Layout', storeWidth, storeHeight)
+      toast.success('Orçamento Excel gerado!')
+      setShowExportOptions(false)
+    } catch { toast.error('Erro ao exportar Excel') }
+  }
+  // Tab helpers
 
   return (
     <div className="editor-root">
@@ -227,10 +248,34 @@ export default function Editor() {
                     onClick={handleExportPDF}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg> Relatório PDF
                   </button>
+                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
+                    onClick={handleExportCSV}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg> Orçamento CSV
+                  </button>
+                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
+                    onClick={handleExportXLSX}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg> Planilha Excel (XLSX)
+                  </button>
                 </div>
               </>
             )}
           </div>
+          <button id="btn-projects" className="tb-btn" onClick={() => navigate('/meus-projetos')}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span>Projetos</span>
+          </button>
+          <button id="btn-heatmap" className={`tb-btn ${showHeatmap ? 'active' : ''}`} onClick={() => setShowHeatmap(!showHeatmap)} style={showHeatmap ? { background: 'rgba(239, 68, 68, 0.25)', borderColor: '#ef4444', color: '#fff' } : {}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M12 2c-4 0-7 3.3-7 7 0 3.3 2.7 6 6 8.5V22h2v-4.5c3.3-2.5 6-5.2 6-8.5 0-3.7-3-7-7-7z"/><path d="M12 11c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+            <span>{showHeatmap ? 'Ocultar Calor' : 'Mapa de Calor'}</span>
+          </button>
+          <button id="btn-simulation" className={`tb-btn ${showSimulation ? 'active' : ''}`} onClick={() => setShowSimulation(!showSimulation)} style={showSimulation ? { background: 'rgba(59, 130, 246, 0.25)', borderColor: '#3b82f6', color: '#fff' } : {}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>{showSimulation ? 'Parar Fluxo' : 'Simular Fluxo'}</span>
+          </button>
+          <button id="btn-auditoria" className={`tb-btn ${showAuditoria ? 'active' : ''}`} onClick={() => setShowAuditoria(!showAuditoria)} style={showAuditoria ? { background: 'rgba(16, 185, 129, 0.25)', borderColor: '#10b981', color: '#fff' } : {}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Auditoria</span>
+          </button>
           <button id="btn-3d" className="tb-btn" onClick={() => setShow3D(true)}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Visualizar 3D</span>
@@ -412,20 +457,20 @@ export default function Editor() {
       )}
 
       {/* ─── EDITOR BODY ─── */}
-      <div className="editor-body">
+      <div className="editor-body desktop-only">
 
         {/* Left Sidebar (Catalog) */}
-        <aside className="editor-sidebar-left desktop-only">
+        <aside className="editor-sidebar-left">
           <ItemLibrary />
         </aside>
 
         {/* Canvas */}
         <main className="editor-canvas">
-          <CanvasEditor stageRef={stageRef} />
+          <CanvasEditor stageRef={stageRef} showHeatmap={showHeatmap} showSimulation={showSimulation} />
         </main>
 
         {/* Right Sidebar (AI Assistant & Budget) */}
-        <aside className="editor-sidebar-right desktop-only">
+        <aside className="editor-sidebar-right">
           <div className="sb-tabs-right">
             <button id="tab-ai" className={`sb-tab-right ${rightPanel === 'ai' ? 'active' : ''}`}
               onClick={() => setRightPanel('ai')}>Assistente IA</button>
@@ -440,7 +485,7 @@ export default function Editor() {
 
         {/* Desktop props panel */}
         {selectedItem && (
-          <aside className="props-panel desktop-only">
+          <aside className="props-panel">
             <div className="props-head">
               <div className="props-head-swatch" style={{ background: selectedItem.fillColor || 'var(--surface-muted)' }}>
                 {getCategoryIcon(selectedItem.category)}
@@ -510,6 +555,86 @@ export default function Editor() {
               </div>
             </div>
           </aside>
+        )}
+      </div>
+
+      {/* ─── MOBILE SCREEN AREA ─── */}
+      <div className="mobile-content-area mobile-only">
+        {activeMobileTab === 'layout' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+            {/* Mobile zoom widget */}
+            <div className="mobile-top-zoom">
+              <button className="mt-zoom-btn" onClick={() => setScale(Math.max(0.2, scale / 1.2))}>−</button>
+              <span className="mt-zoom-val">{Math.round(scale * 100)}%</span>
+              <button className="mt-zoom-btn" onClick={() => setScale(Math.min(4, scale * 1.2))}>+</button>
+            </div>
+            
+            {/* Canvas */}
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+              <CanvasEditor stageRef={stageRef} showHeatmap={showHeatmap} showSimulation={showSimulation} />
+            </div>
+
+            {/* Mobile canvas controls row */}
+            <div className="mobile-canvas-actions">
+              <button className="mc-act-btn" onClick={undo} disabled={!canUndo()}>
+                <div className="mc-act-icon"><I.Undo /></div>
+                <span>Desfazer</span>
+              </button>
+              <button className="mc-act-btn" onClick={redo} disabled={!canRedo()}>
+                <div className="mc-act-icon"><I.Redo /></div>
+                <span>Refazer</span>
+              </button>
+              <button className="mc-act-btn" onClick={() => setShow3D(true)}>
+                <div className="mc-act-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </div>
+                <span>3D</span>
+              </button>
+              <button className="mc-act-btn" onClick={() => {
+                if (selectedItem) {
+                  // selection properties drawer will open automatically
+                } else {
+                  toast.info("Selecione um item no canvas")
+                }
+              }}>
+                <div className="mc-act-icon"><I.Layers /></div>
+                <span>Camadas</span>
+              </button>
+              <button className="mc-act-btn" onClick={toggleGrid}>
+                <div className="mc-act-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+                </div>
+                <span>Grade</span>
+              </button>
+            </div>
+
+            {/* Mobile save/schedule button */}
+            <div className="mobile-save-action">
+              <button className="btn btn-primary btn-lg btn-full" onClick={handleSchedule} style={{ background: '#10b981' }}>
+                <I.Cal />
+                <span>Salvar / Agendar</span>
+                <span style={{ marginLeft: 'auto' }}>▾</span>
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {activeMobileTab === 'library' && (
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <ItemLibrary onItemAdded={() => setActiveMobileTab('layout')} />
+          </div>
+        )}
+
+        {activeMobileTab === 'ai' && (
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <AiChat onClose={() => setActiveMobileTab('layout')} />
+          </div>
+        )}
+
+        {activeMobileTab === 'budget' && (
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <BudgetPanel />
+          </div>
         )}
       </div>
 
@@ -622,44 +747,38 @@ export default function Editor() {
 
       {/* ─── MOBILE BOTTOM NAV ─── */}
       <nav className="mobile-nav">
-        <button id="mnav-items" className={`mnav-btn ${mobilePanel === 'library' ? 'active' : ''}`}
-          onClick={() => toggleMobile('library')}>
+        <button id="mnav-layout" className={`mnav-btn ${activeMobileTab === 'layout' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('layout')}>
           <div className="mnav-icon"><I.Layers /></div>
-          <span className="mnav-label">Itens</span>
+          <span className="mnav-label">Layout</span>
         </button>
-        <button id="mnav-ai" className={`mnav-btn ${mobilePanel === 'ai' ? 'active' : ''}`}
-          onClick={() => toggleMobile('ai')}>
-          <div className="mnav-icon"><I.Bot /></div>
-          <span className="mnav-label">IA</span>
+        <button id="mnav-library" className={`mnav-btn ${activeMobileTab === 'library' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('library')}>
+          <div className="mnav-icon"><BookIcon /></div>
+          <span className="mnav-label">Biblioteca</span>
         </button>
-        <button id="mnav-config" className={`mnav-btn ${showSettings ? 'active' : ''}`}
-          onClick={() => { setMobilePanel(null); setShowSettings(s => !s) }}>
-          <div className="mnav-icon"><I.Cog /></div>
-          <span className="mnav-label">Config</span>
+        
+        {/* Center Plus FAB */}
+        <button id="mnav-plus" className="mnav-btn" onClick={() => setActiveMobileTab('library')} style={{ marginTop: '-4px' }}>
+          <div className="mnav-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1.5px solid #10b981', width: '42px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </div>
         </button>
-        <button id="mnav-schedule" className="mnav-btn mnav-cta" onClick={handleSchedule}>
-          <div className="mnav-icon"><I.Cal /></div>
-          <span className="mnav-label">Agendar</span>
+
+        <button id="mnav-ai" className={`mnav-btn ${activeMobileTab === 'ai' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('ai')}>
+          <div className="mnav-icon"><SparklesIcon /></div>
+          <span className="mnav-label">IA Assistant</span>
+        </button>
+        <button id="mnav-budget" className={`mnav-btn ${activeMobileTab === 'budget' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('budget')}>
+          <div className="mnav-icon"><BudgetIcon /></div>
+          <span className="mnav-label">Orçamento</span>
         </button>
       </nav>
-
-      {/* ─── MOBILE DRAWERS ─── */}
-      {mobilePanel && (
-        <>
-          <div className="drawer-backdrop open" onClick={() => setMobilePanel(null)} />
-          <div className="drawer">
-            <div className="drawer-handle" />
-            <div className="drawer-titlebar">
-              <span className="drawer-title">{mobilePanel === 'library' ? 'Biblioteca de Itens' : 'Assistente IA'}</span>
-              <button className="drawer-close" onClick={() => setMobilePanel(null)}>✕</button>
-            </div>
-            <div className="drawer-content">
-              {mobilePanel === 'library' && <ItemLibrary onItemAdded={() => setMobilePanel(null)} />}
-              {mobilePanel === 'ai' && <AiChat onClose={() => setMobilePanel(null)} />}
-            </div>
-          </div>
-        </>
-      )}
       
       {show3D && (
         <Suspense fallback={
@@ -680,9 +799,36 @@ export default function Editor() {
             <span>Iniciando motor 3D...</span>
           </div>
         }>
-          <ThreeDViewer onClose={() => setShow3D(false)} />
+          <ThreeDViewer onClose={() => setShow3D(false)} showSimulation={showSimulation} />
         </Suspense>
+      )}
+      {showAuditoria && (
+        <ErgonomyPanel onClose={() => setShowAuditoria(false)} />
       )}
     </div>
   )
 }
+
+// Inline Icons
+const BookIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </svg>
+)
+
+const SparklesIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5zM19 17l1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" />
+  </svg>
+)
+
+const BudgetIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+    <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+    <line x1="9" y1="22" x2="9" y2="16" />
+    <line x1="8" y1="12" x2="16" y2="12" />
+    <line x1="12" y1="16" x2="16" y2="16" />
+  </svg>
+)

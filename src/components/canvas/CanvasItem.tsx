@@ -138,16 +138,16 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       >
         <Rect
           width={w} height={h}
-          fill="#1E293B"
-          stroke={isSelected ? '#10B981' : '#0F172A'}
-          strokeWidth={isSelected ? 2 : 1.5}
-          cornerRadius={1}
+          fill="#1e293b"
+          stroke={isSelected ? '#10B981' : '#334155'}
+          strokeWidth={isSelected ? 2 : 1.2}
+          cornerRadius={1.5}
           shadowEnabled={!isDragging}
-          shadowBlur={isSelected ? 8 : 1}
-          shadowColor={isSelected ? '#10B981' : 'rgba(0,0,0,0.1)'}
+          shadowBlur={isSelected ? 10 : 2}
+          shadowColor={isSelected ? '#10B981' : 'rgba(0,0,0,0.15)'}
         />
-        <Line points={[0, 0, w, h]} stroke="#475569" strokeWidth={1} opacity={0.6} />
-        <Line points={[w, 0, 0, h]} stroke="#475569" strokeWidth={1} opacity={0.6} />
+        <Line points={[0, 0, w, h]} stroke="#475569" strokeWidth={1} opacity={0.4} />
+        <Line points={[w, 0, 0, h]} stroke="#475569" strokeWidth={1} opacity={0.4} />
         {isSelected && (
           <Text
             x={w + 6} y={2}
@@ -163,7 +163,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
 
   // 2. DOOR (Sliding Door Style)
   if (isDoor) {
-    const strokeColor = item.isEmergency ? '#EF4444' : (item.strokeColor || '#059669')
+    const isEntranceDoor = item.name?.toLowerCase().includes('entrada') || item.id?.includes('entrada')
+    const strokeColor = item.isEmergency ? '#EF4444' : '#10B981'
 
     return (
       <Group
@@ -180,37 +181,57 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         rotation={item.rotation || 0}
       >
         {/* Door opening line */}
-        <Line points={[0, 0, w, 0]} stroke="#CBD5E1" strokeWidth={1.5} dash={[3, 3]} />
+        <Line points={[0, 0, w, 0]} stroke="#CBD5E1" strokeWidth={1} dash={[3, 3]} opacity={0.5} />
         
         {/* Sliding panels */}
-        <Line points={[0, -2.5, w / 2, -2.5]} stroke={strokeColor} strokeWidth={3.5} lineCap="round" />
-        <Line points={[w / 2, 2.5, w, 2.5]} stroke={strokeColor} strokeWidth={3.5} lineCap="round" />
+        <Line points={[0, -2, w / 2, -2]} stroke={strokeColor} strokeWidth={3} lineCap="round" />
+        <Line points={[w / 2, 2, w, 2]} stroke={strokeColor} strokeWidth={3} lineCap="round" />
         
         {/* Door stops */}
-        <Line points={[0, -5, 0, 5]} stroke={strokeColor} strokeWidth={2} />
-        <Line points={[w, -5, w, 5]} stroke={strokeColor} strokeWidth={2} />
+        <Line points={[0, -4, 0, 4]} stroke={strokeColor} strokeWidth={1.5} />
+        <Line points={[w, -4, w, 4]} stroke={strokeColor} strokeWidth={1.5} />
         
         {/* Direction indicators */}
-        <Line points={[w / 4 - 4, -5.5, w / 4, -2.5, w / 4 - 4, 0.5]} stroke={strokeColor} strokeWidth={1} opacity={0.7} />
-        <Line points={[3 * w / 4 + 4, 5.5, 3 * w / 4, 2.5, 3 * w / 4 + 4, -0.5]} stroke={strokeColor} strokeWidth={1} opacity={0.7} />
+        <Line points={[w / 4 - 3, -4.5, w / 4, -2, w / 4 - 3, 0.5]} stroke={strokeColor} strokeWidth={0.8} opacity={0.7} />
+        <Line points={[3 * w / 4 + 3, 4.5, 3 * w / 4, 2, 3 * w / 4 + 3, -0.5]} stroke={strokeColor} strokeWidth={0.8} opacity={0.7} />
 
-        <Text
-          x={w * 0.1}
-          y={-18}
-          width={w * 0.8}
-          text={item.isEmergency ? `⚠️ EMERGÊNCIA` : getDisplayLabel()}
-          fontSize={8}
-          fontStyle="600"
-          fill={strokeColor}
-          align="center"
-        />
+        {/* CAD Entrance Arrow if it is the entrance door */}
+        {isEntranceDoor ? (
+          <>
+            {/* Neon Green Arrow pointing up (into the store) */}
+            <Line points={[w / 2, 12, w / 2, -12]} stroke="#10b981" strokeWidth={2.5} lineCap="round" opacity={0.85} />
+            <Line points={[w / 2 - 4, -8, w / 2, -12, w / 2 + 4, -8]} stroke="#10b981" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+            {/* Green label badge */}
+            <Text
+              x={w / 2 - 30}
+              y={16}
+              width={60}
+              text="ENTRADA"
+              fontSize={8}
+              fontStyle="bold"
+              fill="#10b981"
+              align="center"
+            />
+          </>
+        ) : (
+          <Text
+            x={w * 0.1}
+            y={-14}
+            width={w * 0.8}
+            text={item.isEmergency ? `⚠️ EMERGÊNCIA` : getDisplayLabel()}
+            fontSize={8}
+            fontStyle="bold"
+            fill={strokeColor}
+            align="center"
+          />
+        )}
         {isSelected && (
           <Text
             x={w + 6} y={2}
             text={`${item.width}m`}
             fontSize={9}
             fill="#10B981"
-            fontStyle="600"
+            fontStyle="bold"
           />
         )}
       </Group>
@@ -222,7 +243,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   if (isCheckoutL) {
     const strokeBorderColor = isSelected ? '#10B981' : (item.strokeColor || '#2563EB')
     const strokeBorderWidth = isSelected ? 2 : 1.2
-    const fill = item.fillColor || '#DBEAFE'
+    const fill = item.fillColor || '#DBEAFE' // Restore distinctive light blue color
     const t = 0.4 * PIXELS_PER_METER
 
     // Points for L-shape polygon
@@ -237,6 +258,18 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       t, h,
       0, h
     ]
+
+    const labelTextL = getDisplayLabel()
+    const charCountL = labelTextL.length
+    const badgeHL = 13
+    const badgeWL = Math.max(30, charCountL * 5.5 + 8)
+    const badgeXL = (w - badgeWL) / 2
+    const badgeYL = -16
+
+    const beltX1 = t + 5
+    const beltX2 = w - 5
+    const beltY1 = 3
+    const beltY2 = t - 3
 
     return (
       <Group
@@ -264,15 +297,67 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
           shadowOffsetY={isSelected ? 2 : 1}
         />
 
-        {/* Outer label */}
+        {/* Conveyor belt on horizontal arm */}
+        {w > t + 12 && (
+          <>
+            <Rect
+              x={beltX1}
+              y={beltY1}
+              width={beltX2 - beltX1}
+              height={beltY2 - beltY1}
+              fill="#cbd5e1"
+              stroke="#64748b"
+              strokeWidth={0.6}
+              cornerRadius={1}
+            />
+            {/* Belt rollers */}
+            {Array.from({ length: Math.floor((beltX2 - beltX1) / 8) }).map((_, idx) => {
+              const rx = beltX1 + 4 + idx * 8
+              return <Line key={idx} points={[rx, beltY1 + 1, rx, beltY2 - 1]} stroke="#475569" strokeWidth={0.7} opacity={0.6} />
+            })}
+            {/* Scanner red window */}
+            <Rect
+              x={t + 1}
+              y={Math.max(2, (t - 6) / 2)}
+              width={3.5}
+              height={5}
+              fill="#ef4444"
+              stroke="#b91c1c"
+              strokeWidth={0.5}
+            />
+          </>
+        )}
+
+        {/* Keyboard & register setup in corner */}
+        {t >= 14 && (
+          <>
+            <Rect x={3} y={3} width={5} height={4} fill="#475569" cornerRadius={0.5} />
+            <Line points={[2, 8, 8, 8]} stroke="#334155" strokeWidth={1} />
+          </>
+        )}
+
+        {/* Floating label badge */}
+        <Rect
+          x={badgeXL}
+          y={badgeYL}
+          width={badgeWL}
+          height={badgeHL}
+          fill="#0c130f"
+          stroke={isSelected ? '#10B981' : (item.strokeColor || '#2563EB')}
+          strokeWidth={1}
+          cornerRadius={6.5}
+          shadowBlur={3}
+          shadowColor="rgba(0,0,0,0.4)"
+        />
         <Text
-          x={2}
-          y={t / 2 - 4.5}
-          width={w - 4}
-          text={getDisplayLabel()}
-          fontSize={8.5}
-          fontStyle="700"
-          fill={item.strokeColor || '#1E293B'}
+          x={badgeXL}
+          y={badgeYL + 0.5}
+          width={badgeWL}
+          height={badgeHL}
+          text={labelTextL}
+          fontSize={7.5}
+          fontStyle="bold"
+          fill="#ffffff"
           align="center"
           verticalAlign="middle"
           ellipsis={true}
@@ -287,8 +372,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
             width={50}
             text={`${item.width}m × ${item.height}m`}
             fontSize={8.5}
-            fontStyle="700"
-            fill="#065F46"
+            fontStyle="bold"
+            fill="#10B981"
             align="center"
           />
         )}
@@ -311,7 +396,19 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   // 3. GENERAL RETAIL ITEMS
   const strokeBorderColor = isSelected ? '#10B981' : (item.strokeColor || '#475569')
   const strokeBorderWidth = isSelected ? 2 : 1.2
-  const cRadius = isRoom ? 5 : (isRound ? Math.min(w, h) / 2 : 3)
+  const cRadius = isRoom ? 5 : (isRound ? Math.min(w, h) / 2 : 3.5)
+
+  // Use the highly visible distinctive colors of the catalog (original colors)
+  const dynamicFill = item.fillColor || '#E2E8F0'
+  const dynamicStroke = isSelected ? '#10B981' : (item.strokeColor || '#475569')
+
+  const labelText = getDisplayLabel()
+  const charCount = labelText.length
+  const badgeH = 13
+  const badgeW = Math.max(30, charCount * 5.5 + 8)
+  const badgeX = (w - badgeW) / 2
+  const badgeY = -16
+  const showBadge = w >= 25 && h >= 12
 
   return (
     <Group
@@ -329,8 +426,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     >
       <Rect
         width={w} height={h}
-        fill={item.fillColor || '#E2E8F0'}
-        stroke={strokeBorderColor}
+        fill={dynamicFill}
+        stroke={dynamicStroke}
         strokeWidth={strokeBorderWidth}
         cornerRadius={cRadius}
         shadowEnabled={!isDragging}
@@ -339,92 +436,265 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         shadowOffsetY={isSelected ? 2 : 1}
       />
 
-      {/* A. GONDOLAS: Shelf lines */}
+      {/* A. GONDOLAS: CAD side caps, shelf lines & products */}
       {!isSmall && item.category === 'GONDOLAS' && (
         w >= h ? (
           <>
-            <Line points={[0, h * 0.25, w, h * 0.25]} stroke={item.strokeColor} strokeWidth={0.8} opacity={0.45} />
-            <Line points={[0, h * 0.75, w, h * 0.75]} stroke={item.strokeColor} strokeWidth={0.8} opacity={0.45} />
+            {/* End caps */}
+            <Rect x={0} y={0} width={2.5} height={h} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+            <Rect x={w - 2.5} y={0} width={2.5} height={h} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+            {/* Divider */}
+            <Line points={[2.5, h / 2, w - 2.5, h / 2]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={1} opacity={0.8} />
+            {/* Shelf lines */}
+            <Line points={[2.5, h * 0.25, w - 2.5, h * 0.25]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+            <Line points={[2.5, h * 0.75, w - 2.5, h * 0.75]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+            
+            {/* Products on shelves */}
+            {w >= 30 && Array.from({ length: Math.floor((w - 8) / 10) }).map((_, idx) => {
+              const px = 6 + idx * 10
+              const prodColors = ['#f59e0b', '#3b82f6', '#ef4444', '#10b981']
+              return (
+                <Group key={idx}>
+                  <Rect x={px} y={h * 0.25 - 1.5} width={4} height={3} fill={prodColors[idx % 4]} opacity={0.7} cornerRadius={0.5} />
+                  <Rect x={px + 5} y={h * 0.75 - 1.5} width={4} height={3} fill={prodColors[(idx + 1) % 4]} opacity={0.7} cornerRadius={0.5} />
+                </Group>
+              )
+            })}
           </>
         ) : (
           <>
-            <Line points={[w * 0.25, 0, w * 0.25, h]} stroke={item.strokeColor} strokeWidth={0.8} opacity={0.45} />
-            <Line points={[w * 0.75, 0, w * 0.75, h]} stroke={item.strokeColor} strokeWidth={0.8} opacity={0.45} />
+            {/* End caps */}
+            <Rect x={0} y={0} width={w} height={2.5} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+            <Rect x={0} y={h - 2.5} width={w} height={2.5} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+            {/* Divider */}
+            <Line points={[w / 2, 2.5, w / 2, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={1} opacity={0.8} />
+            {/* Shelf lines */}
+            <Line points={[w * 0.25, 2.5, w * 0.25, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+            <Line points={[w * 0.75, 2.5, w * 0.75, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+            
+            {/* Products on shelves vertical */}
+            {h >= 30 && Array.from({ length: Math.floor((h - 8) / 10) }).map((_, idx) => {
+              const py = 6 + idx * 10
+              const prodColors = ['#f59e0b', '#3b82f6', '#ef4444', '#10b981']
+              return (
+                <Group key={idx}>
+                  <Rect x={w * 0.25 - 1.5} y={py} width={3} height={4} fill={prodColors[idx % 4]} opacity={0.7} cornerRadius={0.5} />
+                  <Rect x={w * 0.75 - 1.5} y={py + 5} width={3} height={4} fill={prodColors[(idx + 1) % 4]} opacity={0.7} cornerRadius={0.5} />
+                </Group>
+              )
+            })}
           </>
         )
       )}
 
-      {/* B. BALCOES: Countertop inset */}
+      {/* B. BALCOES: Countertop inset & register shapes */}
       {!isSmall && item.category === 'BALCOES' && (
-        <Rect
-          x={4} y={4}
-          width={w - 8} height={h - 8}
-          stroke={item.strokeColor}
-          strokeWidth={0.8}
-          cornerRadius={2}
-          opacity={0.4}
-        />
-      )}
-
-      {/* C. REFRIGERACAO: Double frame */}
-      {!isSmall && item.category === 'REFRIGERACAO' && (
         <>
-          <Rect x={3} y={3} width={w - 6} height={h - 6} stroke={item.strokeColor} strokeWidth={0.8} opacity={0.5} />
-          <Line points={[w * 0.25, h * 0.25, w * 0.75, h * 0.75]} stroke={item.strokeColor} strokeWidth={1.2} opacity={0.3} />
-          <Line points={[w * 0.38, h * 0.25, w * 0.75, h * 0.62]} stroke={item.strokeColor} strokeWidth={0.8} opacity={0.2} />
+          <Rect
+            x={3} y={3}
+            width={w - 6} height={h - 6}
+            fill="#f8fafc" // Distinct countertop inset
+            stroke={item.strokeColor || '#1D4ED8'}
+            strokeWidth={0.8}
+            cornerRadius={1.5}
+          />
+          {/* Mock keyboard & monitor screen & scanner */}
+          {w >= 24 && h >= 16 && (
+            <>
+              {/* Keyboard */}
+              <Rect x={w / 2 - 5} y={h / 2 - 1.5} width={10} height={3} fill="#64748b" cornerRadius={0.5} opacity={0.8} />
+              {/* Monitor */}
+              <Line points={[w / 2 - 6, h / 2 - 4, w / 2 + 6, h / 2 - 4]} stroke="#334155" strokeWidth={1.2} />
+              <Line points={[w / 2, h / 2 - 4, w / 2, h / 2 - 2]} stroke="#475569" strokeWidth={1} />
+              {/* Scanner bed */}
+              <Rect x={w / 2 - 9} y={h / 2 - 1.5} width={2.5} height={2.5} fill="#ef4444" stroke="#dc2626" strokeWidth={0.4} />
+            </>
+          )}
         </>
       )}
 
-      {/* D. PERFUMARIA: Circular details */}
+      {/* C. REFRIGERACAO: Double frame, diagonal glass reflection & racks */}
+      {!isSmall && item.category === 'REFRIGERACAO' && (
+        <>
+          {/* Inner wall insulation */}
+          <Rect x={3} y={3} width={w - 6} height={h - 6} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.8} opacity={0.7} />
+          {/* Diagonal glass reflection */}
+          <Line points={[w * 0.15, h * 0.25, w * 0.35, h * 0.45]} stroke="#ffffff" strokeWidth={1.2} opacity={0.6} />
+          <Line points={[w * 0.25, h * 0.25, w * 0.45, h * 0.45]} stroke="#ffffff" strokeWidth={0.8} opacity={0.4} />
+          {/* Wire racks */}
+          {w >= h ? (
+            Array.from({ length: Math.floor((w - 8) / 8) }).map((_, idx) => {
+              const gx = 6 + idx * 8
+              return <Line key={idx} points={[gx, 4, gx, h - 4]} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.4} opacity={0.4} />
+            })
+          ) : (
+            Array.from({ length: Math.floor((h - 8) / 8) }).map((_, idx) => {
+              const gy = 6 + idx * 8
+              return <Line key={idx} points={[4, gy, w - 4, gy]} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.4} opacity={0.4} />
+            })
+          )}
+          {/* Fan vent circle */}
+          {w >= 20 && h >= 20 && (
+            <Circle x={w - 6} y={h - 6} radius={2.5} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.5} opacity={0.6} />
+          )}
+        </>
+      )}
+
+      {/* D. PERFUMARIA: Circular details & cosmetics display */}
       {!isSmall && item.category === 'PERFUMARIA' && (
         isRound ? (
           <>
-            <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 2 - 4} stroke={item.strokeColor} strokeWidth={0.7} opacity={0.5} />
-            <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 4} stroke={item.strokeColor} strokeWidth={0.5} opacity={0.3} />
+            <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 2 - 3} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.8} opacity={0.8} />
+            <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 4} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.6} />
+            {/* Radials */}
+            <Line points={[3, h / 2, w - 3, h / 2]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+            <Line points={[w / 2, 3, w / 2, h - 3]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+            
+            {/* Cosmetics circles */}
+            <Circle x={w / 2 - 3.5} y={h / 2 - 3.5} radius={1.5} fill="#db2777" />
+            <Circle x={w / 2 + 3.5} y={h / 2 - 3.5} radius={1.5} fill="#f59e0b" />
+            <Circle x={w / 2 - 3.5} y={h / 2 + 3.5} radius={1.5} fill="#0ea5e9" />
+            <Circle x={w / 2 + 3.5} y={h / 2 + 3.5} radius={1.5} fill="#10b981" />
           </>
         ) : (
-          <Rect x={4} y={4} width={w - 8} height={h - 8} stroke={item.strokeColor} strokeWidth={0.8} dash={[2, 2]} opacity={0.4} />
+          <>
+            <Rect x={2.5} y={2.5} width={w - 5} height={h - 5} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.7} dash={[2, 2]} opacity={0.6} />
+            {/* Perfume bottles on shelf */}
+            {w >= 30 && (
+              <Group>
+                <Line points={[4, h * 0.4, w - 4, h * 0.4]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+                <Line points={[4, h * 0.7, w - 4, h * 0.7]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+                
+                {Array.from({ length: Math.floor((w - 8) / 12) }).map((_, idx) => {
+                  const px = 6 + idx * 12
+                  return (
+                    <Group key={idx}>
+                      {/* Perfume 1: round bottle with cap */}
+                      <Circle x={px} y={h * 0.4 - 1.5} radius={1.5} fill="#db2777" />
+                      <Rect x={px - 0.5} y={h * 0.4 - 3.5} width={1} height={1.5} fill="#374151" />
+                      
+                      {/* Perfume 2: square bottle */}
+                      <Rect x={px + 5} y={h * 0.7 - 2.5} width={3} height={3} fill="#f59e0b" cornerRadius={0.5} />
+                      <Rect x={px + 6} y={h * 0.7 - 4} width={1} height={1.5} fill="#374151" />
+                    </Group>
+                  )
+                })}
+              </Group>
+            )}
+          </>
         )
       )}
 
-      {/* E. ROOMS: Double wall boundary */}
-      {!isSmall && isRoom && (
-        <Rect x={5} y={5} width={w - 10} height={h - 10} stroke={item.strokeColor} strokeWidth={0.7} dash={[4, 2]} opacity={0.55} />
-      )}
-
-      {/* F. ACCESSIBILITY: Ramp slopes */}
-      {!isSmall && item.category === 'ACESSIBILIDADE' && item.id?.includes('rampa') && (
+      {/* E. ROOMS / SERVICOS: Desk, chairs, and medical cross */}
+      {!isSmall && item.category === 'SERVICOS' && (
         <>
-          <Line points={[w * 0.2, h * 0.5, w * 0.5, h * 0.2, w * 0.8, h * 0.5]} stroke={item.strokeColor} strokeWidth={1} opacity={0.4} />
-          <Line points={[w * 0.2, h * 0.7, w * 0.5, h * 0.4, w * 0.8, h * 0.7]} stroke={item.strokeColor} strokeWidth={1} opacity={0.4} />
+          <Rect x={3} y={3} width={w - 6} height={h - 6} stroke={item.strokeColor || '#15803D'} strokeWidth={0.6} dash={[3, 1]} opacity={0.6} />
+          {/* Medical cross */}
+          {w >= 20 && h >= 20 && (
+            <Group>
+              <Line points={[w / 2, h / 2 - 5, w / 2, h / 2 + 5]} stroke="#10b981" strokeWidth={2} lineCap="round" />
+              <Line points={[w / 2 - 5, h / 2, w / 2 + 5, h / 2]} stroke="#10b981" strokeWidth={2} lineCap="round" />
+            </Group>
+          )}
+          {/* Desk and chairs */}
+          {w >= 35 && h >= 25 && (
+            <>
+              {/* Desk */}
+              <Rect x={4} y={4} width={12} height={8} fill="#e2e8f0" stroke="#475569" strokeWidth={0.5} cornerRadius={1} />
+              {/* Chair */}
+              <Circle x={10} y={15} radius={2} fill="#64748b" />
+            </>
+          )}
         </>
       )}
 
-      {/* Label */}
-      <Text
-        x={2}
-        y={Math.max(1, h / 2 - 4.5)}
-        width={Math.max(10, w - 4)}
-        text={getDisplayLabel()}
-        fontSize={w > 120 ? 9.5 : (w > 65 ? 8.5 : (w > 45 ? 7 : 6))}
-        fontStyle="700"
-        fill={item.strokeColor || '#1E293B'}
-        align="center"
-        verticalAlign="middle"
-        ellipsis={true}
-        wrap="none"
-      />
+      {/* ROOMS / OPERACIONAL general double wall boundary */}
+      {!isSmall && isRoom && item.category !== 'SERVICOS' && (
+        <Rect x={4} y={4} width={w - 8} height={h - 8} stroke={item.strokeColor || '#475569'} strokeWidth={0.8} dash={[4, 2]} opacity={0.65} />
+      )}
+
+      {/* F. OPERACIONAL: Storage cross bracing (X) */}
+      {!isSmall && item.category === 'OPERACIONAL' && (
+        <>
+          <Line points={[3, 3, w - 3, h - 3]} stroke={item.strokeColor || '#92400E'} strokeWidth={0.6} opacity={0.45} />
+          <Line points={[w - 3, 3, 3, h - 3]} stroke={item.strokeColor || '#92400E'} strokeWidth={0.6} opacity={0.45} />
+        </>
+      )}
+
+      {/* G. ACESSIBILIDADE: Ramp arrows and chevrons */}
+      {!isSmall && item.category === 'ACESSIBILIDADE' && (
+        <>
+          {w >= h ? (
+            <>
+              <Line points={[w * 0.3, h * 0.3, w * 0.5, h * 0.5, w * 0.3, h * 0.7]} stroke={item.strokeColor || '#F59E0B'} strokeWidth={1.2} strokeLinecap="round" />
+              <Line points={[w * 0.6, h * 0.3, w * 0.8, h * 0.5, w * 0.6, h * 0.7]} stroke={item.strokeColor || '#F59E0B'} strokeWidth={1.2} strokeLinecap="round" />
+            </>
+          ) : (
+            <>
+              <Line points={[w * 0.3, h * 0.3, w * 0.5, h * 0.5, w * 0.7, h * 0.3]} stroke={item.strokeColor || '#F59E0B'} strokeWidth={1.2} strokeLinecap="round" />
+              <Line points={[w * 0.3, h * 0.6, w * 0.5, h * 0.8, w * 0.7, h * 0.6]} stroke={item.strokeColor || '#F59E0B'} strokeWidth={1.2} strokeLinecap="round" />
+            </>
+          )}
+        </>
+      )}
+
+      {/* Floating Label Capsule Badge */}
+      {showBadge ? (
+        <Group>
+          <Rect
+            x={badgeX}
+            y={badgeY}
+            width={badgeW}
+            height={badgeH}
+            fill="#0c130f" // dark slate background
+            stroke={isSelected ? '#10b981' : (item.strokeColor || '#475569')}
+            strokeWidth={1}
+            cornerRadius={6.5}
+            shadowBlur={4}
+            shadowColor="rgba(0,0,0,0.4)"
+          />
+          <Text
+            x={badgeX}
+            y={badgeY + 0.5}
+            width={badgeW}
+            height={badgeH}
+            text={labelText}
+            fontSize={7.5}
+            fontStyle="bold"
+            fill="#ffffff"
+            align="center"
+            verticalAlign="middle"
+            ellipsis={true}
+            wrap="none"
+          />
+        </Group>
+      ) : (
+        /* Floating text fallback for tiny items */
+        <Text
+          x={-10}
+          y={-10}
+          width={w + 20}
+          text={labelText}
+          fontSize={6}
+          fontStyle="bold"
+          fill={item.strokeColor || '#E2E8F0'}
+          align="center"
+          verticalAlign="middle"
+          ellipsis={true}
+          wrap="none"
+        />
+      )}
 
       {/* Dimension overlay when selected */}
       {isSelected && (
         <Text
-          x={w / 2 - 25}
+          x={w / 2 - 30}
           y={h + 6}
-          width={50}
+          width={60}
           text={`${item.width}m × ${item.height}m`}
           fontSize={8.5}
-          fontStyle="700"
-          fill="#065F46"
+          fontStyle="bold"
+          fill="#10B981"
           align="center"
         />
       )}
@@ -443,3 +713,4 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
 })
 
 export default CanvasItem
+

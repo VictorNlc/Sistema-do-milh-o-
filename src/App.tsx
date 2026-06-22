@@ -7,6 +7,7 @@ import Editor from './pages/Editor'
 import Schedule from './pages/Schedule'
 import Admin from './pages/Admin'
 import SharedLayout from './pages/SharedLayout'
+import Projects from './pages/Projects'
 import './App.css'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         <Route path="/agendar/:layoutId" element={<Schedule />} />
         <Route path="/layout/:token" element={<SharedLayout />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/meus-projetos" element={<Projects />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />

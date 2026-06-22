@@ -264,6 +264,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   setStagePosition: (x, y) => set({ stageX: x, stageY: y }),
 
+  // =========================================================================
+  // Adiciona um novo item no canvas
+  // Lógica:
+  // 1. Limpa o nome do item usando a função utilitária cleanItemName.
+  // 2. Cria o objeto CanvasItem com um ID único (uuidv4).
+  // 3. Limita as coordenadas iniciais (x, y) para garantir que o móvel
+  //    seja criado totalmente dentro da área física da farmácia.
+  // 4. Mapeia categorias e flags de comportamento estrutural (se é obstáculo,
+  //    pilar, porta ou sala reservada).
+  // 5. Atualiza o estado dos itens no Zustand, seleciona o item recém-adicionado
+  //    e dispara a gravação no histórico de alterações para o undo/redo.
+  // =========================================================================
   addItem: (itemTemplate, x, y) => {
     const { storeWidth, storeHeight } = get()
     const cleanedName = cleanItemName(itemTemplate.name)
@@ -304,6 +316,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return newItem.id
   },
 
+  // =========================================================================
+  // Atualiza a posição (x, y) de um item existente
+  // Lógica:
+  // 1. Busca o item pelo ID na lista atual.
+  // 2. Se a opção snapToGrid (ajuste à grade) estiver ligada, arredonda as
+  //    coordenadas informadas com base no tamanho do grid configurado (gridSize).
+  // 3. Aplica a função clampItemPosition para assegurar que, após a movimentação
+  //    ou rotação, nenhuma das pontas do móvel ultrapasse os limites da loja.
+  // 4. Atualiza o array de itens no Zustand e registra o estado na pilha do histórico.
+  // =========================================================================
   updateItemPosition: (id, x, y) => {
     const { storeWidth, storeHeight, snapToGrid, gridSize, items } = get()
     const item = items.find(i => i.id === id)

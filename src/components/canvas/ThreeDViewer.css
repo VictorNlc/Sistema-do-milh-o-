@@ -356,3 +356,98 @@
   }
 }
 
+/* ─── CAMERA PRESETS TOOLBAR ─── */
+.camera-presets {
+  position: absolute;
+  bottom: var(--s6);
+  left: var(--s6);
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  background: rgba(7, 15, 11, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--r-xl);
+  padding: var(--s3);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+  z-index: 30; /* sit above lock overlay */
+}
+
+.preset-title {
+  display: flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--green-400);
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 8px;
+  user-select: none;
+}
+
+.preset-btn {
+  height: 38px;
+  padding: 0 var(--s3);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-2);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.preset-btn:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--text-1);
+}
+
+.preset-btn:active, .preset-btn.active {
+  background: var(--primary);
+  border-color: var(--green-400);
+  color: white;
+  box-shadow: var(--sh-green-sm);
+}
+
+@media (max-width: 767px) {
+  .camera-presets {
+    bottom: calc(var(--s3) + 120px) !important;
+    left: var(--s3) !important;
+    right: var(--s3) !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: var(--r-lg) !important;
+    padding: var(--s2) !important;
+    gap: 4px !important;
+  }
+  
+  .preset-title {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-right: 0;
+    padding-bottom: 4px;
+    justify-content: center;
+    margin-right: 0;
+    margin-bottom: 4px;
+  }
+  
+  .preset-btn {
+    flex: 1;
+    min-width: 80px;
+    height: 32px;
+    font-size: 8px !important;
+    justify-content: center;
+    padding: 0 var(--s2) !important;
+  }
+}
+
+

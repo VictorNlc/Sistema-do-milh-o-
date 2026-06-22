@@ -4,16 +4,38 @@ import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
 import { getRotatedBounds } from '../../utils/geometry'
 import CanvasItem from './CanvasItem'
 import type Konva from 'konva'
+import { generateHeatmap, heatColor } from '../../services/heatmapGenerator'
+import CustomerSimulationLayer from './CustomerSimulationLayer'
 import './CanvasEditor.css'
 
-const WALL_COLOR = '#71717A' // Lighter grey structural walls
+const WALL_COLOR = '#27272a' // Dark slate structural walls
 const WALL_THICKNESS = 10
-const FLOOR_COLOR = '#070F0B'  // Deep dark blueprint green-charcoal
+const FLOOR_COLOR = '#080c09'  // Deep dark blueprint green-charcoal
 const FLOOR_SHADOW = 'rgba(0,0,0,0.40)'
+
+interface CorridorGap {
+  id: string
+  start: number
+  end: number
+  axis: 'x' | 'y'
+  coord: number
+  dist: number
+  aId?: string // item no lado 'start' (undefined = parede)
+  bId?: string // item no lado 'end' (undefined = parede)
+}
+
+interface EditingCorridor {
+  gap: CorridorGap
+  screenX: number
+  screenY: number
+  value: string
+}
 
 interface CanvasEditorProps {
   onItemSelect?: (id: string | null) => void
   stageRef?: React.RefObject<Konva.Stage | null>
+  showHeatmap?: boolean
+  showSimulation?: boolean
 }
 
 interface Point {
@@ -29,12 +51,14 @@ const getCenter = (p1: Point, p2: Point): Point => ({
   y: (p1.y + p2.y) / 2,
 })
 
-export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: externalStageRef }: CanvasEditorProps) {
+export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: externalStageRef, showHeatmap = false, showSimulation = false }: CanvasEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const internalRef = useRef<Konva.Stage | null>(null)
   const stageRef = externalStageRef ?? internalRef
   const [containerSize, setContainerSize] = useState({ width: 600, height: 500 })
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [editingCorridor, setEditingCorridor] = useState<EditingCorridor | null>(null)
+  const corridorCommittedRef = useRef(false)
   const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 767 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
 
   // Pinch-to-zoom state
@@ -68,6 +92,40 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const handleItemDragEnd = useCallback((id: string, x: number, y: number) => {
     updateItemPosition(id, x, y)
   }, [updateItemPosition])
+
+  // Abre o editor inline ao clicar na medida de um corredor.
+  // labelCanvasX/Y = posição (em px do layer) do rótulo clicado.
+  const handleCorridorLabelClick = useCallback((gap: CorridorGap, labelCanvasX: number, labelCanvasY: number) => {
+    const { stageX: sx, stageY: sy, scale: sc } = useCanvasStore.getState()
+    corridorCommittedRef.current = false
+    setEditingCorridor({
+      gap,
+      screenX: sx + labelCanvasX * sc,
+      screenY: sy + labelCanvasY * sc,
+      value: gap.dist.toFixed(2),
+    })
+  }, [])
+
+  // Aplica o novo tamanho do corredor movendo o item que faz fronteira com ele
+  const commitCorridorResize = useCallback(() => {
+    if (corridorCommittedRef.current) return
+    corridorCommittedRef.current = true
+    if (editingCorridor) {
+      const { gap, value } = editingCorridor
+      const nd = parseFloat(value.replace(',', '.'))
+      if (!isNaN(nd) && nd > 0) {
+        // Se houver item no lado 'end', move-o; senão move o item do lado 'start'.
+        const moveId = gap.bId ?? gap.aId
+        const it = moveId ? items.find(i => i.id === moveId) : undefined
+        if (it) {
+          const delta = gap.bId ? nd - gap.dist : gap.dist - nd
+          if (gap.axis === 'x') updateItemPosition(it.id, (it.x ?? 0) + delta, it.y ?? 0)
+          else updateItemPosition(it.id, it.x ?? 0, (it.y ?? 0) + delta)
+        }
+      }
+    }
+    setEditingCorridor(null)
+  }, [editingCorridor, items, updateItemPosition])
 
   const canvasW = storeWidth * PIXELS_PER_METER
   const canvasH = storeHeight * PIXELS_PER_METER
@@ -266,16 +324,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const corridorMeasures = useMemo(() => {
     if (!showMeasures || items.length === 0) return null
 
-    interface CorridorGap {
-      id: string
-      start: number
-      end: number
-      axis: 'x' | 'y'
-      coord: number
-      dist: number
-    }
-
-    const obstacleItems = items.filter(item => 
+    const obstacleItems = items.filter(item =>
       !item.isDoor && 
       item.itemId !== 'porta-entrada' && 
       item.itemId !== 'porta-saida-emergencia'
@@ -316,6 +365,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             axis: 'x',
             coord: overlapY,
             dist,
+            aId: closest.id,
+            bId: B.id,
           })
         }
       } else {
@@ -329,6 +380,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             axis: 'x',
             coord: (B.y1 + B.y2) / 2,
             dist,
+            bId: B.id,
           })
         }
       }
@@ -351,6 +403,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             axis: 'x',
             coord: (A.y1 + A.y2) / 2,
             dist,
+            aId: A.id,
           })
         }
       }
@@ -380,6 +433,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             axis: 'y',
             coord: overlapX,
             dist,
+            aId: closest.id,
+            bId: B.id,
           })
         }
       } else {
@@ -393,6 +448,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             axis: 'y',
             coord: (B.x1 + B.x2) / 2,
             dist,
+            bId: B.id,
           })
         }
       }
@@ -415,6 +471,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             axis: 'y',
             coord: (A.x1 + A.x2) / 2,
             dist,
+            aId: A.id,
           })
         }
       }
@@ -474,8 +531,14 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               <Line points={[pX1, pY, pX2, pY]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
               <Line points={[pX1 + 5, pY - 3, pX1, pY, pX1 + 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
               <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-              <Rect x={foundX - 18} y={pY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
-              <Text x={foundX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
+              <Rect
+                x={foundX - 18} y={pY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9}
+                onClick={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, foundX, pY) }}
+                onTap={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, foundX, pY) }}
+                onMouseEnter={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
+                onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default' }}
+              />
+              <Text listening={false} x={foundX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
             </Group>
           )
         } else {
@@ -511,8 +574,14 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               <Line points={[pX, pY1, pX, pY2]} stroke="#10B981" strokeWidth={1} dash={[3, 3]} opacity={0.65} />
               <Line points={[pX - 3, pY1 + 5, pX, pY1, pX + 3, pY1 + 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
               <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#10B981" strokeWidth={1} opacity={0.65} />
-              <Rect x={pX - 18} y={foundY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9} />
-              <Text x={pX - 18} y={foundY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
+              <Rect
+                x={pX - 18} y={foundY - 5} width={36} height={10} fill="#070F0B" cornerRadius={2} stroke="#10B981" strokeWidth={0.5} opacity={0.9}
+                onClick={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, pX, foundY) }}
+                onTap={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, pX, foundY) }}
+                onMouseEnter={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
+                onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default' }}
+              />
+              <Text listening={false} x={pX - 18} y={foundY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#10B981" align="center" />
             </Group>
           )
         } else {
@@ -526,7 +595,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     })
 
     return elements
-  }, [items, scale, storeWidth, storeHeight, showMeasures])
+  }, [items, scale, storeWidth, storeHeight, showMeasures, handleCorridorLabelClick])
 
   // Unused but left for future: activeTool reference
   void activeTool
@@ -589,20 +658,80 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           <Rect x={canvasW} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
 
           {/* Dimension labels */}
+          {/* Horizontal top dimension line */}
+          <Line points={[0, -22, canvasW, -22]} stroke="#71717a" strokeWidth={1} />
+          <Line points={[0, -28, 0, -16]} stroke="#71717a" strokeWidth={1.2} />
+          <Line points={[canvasW, -28, canvasW, -16]} stroke="#71717a" strokeWidth={1.2} />
+          <Line points={[5, -25, 0, -22, 5, -19]} stroke="#71717a" strokeWidth={1} />
+          <Line points={[canvasW - 5, -25, canvasW, -22, canvasW - 5, -19]} stroke="#71717a" strokeWidth={1} />
+          <Rect x={canvasW / 2 - 35} y={-28} width={70} height={12} fill="#080c09" />
           <Text
-            x={canvasW / 2 - 50} y={canvasH + 10}
-            text={`${storeWidth}m`} fontSize={11} fontStyle="700"
-            fill="rgba(58, 230, 160, 0.85)"
+            x={canvasW / 2 - 35} y={-26}
+            width={70}
+            text={`${storeWidth.toFixed(2).replace('.', ',')} m`}
+            fontSize={9} fontStyle="bold"
+            fill="#ffffff"
+            align="center"
           />
+
+          {/* Vertical right dimension line */}
+          <Line points={[canvasW + 22, 0, canvasW + 22, canvasH]} stroke="#71717a" strokeWidth={1} />
+          <Line points={[canvasW + 16, 0, canvasW + 28, 0]} stroke="#71717a" strokeWidth={1.2} />
+          <Line points={[canvasW + 16, canvasH, canvasW + 28, canvasH]} stroke="#71717a" strokeWidth={1.2} />
+          <Line points={[canvasW + 19, 5, canvasW + 22, 0, canvasW + 25, 5]} stroke="#71717a" strokeWidth={1} />
+          <Line points={[canvasW + 19, canvasH - 5, canvasW + 22, canvasH, canvasW + 25, canvasH - 5]} stroke="#71717a" strokeWidth={1} />
+          <Rect x={canvasW + 16} y={canvasH / 2 - 35} width={12} height={70} fill="#080c09" />
           <Text
-            x={canvasW + 10} y={canvasH / 2 - 15}
-            text={`${storeHeight}m`} fontSize={11} fontStyle="700"
-            fill="rgba(58, 230, 160, 0.85)" rotation={90}
+            x={canvasW + 29} y={canvasH / 2 - 35}
+            text={`${storeHeight.toFixed(2).replace('.', ',')} m`}
+            fontSize={9} fontStyle="bold"
+            fill="#ffffff"
+            rotation={90}
           />
 
           {/* North indicator */}
           <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(255, 255, 255, 0.45)" fontStyle="bold" />
         </Layer>
+
+        {/* Heatmap overlay — only rendered when showHeatmap is true */}
+        {showHeatmap && (() => {
+          const heatPoints = generateHeatmap(items, storeWidth, storeHeight)
+          return (
+            <Layer listening={false} opacity={1}>
+              {heatPoints.map((pt, idx) => {
+                const px = pt.x * PIXELS_PER_METER
+                const py = pt.y * PIXELS_PER_METER
+                const pr = pt.radius * PIXELS_PER_METER
+                const { r, g, b, a } = heatColor(pt.intensity)
+                return (
+                  <Rect
+                    key={`hp-${idx}`}
+                    x={px - pr}
+                    y={py - pr}
+                    width={pr * 2}
+                    height={pr * 2}
+                    fillRadialGradientStartPoint={{ x: pr, y: pr }}
+                    fillRadialGradientStartRadius={0}
+                    fillRadialGradientEndPoint={{ x: pr, y: pr }}
+                    fillRadialGradientEndRadius={pr}
+                    fillRadialGradientColorStops={[
+                      0, `rgba(${r},${g},${b},${(a / 255).toFixed(2)})`,
+                      1, 'rgba(0,0,0,0)'
+                    ]}
+                    listening={false}
+                  />
+                )
+              })}
+              {/* Legend */}
+              <Rect x={8} y={canvasH - 68} width={130} height={60} fill="rgba(0,0,0,0.75)" cornerRadius={6} />
+              <Text x={14} y={canvasH - 62} text="Mapa de Calor" fontSize={8} fontStyle="bold" fill="rgba(255,255,255,0.8)" />
+              <Rect x={14} y={canvasH - 50} width={60} height={6} fillLinearGradientStartPoint={{ x: 0, y: 0 }} fillLinearGradientEndPoint={{ x: 60, y: 0 }} fillLinearGradientColorStops={[0,'rgba(30,80,200,0.9)',0.5,'rgba(255,200,10,0.9)',1,'rgba(255,20,10,0.9)']} cornerRadius={3} />
+              <Text x={14} y={canvasH - 40} text="Frio" fontSize={7} fill="rgba(255,255,255,0.45)" />
+              <Text x={54} y={canvasH - 40} text="Quente" fontSize={7} fill="rgba(255,255,255,0.45)" />
+              <Text x={14} y={canvasH - 28} text="Simulação de fluxo de clientes" fontSize={7} fill="rgba(255,255,255,0.3)" />
+            </Layer>
+          )
+        })()}
 
         <Layer>
           {items.map((item) => (
@@ -616,7 +745,35 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             />
           ))}
         </Layer>
+
+        {/* Customer Flow Simulation Layer */}
+        {showSimulation && (
+          <CustomerSimulationLayer 
+            items={items} 
+            storeWidth={storeWidth} 
+            storeHeight={storeHeight} 
+            pixelsPerMeter={PIXELS_PER_METER} 
+          />
+        )}
       </Stage>
+
+      {editingCorridor && (
+        <input
+          className="ce-corridor-input"
+          type="text"
+          inputMode="decimal"
+          autoFocus
+          value={editingCorridor.value}
+          style={{ left: editingCorridor.screenX - 28, top: editingCorridor.screenY - 11 }}
+          onChange={(e) => setEditingCorridor(ec => (ec ? { ...ec, value: e.target.value } : ec))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitCorridorResize() }
+            else if (e.key === 'Escape') { corridorCommittedRef.current = true; setEditingCorridor(null) }
+          }}
+          onBlur={commitCorridorResize}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      )}
     </div>
   )
 }

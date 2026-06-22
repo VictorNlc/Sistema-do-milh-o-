@@ -237,3 +237,71 @@
   border-top: 1.5px solid rgba(16, 185, 129, 0.1);
   background: rgba(0, 0, 0, 0.2);
 }
+
+/* ══════════ SUBFILTERS & IA CARD ══════════ */
+.lib-subfilters {
+  display: flex;
+  gap: 6px;
+  padding: 0 var(--s3) var(--s2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.lib-subfilters::-webkit-scrollbar {
+  display: none;
+}
+
+.lib-subfilter-pill {
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-pill);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.lib-subfilter-pill:hover {
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.lib-subfilter-pill.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: var(--sh-green-sm);
+}
+
+.lib-ia-card {
+  margin: var(--s4) var(--s3);
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(6, 44, 22, 0.1) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+.lib-ia-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--s1);
+}
+.lib-ia-sparkle {
+  font-size: 13px;
+  color: var(--green-400);
+}
+.lib-ia-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.01em;
+}
+.lib-ia-desc {
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: var(--text-3);
+}

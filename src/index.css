@@ -7,21 +7,21 @@
 
 :root {
   /* === MARCA === */
-  --green-900: #062C16;
-  --green-800: #094723;
-  --green-700: #0D6131;
-  --green-600: #107C3F;
-  --green-500: #14964D;
-  --green-400: #3AB471;
-  --green-300: #6BCA97;
-  --green-200: #A8E3C3;
-  --green-100: #DDF5E8;
-  --green-50: #F2FCF7;
+  --green-900: #041c0e;
+  --green-800: #06401e;
+  --green-700: #096b34;
+  --green-600: #0f8f48;
+  --green-500: #10b981;
+  --green-400: #10eb7a;
+  --green-300: #3ee899;
+  --green-200: #7ef5bd;
+  --green-100: #c1fce1;
+  --green-50: #ebfffd;
 
-  --primary: var(--green-600);
-  --primary-hover: var(--green-700);
-  --primary-active: var(--green-800);
-  --primary-glow: rgba(16, 124, 63, 0.2);
+  --primary: #10b981;
+  --primary-hover: #10eb7a;
+  --primary-active: #096b34;
+  --primary-glow: rgba(16, 235, 122, 0.25);
 
   /* === DARK SURFACE (toolbar, sidebar header) === */
   /* --ink-950: #09120D; */
@@ -54,25 +54,25 @@
   --danger: #DC2626;
   --warning: #CA8A04;
   --info: #1D4ED8;
-  --success: var(--green-600);
+  --success: #10b981;
 
   /* === SURFACES (DARK OVERHAUL) === */
-  --surface-base: #030705;
+  --surface-base: #080c09;
   /* Midnight Charcoal */
-  --surface-card: #070f0b;
+  --surface-card: #0c130f;
   /* Deep Emerald-Charcoal */
-  --surface-subtle: #0a1610;
+  --surface-subtle: #121c17;
   /* Soft dark emerald */
-  --surface-muted: #0e1f16;
+  --surface-muted: #17241e;
   /* Muted glass backing */
-  --surface-canvas: #020504;
+  --surface-canvas: #040605;
   /* Deepest blueprint canvas black */
-  --surface-toolbar: rgba(6, 12, 9, 0.94);
+  --surface-toolbar: rgba(8, 12, 9, 0.94);
 
   /* === BORDERS === */
   --border-xs: rgba(255, 255, 255, 0.05);
   --border-sm: rgba(255, 255, 255, 0.1);
-  --border-md: rgba(16, 124, 63, 0.25);
+  --border-md: rgba(16, 235, 122, 0.25);
 
   /* === TEXT === */
   --text-1: #f3f9f6;
@@ -94,13 +94,13 @@
   --sh-lg: 0 12px 36px rgba(9, 29, 18, 0.08), 0 2px 10px rgba(9, 29, 18, 0.04);
   --sh-xl: 0 20px 60px rgba(9, 29, 18, 0.12), 0 4px 20px rgba(9, 29, 18, 0.06);
   --sh-2xl: 0 32px 90px rgba(9, 29, 18, 0.18);
-  --sh-green-sm: 0 4px 12px rgba(16, 124, 63, 0.15);
-  --sh-green-md: 0 8px 24px rgba(16, 124, 63, 0.22);
-  --sh-green-lg: 0 16px 40px rgba(16, 124, 63, 0.3);
+  --sh-green-sm: 0 4px 12px rgba(16, 235, 122, 0.15);
+  --sh-green-md: 0 8px 24px rgba(16, 235, 122, 0.22);
+  --sh-green-lg: 0 16px 40px rgba(16, 235, 122, 0.3);
   --sh-dark: 0 12px 40px rgba(0, 0, 0, 0.35);
   --sh-premium-lg: 0 20px 50px rgba(6, 44, 22, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
-  --sh-premium-neon: 0 0 25px rgba(16, 124, 63, 0.22);
-  --gradient-glow: radial-gradient(circle, rgba(16, 124, 63, 0.15) 0%, rgba(16, 124, 63, 0) 70%);
+  --sh-premium-neon: 0 0 25px rgba(16, 235, 122, 0.22);
+  --gradient-glow: radial-gradient(circle, rgba(16, 235, 122, 0.15) 0%, rgba(16, 235, 122, 0) 70%);
 
   /* === TYPOGRAPHY === */
   --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;

@@ -3,6 +3,7 @@ import { PHARMACY_ITEMS } from '../../data/items'
 import { cleanItemName } from '../../utils/labels'
 import { useCanvasStore } from '../../store/canvasStore'
 import { toast } from '../../store/toastStore'
+import { generateAILayout } from '../../services/heuristicLayoutGenerator'
 import type { ItemCategory, PharmacyItemTemplate } from '../../types'
 import './ItemLibrary.css'
 
@@ -11,12 +12,12 @@ interface ItemLibraryProps {
 }
 
 const SIDEBAR_CATEGORIES = [
-  { id: 'shelving', label: 'Shelving', iconKey: 'shelving' },
-  { id: 'counters', label: 'Counters', iconKey: 'counters' },
-  { id: 'displays', label: 'Displays', iconKey: 'displays' },
-  { id: 'furniture', label: 'Furniture', iconKey: 'furniture' },
-  { id: 'rx', label: 'RX', iconKey: 'rx' },
-  { id: 'structure', label: 'Structure', iconKey: 'structure' },
+  { id: 'shelving', label: 'BIBLIOTECA', iconKey: 'shelving' },
+  { id: 'counters', label: 'BALCÕES', iconKey: 'counters' },
+  { id: 'displays', label: 'DISPLAYS', iconKey: 'displays' },
+  { id: 'furniture', label: 'MÓVEIS', iconKey: 'furniture' },
+  { id: 'rx', label: 'EQUIPAMENTOS', iconKey: 'rx' },
+  { id: 'structure', label: 'ESTRUTURA', iconKey: 'structure' },
 ]
 
 const CATEGORY_MAP: Record<string, ItemCategory[]> = {
@@ -222,6 +223,7 @@ const getItemIcon = (category: string, id: string, name: string) => {
 export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('shelving')
+  const [subFilter, setSubFilter] = useState<'all' | 'shelves' | 'counters' | 'displays' | 'furniture'>('all')
   const { addItem, storeWidth, storeHeight, storeType } = useCanvasStore()
 
   const handleDragStart = (e: React.DragEvent, item: PharmacyItemTemplate) => {
@@ -235,6 +237,23 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
     onItemAdded?.()
   }, [addItem, storeWidth, storeHeight, onItemAdded])
 
+  const handleAiGenerate = async () => {
+    try {
+      const current = useCanvasStore.getState().items
+      const density = useCanvasStore.getState().layoutDensity || 'normal'
+      const result = await generateAILayout(storeWidth, storeHeight, storeType, current, density)
+      if (result.valid || result.items.length > 0) {
+        const structural = current.filter(i => i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA')
+        useCanvasStore.setState({ items: [...structural, ...result.items], isDirty: true })
+        toast.success('Layout otimizado gerado!')
+      } else {
+        toast.error('Dimensões insuficientes para gerar layout')
+      }
+    } catch (err) {
+      toast.error('Erro ao gerar layout')
+    }
+  }
+
   const filteredItems = useMemo(() => PHARMACY_ITEMS.filter(item => {
     const matchSearch = !search || item.name.toLowerCase().includes(search.toLowerCase())
     
@@ -244,11 +263,18 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
       matchCat = allowedCategories ? allowedCategories.includes(item.category) : item.category === activeCategory
     }
 
+    if (subFilter !== 'all') {
+      if (subFilter === 'shelves') matchCat = item.category === 'GONDOLAS'
+      else if (subFilter === 'counters') matchCat = item.category === 'BALCOES'
+      else if (subFilter === 'displays') matchCat = item.category === 'PERFUMARIA'
+      else if (subFilter === 'furniture') matchCat = item.category === 'OPERACIONAL'
+    }
+
     const matchStoreType = storeType === 'premium'
       ? !item.id.endsWith('-especial')
       : !item.id.endsWith('-premium')
     return matchSearch && matchCat && matchStoreType
-  }), [search, activeCategory, storeType])
+  }), [search, activeCategory, subFilter, storeType])
 
   return (
     <div className="lib-root">
@@ -258,7 +284,7 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
           <button
             key={cat.id}
             className={`lib-nav-item ${activeCategory === cat.id ? 'active' : ''}`}
-            onClick={() => setActiveCategory(cat.id)}
+            onClick={() => { setActiveCategory(cat.id); setSubFilter('all') }}
             title={cat.label}
           >
             <div className="lib-nav-item-icon">
@@ -279,42 +305,77 @@ export default function ItemLibrary({ onItemAdded }: ItemLibraryProps) {
             id="lib-search"
             className="lib-search-input"
             type="search"
-            placeholder="Search"
+            placeholder="Buscar itens..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             autoComplete="off"
           />
         </div>
 
-        <div className="lib-list">
-          {filteredItems.length === 0 ? (
-            <div className="lib-empty">Nenhum item encontrado</div>
-          ) : (
-            filteredItems.map(item => (
-              <div
-                key={item.id}
-                id={`lib-${item.id}`}
-                className="lib-item"
-                draggable
-                onDragStart={e => handleDragStart(e, item)}
-                onClick={() => handleTapAdd(item)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={e => e.key === 'Enter' && handleTapAdd(item)}
-                aria-label={`Adicionar ${cleanItemName(item.name)}`}
-                style={{ '--item-fill': item.fillColor, '--item-stroke': item.strokeColor } as React.CSSProperties}
-              >
-                <div className="lib-swatch-svg">
-                  {getItemIcon(item.category, item.id, item.name)}
+        {/* Category horizontal scroll pills */}
+        <div className="lib-subfilters">
+          {[
+            { id: 'all', label: 'Todos' },
+            { id: 'shelves', label: 'Prateleiras' },
+            { id: 'counters', label: 'Balcões' },
+            { id: 'displays', label: 'Displays' },
+            { id: 'furniture', label: 'Móveis' },
+          ].map(pill => (
+            <button
+              key={pill.id}
+              className={`lib-subfilter-pill ${subFilter === pill.id ? 'active' : ''}`}
+              onClick={() => setSubFilter(pill.id as any)}
+            >
+              {pill.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="lib-scroll-area" style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="lib-list">
+            {filteredItems.length === 0 ? (
+              <div className="lib-empty">Nenhum item encontrado</div>
+            ) : (
+              filteredItems.map(item => (
+                <div
+                  key={item.id}
+                  id={`lib-${item.id}`}
+                  className="lib-item"
+                  draggable
+                  onDragStart={e => handleDragStart(e, item)}
+                  onClick={() => handleTapAdd(item)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => e.key === 'Enter' && handleTapAdd(item)}
+                  aria-label={`Adicionar ${cleanItemName(item.name)}`}
+                  style={{ '--item-fill': item.fillColor, '--item-stroke': item.strokeColor } as React.CSSProperties}
+                >
+                  <div className="lib-swatch-svg">
+                    {getItemIcon(item.category, item.id, item.name)}
+                  </div>
+                  <div className="lib-body">
+                    <span className="lib-name">{cleanItemName(item.name)}</span>
+                    <span className="lib-meta">{item.width}m × {item.height}m</span>
+                  </div>
+                  {item.isObstacle && <span className="lib-tag" style={{ position: 'absolute', top: 4, right: 4 }}>Fixo</span>}
                 </div>
-                <div className="lib-body">
-                  <span className="lib-name">{cleanItemName(item.name)}</span>
-                  <span className="lib-meta">{item.width}m × {item.height}m</span>
-                </div>
-                {item.isObstacle && <span className="lib-tag" style={{ position: 'absolute', top: 4, right: 4 }}>Fixo</span>}
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+
+          {/* IA Layout banner card */}
+          <div className="lib-ia-card">
+            <div className="lib-ia-card-head">
+              <span className="lib-ia-sparkle">✨</span>
+              <span className="lib-ia-title">IA Layout Inteligente</span>
+            </div>
+            <p className="lib-ia-desc">Gere layouts otimizados com base no seu espaço e necessidade.</p>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+              <button className="btn btn-primary btn-sm btn-full" onClick={handleAiGenerate} style={{ background: '#10b981' }}>
+                Gerar layout com IA
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="lib-footer">Toque para adicionar · Arraste</div>

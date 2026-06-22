@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getAllLayoutsList } from '../services/storage'
 import './Home.css'
 
 const FEATURES = [
@@ -206,6 +207,19 @@ export default function Home() {
               </svg>
               Criar Meu Layout Grátis
             </button>
+            {getAllLayoutsList().length > 0 && (
+              <button
+                className="btn btn-secondary btn-xl"
+                onClick={() => navigate('/meus-projetos')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', border: '1px solid var(--green-400)', color: 'var(--green-400)' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M3 9h18M9 21V9" />
+                </svg>
+                Meus Projetos ({getAllLayoutsList().length})
+              </button>
+            )}
             <button
               className="btn btn-secondary btn-lg"
               onClick={() => document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth' })}

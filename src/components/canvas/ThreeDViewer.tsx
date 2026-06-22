@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useCanvasStore } from '../../store/canvasStore'
 import { getRotatedBounds } from '../../utils/geometry'
+import { generateCustomersSimulation, CustomerData } from '../../services/customerSimulation'
 import './ThreeDViewer.css'
 
 // Height estimations in meters based on item categories
@@ -292,9 +293,10 @@ const getRequiredModelKeys = (items: any[]): string[] => {
 
 interface ThreeDViewerProps {
   onClose?: () => void
+  showSimulation?: boolean
 }
 
-export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
+export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeDViewerProps) {
   // Refs
   const containerRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -315,6 +317,8 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const wallsRef = useRef<THREE.Mesh[]>([])
   const signageGroupRef = useRef<THREE.Group | null>(null)
   const lightsGroupRef = useRef<THREE.Group | null>(null)
+  const simulationGroupRef = useRef<THREE.Group | null>(null)
+  const simulationDataRef = useRef<{ data: CustomerData, mesh: THREE.Group, pathIndex: number, waitTimer: number, active: boolean }[]>([])
 
   // Camera look rotation angles
   const yawRef = useRef(0)
@@ -358,6 +362,22 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   const [noclip, setNoclip] = useState(false) // Toggle physics/collisions
  
   const noclipRef = useRef(noclip)
+
+  const transitionRef = useRef<{
+    startTime: number
+    duration: number
+    startPos: THREE.Vector3
+    endPos: THREE.Vector3
+    startTarget: THREE.Vector3
+    endTarget: THREE.Vector3
+    startYaw: number
+    endYaw: number
+    startPitch: number
+    endPitch: number
+    mode: 'orbit' | 'first-person'
+  } | null>(null)
+
+  const [activePreset, setActivePreset] = useState<'entrada' | 'geral' | 'farmaceutico' | 'aereo' | null>(null)
   useEffect(() => {
     noclipRef.current = noclip
   }, [noclip])
@@ -675,6 +695,12 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
         const cam = cameraRef.current
         if (!cam) return
         try {
+          if (transitionRef.current && (document.pointerLockElement === canvas || isDragging)) {
+            transitionRef.current = null
+            setActivePreset(null)
+          } else if (document.pointerLockElement === canvas || isDragging) {
+            setActivePreset(null)
+          }
           const mode = cameraModeRef.current
           if (mode === 'first-person') {
             if (document.pointerLockElement === canvas) {
@@ -906,6 +932,10 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
       // --- CONTROLES DE TECLADO ---
       const handleKeyDown = (e: KeyboardEvent) => { 
+        if (transitionRef.current) {
+          transitionRef.current = null
+        }
+        setActivePreset(null)
         if (keysRef.current) {
           keysRef.current[e.code] = true 
           if (e.key) keysRef.current[e.key.toLowerCase()] = true
@@ -969,8 +999,53 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
           }
 
           const mode = cameraModeRef.current
+          const trans = transitionRef.current
 
-          if (mode === 'orbit') {
+          if (trans) {
+            const elapsed = currentTime - trans.startTime
+            const t = Math.min(elapsed / trans.duration, 1.0)
+            const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+            cam.position.lerpVectors(trans.startPos, trans.endPos, ease)
+
+            if (trans.mode === 'orbit') {
+              const currentTarget = new THREE.Vector3().lerpVectors(trans.startTarget, trans.endTarget, ease)
+              orbitTargetRef.current.copy(currentTarget)
+              cam.lookAt(currentTarget)
+            } else {
+              const lerpAngle = (start: number, end: number, alpha: number) => {
+                const diff = (end - start + Math.PI) % (Math.PI * 2) - Math.PI
+                const shortest = diff < -Math.PI ? diff + Math.PI * 2 : diff
+                return start + shortest * alpha
+              }
+              yawRef.current = lerpAngle(trans.startYaw, trans.endYaw, ease)
+              pitchRef.current = lerpAngle(trans.startPitch, trans.endPitch, ease)
+
+              cam.rotation.set(0, 0, 0)
+              cam.rotation.y = yawRef.current
+              cam.rotation.x = pitchRef.current
+            }
+
+            if (t >= 1.0) {
+              transitionRef.current = null
+              setCameraMode(trans.mode)
+              cameraModeRef.current = trans.mode
+
+              if (trans.mode === 'orbit') {
+                const toTarget = new THREE.Vector3().subVectors(trans.endPos, trans.endTarget)
+                orbitDistanceRef.current = toTarget.length()
+                orbitYawRef.current = Math.atan2(toTarget.x, toTarget.z)
+                orbitPitchRef.current = Math.asin(toTarget.y / orbitDistanceRef.current)
+                orbitTargetRef.current.copy(trans.endTarget)
+              } else {
+                yawRef.current = trans.endYaw
+                pitchRef.current = trans.endPitch
+                cam.rotation.set(0, 0, 0)
+                cam.rotation.y = yawRef.current
+                cam.rotation.x = pitchRef.current
+              }
+            }
+          } else if (mode === 'orbit') {
             const r = orbitDistanceRef.current
             const pitch = orbitPitchRef.current
             const yaw = orbitYawRef.current
@@ -1147,6 +1222,77 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             
             const currentItems = useCanvasStore.getState().items
             debugTextRef.current.innerText = `Pos: ${cam.position.x.toFixed(2)}, ${cam.position.z.toFixed(2)} | Dir: ${(cam.rotation.y * 180 / Math.PI).toFixed(0)}° | Móveis: ${currentItems.length} | Init: ${initializedRef.current ? 'Sim' : 'Não'} | Teclas: ${activeKeys}`
+          }
+
+          // Atualiza simulação de clientes 3D
+          if (showSimulation && simulationDataRef.current.length > 0) {
+            const currentWidth = Number(useCanvasStore.getState().storeWidth)
+            const currentHeight = Number(useCanvasStore.getState().storeHeight)
+
+            simulationDataRef.current.forEach(cust => {
+              if (!cust.active) return
+              const pt = cust.data.path[cust.pathIndex]
+              if (!pt) return
+
+              // Wait timer (atendimentos/visualização de gôndolas)
+              if (cust.waitTimer > 0) {
+                cust.waitTimer -= deltaTime
+                
+                // Micro-animação: wobble leve de espera (respirando)
+                const time = performance.now() / 1000
+                cust.mesh.children[0].scale.y = 1.0 + Math.sin(time * 3 + cust.data.speed) * 0.05
+                cust.mesh.children[1].position.y = 0.75 + Math.sin(time * 3 + cust.data.speed) * 0.05
+
+                if (cust.waitTimer <= 0) {
+                  cust.pathIndex++
+                  if (cust.pathIndex >= cust.data.path.length) {
+                    cust.active = false
+                    cust.mesh.visible = false
+                  } else {
+                    cust.mesh.children[0].scale.y = 1.0
+                    cust.mesh.children[1].position.y = 0.75
+                  }
+                }
+                return
+              }
+
+              const targetX = pt.x - currentWidth / 2
+              const targetZ = pt.y - currentHeight / 2
+
+              const dx = targetX - cust.mesh.position.x
+              const dz = targetZ - cust.mesh.position.z
+              const dist = Math.sqrt(dx * dx + dz * dz)
+
+              if (dist < 0.1) {
+                cust.waitTimer = pt.waitDuration || 0
+                cust.mesh.children[0].scale.y = 1.0
+                cust.mesh.children[1].position.y = 0.75
+                cust.mesh.rotation.z = 0
+                if (cust.waitTimer === 0) {
+                  cust.pathIndex++
+                  if (cust.pathIndex >= cust.data.path.length) {
+                    cust.active = false
+                    cust.mesh.visible = false
+                  }
+                }
+              } else {
+                const step = cust.data.speed * deltaTime
+                const moveDist = Math.min(step, dist)
+                cust.mesh.position.x += (dx / dist) * moveDist
+                cust.mesh.position.z += (dz / dist) * moveDist
+
+                // Rotacionar suavemente em direção ao movimento
+                const targetAngle = Math.atan2(dx, dz)
+                let angleDiff = targetAngle - cust.mesh.rotation.y
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2
+                cust.mesh.rotation.y += angleDiff * 0.1
+
+                // Micro-animação: Wobble horizontal (simula caminhada)
+                const distTraveled = performance.now() / 150 * cust.data.speed
+                cust.mesh.rotation.z = Math.sin(distTraveled) * 0.12
+              }
+            })
           }
 
           ren.render(sc, cam)
@@ -2571,10 +2717,58 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
 
     furnitureMeshesRef.current = newFurnitureMeshes
     
+    // Simulação 3D de fluxo
+    if (simulationGroupRef.current) {
+      sceneRef.current?.remove(simulationGroupRef.current)
+      simulationGroupRef.current = null
+    }
+
+    if (showSimulation) {
+      const simGroup = new THREE.Group()
+      simulationGroupRef.current = simGroup
+      if (sceneRef.current) sceneRef.current.add(simGroup)
+
+      const customers = generateCustomersSimulation(items, Number(storeWidth), Number(storeHeight), 15)
+      
+      simulationDataRef.current = customers.map(cust => {
+        const mat = new THREE.MeshStandardMaterial({ color: cust.color, roughness: 0.5 })
+        const bodyGeo = new THREE.CylinderGeometry(0.18, 0.22, 0.6, 16)
+        const headGeo = new THREE.SphereGeometry(0.15, 16, 16)
+        
+        const bodyMesh = new THREE.Mesh(bodyGeo, mat)
+        bodyMesh.position.y = 0.3
+        bodyMesh.castShadow = true
+        bodyMesh.receiveShadow = true
+
+        const headMesh = new THREE.Mesh(headGeo, mat)
+        headMesh.position.y = 0.75
+        headMesh.castShadow = true
+        headMesh.receiveShadow = true
+
+        const custGroup = new THREE.Group()
+        custGroup.add(bodyMesh)
+        custGroup.add(headMesh)
+        
+        const startPt = cust.path[0]
+        custGroup.position.set(startPt.x - Number(storeWidth) / 2, 0, startPt.y - Number(storeHeight) / 2)
+        simGroup.add(custGroup)
+
+        return {
+          data: cust,
+          mesh: custGroup,
+          pathIndex: 0,
+          waitTimer: 0,
+          active: true
+        }
+      })
+    } else {
+      simulationDataRef.current = []
+    }
+
     if (rendererRef.current) {
       rendererRef.current.shadowMap.needsUpdate = true
     }
-  }, [items, storeWidth, storeHeight, loadedModelsCount])
+  }, [items, storeWidth, storeHeight, loadedModelsCount, showSimulation])
 
   // --- Effect 4: Atualização de Customizações (floorStyle, wallColor, showSignage) ---
   useEffect(() => {
@@ -2666,6 +2860,92 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
   }
   const handleDpadStop = (dir: string) => {
     dpadKeysRef.current[dir] = false
+  }
+
+  const triggerPresetTransition = (presetName: 'entrada' | 'geral' | 'farmaceutico' | 'aereo') => {
+    const cam = cameraRef.current
+    if (!cam) return
+
+    setActivePreset(presetName)
+
+    let targetMode: 'orbit' | 'first-person' = 'orbit'
+    const endPos = new THREE.Vector3()
+    const endTarget = new THREE.Vector3(0, 0.5, 0)
+    let endYaw = 0
+    let endPitch = 0
+
+    const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
+    const wVal = Math.max(4, Number(currentWidth) || 10)
+    const hVal = Math.max(4, Number(currentHeight) || 12)
+
+    // Find Door and Counter
+    const doorItem = items.find(i => i.isDoor && !i.isEmergency)
+    const doorX = doorItem ? (doorItem.x + doorItem.width / 2 - wVal / 2) : 0
+    const doorZ = doorItem ? (doorItem.y + doorItem.height / 2 - hVal / 2) : (hVal / 2)
+
+    // Counter
+    const counterItem = items.find(i => i.category === 'BALCOES' || i.name?.toLowerCase().includes('balcão') || i.name?.toLowerCase().includes('atendimento'))
+    const counterX = counterItem ? (counterItem.x + counterItem.width / 2 - wVal / 2) : 0
+    const counterZ = counterItem ? (counterItem.y + counterItem.height / 2 - hVal / 2) : (-hVal / 4)
+
+    switch (presetName) {
+      case 'entrada':
+        targetMode = 'first-person'
+        endPos.set(doorX, 1.6, Math.max(-hVal / 2 + 0.5, Math.min(doorZ - 0.5, hVal / 2 - 0.5)))
+        endYaw = Math.PI // facing inside (-Z)
+        endPitch = -0.05
+        break
+      case 'geral':
+        targetMode = 'orbit'
+        const sizeFactor = Math.max(wVal, hVal)
+        endPos.set(sizeFactor * 0.8, sizeFactor * 0.7, sizeFactor * 0.8)
+        endTarget.set(0, 0.5, 0)
+        break
+      case 'farmaceutico':
+        targetMode = 'first-person'
+        endPos.set(counterX, 1.6, Math.max(-hVal / 2 + 0.3, Math.min(counterZ - 0.6, hVal / 2 - 0.3)))
+        endYaw = 0 // facing entrance (+Z)
+        endPitch = -0.05
+        break
+      case 'aereo':
+        targetMode = 'orbit'
+        const sizeAerial = Math.max(wVal, hVal)
+        endPos.set(0, sizeAerial * 1.25, 0.001)
+        endTarget.set(0, 0, 0)
+        break
+    }
+
+    const startPos = cam.position.clone()
+    const startTarget = orbitTargetRef.current.clone()
+    
+    let startYaw = yawRef.current
+    let startPitch = pitchRef.current
+    if (cameraModeRef.current === 'orbit') {
+      const dir = new THREE.Vector3()
+      cam.getWorldDirection(dir)
+      startYaw = Math.atan2(dir.x, dir.z)
+      startPitch = Math.asin(dir.y)
+    }
+
+    transitionRef.current = {
+      startTime: performance.now(),
+      duration: 800,
+      startPos,
+      endPos,
+      startTarget,
+      endTarget,
+      startYaw,
+      endYaw,
+      startPitch,
+      endPitch,
+      mode: targetMode
+    }
+
+    if (document.pointerLockElement) {
+      try {
+        document.exitPointerLock()
+      } catch {}
+    }
   }
 
   return (
@@ -2857,7 +3137,36 @@ export default function ThreeDViewer({ onClose }: ThreeDViewerProps) {
             </label>
           </div>
         </div>
-      )}
+        )}
+
+        {/* ─── CAMERA PRESETS (TOUR VIRTUAL) ─── */}
+        <div className="camera-presets pointer-events-auto">
+          <div className="preset-title">📸 Tour</div>
+          <button 
+            className={`preset-btn ${activePreset === 'entrada' ? 'active' : ''}`}
+            onClick={() => triggerPresetTransition('entrada')}
+          >
+            👁️ Entrada
+          </button>
+          <button 
+            className={`preset-btn ${activePreset === 'geral' ? 'active' : ''}`}
+            onClick={() => triggerPresetTransition('geral')}
+          >
+            🏪 Geral
+          </button>
+          <button 
+            className={`preset-btn ${activePreset === 'farmaceutico' ? 'active' : ''}`}
+            onClick={() => triggerPresetTransition('farmaceutico')}
+          >
+            💊 Farmacêutico
+          </button>
+          <button 
+            className={`preset-btn ${activePreset === 'aereo' ? 'active' : ''}`}
+            onClick={() => triggerPresetTransition('aereo')}
+          >
+            🐦 Aéreo
+          </button>
+        </div>
 
         {/* ─── ON-SCREEN D-PAD CONTROLLER ─── */}
         <div className="three-dpad pointer-events-auto">

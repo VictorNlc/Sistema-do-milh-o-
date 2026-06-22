@@ -144,9 +144,9 @@ export async function generateAILayout(
     return {
       items: validItems,
       messages: [
-        `🎨 Layout baseado em modelo real dos seus projetistas (${ref.name})`,
-        `📀 Modelo original: ${ref.storeWidth}m×${ref.storeHeight}m (${refArea}m²) → adaptado para ${storeWidth}m×${storeHeight}m (${newArea}m²)`,
-        `✅ ${validItems.length} itens posicionados com base no projeto do projetista`,
+        ` Layout baseado em modelo real dos seus projetistas (${ref.name})`,
+        ` Modelo original: ${ref.storeWidth}m×${ref.storeHeight}m (${refArea}m²) → adaptado para ${storeWidth}m×${storeHeight}m (${newArea}m²)`,
+        ` ${validItems.length} itens posicionados com base no projeto do projetista`,
         ...config.tips.slice(0, 2),
       ],
       stats: {
@@ -179,7 +179,7 @@ export async function generateAILayout(
   if (!hasDoor) {
     return {
       items: [],
-      messages: ['⚠️ Adicione uma porta de entrada ao canvas antes de gerar o layout.'],
+      messages: [' Adicione uma porta de entrada ao canvas antes de gerar o layout.'],
       valid: false,
       stats: { usedArea: '0', totalArea: (storeWidth * storeHeight).toFixed(1), corridorMin: minCorridor },
     };
@@ -189,7 +189,7 @@ export async function generateAILayout(
   if (storeWidth < 4 || storeHeight < 4) {
     return {
       items: [],
-      messages: ['⚠️ A loja é muito pequena. O mínimo recomendado é 4m x 4m para uma farmácia funcional.'],
+      messages: [' A loja é muito pequena. O mínimo recomendado é 4m x 4m para uma farmácia funcional.'],
       valid: false,
       stats: { usedArea: '0', totalArea: (storeWidth * storeHeight).toFixed(1), corridorMin: minCorridor },
     }
@@ -327,9 +327,9 @@ export async function generateAILayout(
   const latCaixaW = CESTAO_SIZE
 
   // Helper para posicionar gôndolas em layout horizontal (rxWall = Top ou Bottom)
-  const placeHorizontalLayoutGondolas = (yStart: number, yEnd: number) => {
-    const leftLimit = WALL_SHELF_DEPTH
-    const rightLimit = storeWidth - WALL_SHELF_DEPTH
+  const placeHorizontalLayoutGondolas = (yStart: number, yEnd: number, leftLimitOverride?: number, rightLimitOverride?: number) => {
+    const leftLimit = leftLimitOverride ?? WALL_SHELF_DEPTH
+    const rightLimit = rightLimitOverride ?? (storeWidth - WALL_SHELF_DEPTH)
     const availableWidth = rightLimit - leftLimit
     
     let numColumns = 0
@@ -453,9 +453,9 @@ export async function generateAILayout(
   }
 
   // Helper para posicionar gôndolas em layout vertical (rxWall = Left ou Right)
-  const placeVerticalLayoutGondolas = (xStart: number, xEnd: number) => {
-    const topLimit = WALL_SHELF_DEPTH
-    const bottomLimit = storeHeight - WALL_SHELF_DEPTH
+  const placeVerticalLayoutGondolas = (xStart: number, xEnd: number, topLimitOverride?: number, bottomLimitOverride?: number) => {
+    const topLimit = topLimitOverride ?? WALL_SHELF_DEPTH
+    const bottomLimit = bottomLimitOverride ?? (storeHeight - WALL_SHELF_DEPTH)
     const availableHeight = bottomLimit - topLimit
     
     let numRows = 0
@@ -574,6 +574,85 @@ export async function generateAILayout(
           }
         }
       }
+    }
+  }
+
+  // Preenchimento de áreas vazias com gôndolas (quantas couberem) ou até 3 cestões centrais
+  const fillEmptyReserve = (minX: number, maxX: number, minY: number, maxY: number, isVerticalLayout: boolean) => {
+    const spaceW = maxX - minX
+    const spaceH = maxY - minY
+    if (spaceW < 0.43 || spaceH < 0.43) return
+    
+    let placedGondolaCount = 0
+    const possibleGondolas = [
+      { id: `catalog-33${lineSuffix}`, len: 3.0 },
+      { id: `catalog-32${lineSuffix}`, len: 2.2 },
+      { id: `catalog-31${lineSuffix}`, len: 1.7 }
+    ]
+
+    const isRot90 = !isVerticalLayout
+    const colStep = 0.43 + minCorridor
+    
+    const colStart = isRot90 ? minX : minY
+    let currentCol = (isRot90 ? maxX : maxY) - 0.43
+    
+    while (currentCol >= colStart) {
+      let currentPos = isRot90 ? minY : minX
+      const posEnd = isRot90 ? maxY : maxX
+      
+      while (currentPos < posEnd) {
+        let placedHere = false
+        for (const g of possibleGondolas) {
+          const gWidth = isRot90 ? 0.43 : g.len
+          const gHeight = isRot90 ? g.len : 0.43
+          const gLength = g.len
+          
+          if (currentPos + gLength <= posEnd) {
+            const drawX = isRot90 ? currentCol + 0.43 : currentPos
+            const drawY = isRot90 ? currentPos : currentCol
+            
+            if (!collidesWithObstacle(drawX, drawY, g.len, 0.43, isRot90 ? 90 : 0)) {
+              generatedItems.push(makeItem(g.id, 'Gôndola Central', '📦', drawX, drawY, g.len, 0.43, '#FDF8F0', '#8B7355', { rotation: isRot90 ? 90 : 0 }))
+              placedGondolaCount++
+              currentPos += gLength + minCorridor
+              placedHere = true
+              break
+            }
+          }
+        }
+        if (!placedHere) {
+          let placedCestao = false
+          for (let count = 2; count >= 1; count--) {
+            const blockLength = count * CESTAO_SIZE + (count - 1) * 0.1
+            const blockStart = posEnd - blockLength
+            if (currentPos <= blockStart) {
+              let canPlaceAll = true
+              for (let i = 0; i < count; i++) {
+                const cPos = blockStart + i * (CESTAO_SIZE + 0.1)
+                const cx = isRot90 ? currentCol + 0.43 / 2 - CESTAO_SIZE / 2 : cPos
+                const cy = isRot90 ? cPos : currentCol + 0.43 / 2 - CESTAO_SIZE / 2
+                if (collidesWithObstacle(cx, cy, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+                  canPlaceAll = false
+                  break
+                }
+              }
+              
+              if (canPlaceAll) {
+                for (let i = 0; i < count; i++) {
+                  const cPos = blockStart + i * (CESTAO_SIZE + 0.1)
+                  const cx = isRot90 ? currentCol + 0.43 / 2 - CESTAO_SIZE / 2 : cPos
+                  const cy = isRot90 ? cPos : currentCol + 0.43 / 2 - CESTAO_SIZE / 2
+                  generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺', cx, cy, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+                }
+                placedCestao = true
+                break
+              }
+            }
+          }
+          break
+        }
+      }
+      currentCol -= colStep
     }
   }
 
@@ -831,25 +910,48 @@ export async function generateAILayout(
     checkoutCrossMax?: number,
   ) => {
     const area = storeWidth * storeHeight
-    const numCols = Math.max(2, Math.min(3, Math.floor(Math.min(1.2, storeWidth - 2 * minCorridor) / CESTAO_SIZE)))
     const numRows = area >= 60 ? 2 : 1
+    // Quantidade de ilhas de cestões pela área da loja — mais ocupação e destaque na entrada:
+    // 1 até 60m², 2 a partir de 60m², 3 a partir de 130m². Reduz automaticamente se não couber.
+    let numIslands = area >= 130 ? 3 : area >= 60 ? 2 : 1
+    // Ilhas 2×2 quando há mais de uma; ilha única pode ter 2–3 colunas conforme a largura.
+    const numCols = numIslands > 1
+      ? 2
+      : Math.max(2, Math.min(3, Math.floor(Math.min(1.2, storeWidth - 2 * minCorridor) / CESTAO_SIZE)))
     const islandW = numCols * CESTAO_SIZE
     const storeSize = entranceWallAxis === 'y' ? storeWidth : storeHeight
-    let islandCrossStart = Math.max(minCorridor, Math.min(
-      storeSize - minCorridor - islandW,
-      crossCenter - islandW / 2,
+    const gap = minCorridor // 1m de corredor entre ilhas vizinhas
+    const blockWidthFor = (n: number) => n * islandW + (n - 1) * gap
+
+    // Reduz a quantidade até o bloco caber na largura disponível (com corredores nas pontas).
+    while (numIslands > 1 && blockWidthFor(numIslands) > storeSize - 2 * minCorridor) numIslands--
+    let blockW = blockWidthFor(numIslands)
+
+    let blockStart = Math.max(minCorridor, Math.min(
+      storeSize - minCorridor - blockW,
+      crossCenter - blockW / 2,
     ))
 
     if (checkoutCrossMin !== undefined && checkoutCrossMax !== undefined) {
-      const islandEnd = islandCrossStart + islandW
       const clearLeft = checkoutCrossMin - minCorridor
       const clearRight = checkoutCrossMax + minCorridor
-      if (islandEnd > clearLeft && islandCrossStart < clearRight) {
-        const rEnd = storeSize - minCorridor
-        if (rEnd - clearRight >= islandW) {
-          islandCrossStart = clearRight + (rEnd - clearRight - islandW) / 2
-        } else if (clearLeft - minCorridor >= islandW) {
-          islandCrossStart = minCorridor + (clearLeft - minCorridor - islandW) / 2
+      const rEnd = storeSize - minCorridor
+      const overlaps = (s: number, w: number) => s + w > clearLeft && s < clearRight
+      // Reduz a quantidade até o bloco caber centralizado (sem invadir o checkout/BA)
+      // ou caber inteiro numa das zonas livres (à direita ou à esquerda do checkout).
+      while (numIslands > 1) {
+        const w = blockWidthFor(numIslands)
+        const centered = Math.max(minCorridor, Math.min(storeSize - minCorridor - w, crossCenter - w / 2))
+        if (!overlaps(centered, w) || rEnd - clearRight >= w || clearLeft - minCorridor >= w) break
+        numIslands--
+      }
+      blockW = blockWidthFor(numIslands)
+      blockStart = Math.max(minCorridor, Math.min(storeSize - minCorridor - blockW, crossCenter - blockW / 2))
+      if (overlaps(blockStart, blockW)) {
+        if (rEnd - clearRight >= blockW) {
+          blockStart = clearRight + (rEnd - clearRight - blockW) / 2
+        } else if (clearLeft - minCorridor >= blockW) {
+          blockStart = minCorridor + (clearLeft - minCorridor - blockW) / 2
         }
       }
     }
@@ -859,17 +961,20 @@ export async function generateAILayout(
       islandEdge -= CESTAO_SIZE
     }
 
-    for (let row = 0; row < numRows; row++) {
-      for (let col = 0; col < numCols; col++) {
-        const crossVal = islandCrossStart + col * CESTAO_SIZE
-        const depthVal = islandEdge + towardInteriorSign * row * CESTAO_SIZE
-        const cx = crossAxis === 'x' ? crossVal : depthVal
-        const cy = crossAxis === 'x' ? depthVal : crossVal
-        if (!collidesWithObstacle(cx, cy, CESTAO_SIZE, CESTAO_SIZE, 0)) {
-          generatedItems.push(makeItem(
-            `catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
-            cx, cy, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 },
-          ))
+    for (let isl = 0; isl < numIslands; isl++) {
+      const islandCrossStart = blockStart + isl * (islandW + gap)
+      for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+          const crossVal = islandCrossStart + col * CESTAO_SIZE
+          const depthVal = islandEdge + towardInteriorSign * row * CESTAO_SIZE
+          const cx = crossAxis === 'x' ? crossVal : depthVal
+          const cy = crossAxis === 'x' ? depthVal : crossVal
+          if (!collidesWithObstacle(cx, cy, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+            generatedItems.push(makeItem(
+              `catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              cx, cy, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 },
+            ))
+          }
         }
       }
     }
@@ -1081,6 +1186,20 @@ export async function generateAILayout(
     const backWallEnd = storeWidth
     let currentX = backWallStart
 
+    // Regra 3: armários de medicamentos controlados (1 a cada 50m²) na parede dos fundos,
+    // lado esquerdo, atrás dos balcões e junto aos módulos de medicamentos.
+    const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
+    for (let c = 0; c < controlledCount && currentX + 0.5 <= backWallEnd - 1.0; c++) {
+      if (!collidesWithObstacle(currentX, backWallY, 0.5, medShelfDepth, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
+          currentX, backWallY, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          { rotation: 0, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
+        ))
+      }
+      currentX += 0.5
+    }
+
     while (currentX + 0.5 <= backWallEnd) {
       const remaining = backWallEnd - currentX
       let itemId = `catalog-22${lineSuffix}`
@@ -1092,7 +1211,7 @@ export async function generateAILayout(
         itemId = `catalog-21${lineSuffix}`
         w = 0.807
       }
-      
+
       if (!collidesWithObstacle(currentX, backWallY, w, medShelfDepth, 0)) {
         generatedItems.push(makeItem(
           itemId,
@@ -1122,11 +1241,11 @@ export async function generateAILayout(
 
     let checkoutIslandMin: number | undefined
     let checkoutIslandMax: number | undefined
+    let gondolaReserveLeft: number | undefined
 
     if (isLarge) {
       const entX = entrance?.x ?? (storeWidth / 2)
       const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
-      const checkoutY = storeHeight - STANDARD_PASSAGE_WIDTH
       let checkoutX = entX - 0.20
       let placeOnLeft = true
       if (entX < 2.0) {
@@ -1136,24 +1255,62 @@ export async function generateAILayout(
       checkoutIslandMin = checkoutX - STANDARD_PASSAGE_WIDTH
       checkoutIslandMax = checkoutX
 
-      // 1. Place L-Checkout (Rotation 90)
-      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 90)) {
+      // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
+      //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
+      // Braço vertical (encosta na parede de entrada y=storeHeight) — quadrante inf. direito (Top)
+      if (!collidesWithObstacle(checkoutX, storeHeight - 1.0, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
-          `catalog-131${lineSuffix}`,
-          'Checkout em L',
-          '💳',
-          checkoutX,
-          checkoutY,
-          STANDARD_PASSAGE_WIDTH,
-          STANDARD_PASSAGE_WIDTH,
-          '#DBEAFE',
-          '#1D4ED8',
-          { rotation: 90, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          checkoutX, storeHeight - 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
+        ))
+      }
+      // Braço horizontal — quadrante sup. esquerdo, tocando o vertical só no canto
+      if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          checkoutX - 1.0 - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
 
-      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
-      placeCheckoutSurroundings(checkoutX, checkoutY, 90, placeOnLeft, 'Top')
+      // 2. Checkout L no corredor lateral da perfumaria — orientação D (rot 270), canto no
+      //    vértice perfumaria(esq)×entrada(baixo). Borda esquerda a 1,2m da face das fraldas
+      //    (FRALDA_DEPTH). Gôndolas reposicionadas à direita com ≥1m de corredor.
+      const numRowsLoc = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      const gondolaYEndLoc = (storeHeight - ENTRANCE_ISLAND_OFFSET - numRowsLoc * CESTAO_SIZE) - minCorridor
+      const newCheckoutY = (gondolaYEndLoc + 0.6) - STANDARD_PASSAGE_WIDTH
+      const checkoutLLeftX = FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
+      const checkoutFits = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43 <= storeWidth - WALL_SHELF_DEPTH
+      if (newCheckoutY >= balcaoY + minCorridor && checkoutFits) {
+        if (!collidesWithObstacle(checkoutLLeftX, gondolaYEndLoc + 0.6, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 270)) {
+          generatedItems.push(makeItem(
+            `catalog-131${lineSuffix}`, 'Checkout em L', '💳',
+            checkoutLLeftX, gondolaYEndLoc + 0.6, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, '#DBEAFE', '#1D4ED8',
+            { rotation: 270, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          ))
+          gondolaReserveLeft = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor
+        }
+      } else {
+        // Sem espaço para o checkout L — coloca cestões no corredor da perfumaria
+        const cestY = gondolaYEndLoc - CESTAO_SIZE
+        if (cestY >= balcaoY + minCorridor) {
+          if (!collidesWithObstacle(checkoutLLeftX, cestY, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              checkoutLLeftX, cestY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          if (!collidesWithObstacle(checkoutLLeftX + CESTAO_SIZE, cestY, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              checkoutLLeftX + CESTAO_SIZE, cestY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          gondolaReserveLeft = checkoutLLeftX + 2 * CESTAO_SIZE + minCorridor
+        }
+      }
+
+      // 3. Painel canaletado na parede de entrada (atrás da área dos BA)
+      placeCheckoutSurroundings(checkoutX, storeHeight - STANDARD_PASSAGE_WIDTH, 90, placeOnLeft, 'Top')
+
+      // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA (sobre o BA vertical, à direita do horizontal)
+      if (!collidesWithObstacle(checkoutX - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+        generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+          checkoutX - BALCAO_DEPTH, storeHeight - 1.0 - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+      }
     }
 
     // Ilha de cestões na entrada: primeiro item que o cliente vê ao entrar (1.2m da parede)
@@ -1355,7 +1512,7 @@ export async function generateAILayout(
     placeWrapAroundShelves(storeWidth - MEDICINE_SHELF_DEPTH, 'y', 270, medShelfDepth, balcaoY, 1)
 
     // 3. Paredes laterais: esquerda (MIP + fralda no final) / direita (beleza)
-    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, storeHeight - CORNER_GAP_LIMIT, 1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, storeHeight - 0.40, 1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
     placeSmartWallSequence(storeWidth - WALL_SHELF_DEPTH, 'y', 270, balcaoY, storeHeight - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
@@ -1364,7 +1521,16 @@ export async function generateAILayout(
       // Borda interna da ilha (âncora da fileira mais profunda na loja)
       const islandInnerY = storeHeight - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
       const gondolaYEnd = islandInnerY - minCorridor
-      placeHorizontalLayoutGondolas(balcaoY + minCorridor, gondolaYEnd)
+      placeHorizontalLayoutGondolas(balcaoY + minCorridor, gondolaYEnd, gondolaReserveLeft)
+
+      if (gondolaReserveLeft) {
+        const spaceMinY = balcaoY + minCorridor
+        const spaceMaxY = gondolaYEnd
+        const spaceMinX = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMaxX = gondolaReserveLeft
+
+        fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, false)
+      }
     }
 
     centralMinY = balcaoY + minCorridor
@@ -1376,6 +1542,19 @@ export async function generateAILayout(
     const backWallStart = 0.0
     const backWallEnd = storeWidth
     let currentX = backWallStart
+
+    // Regra 3: armários de controlados (1 a cada 50m²) na parede dos fundos, lado esquerdo.
+    const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
+    for (let c = 0; c < controlledCount && currentX + 0.5 <= backWallEnd - 1.0; c++) {
+      if (!collidesWithObstacle(currentX + 0.5, storeHeight, 0.5, medShelfDepth, 180)) {
+        generatedItems.push(makeItem(
+          `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
+          currentX + 0.5, storeHeight, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          { rotation: 180, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
+        ))
+      }
+      currentX += 0.5
+    }
 
     while (currentX + 0.5 <= backWallEnd) {
       const remaining = backWallEnd - currentX
@@ -1417,11 +1596,11 @@ export async function generateAILayout(
 
     let checkoutIslandMin: number | undefined
     let checkoutIslandMax: number | undefined
+    let gondolaReserveLeft: number | undefined
 
     if (isLarge) {
       const entX = entrance?.x ?? (storeWidth / 2)
       const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
-      const checkoutY = STANDARD_PASSAGE_WIDTH
       let checkoutX = entX - 0.20
       let placeOnLeft = true
       if (entX < 2.0) {
@@ -1431,24 +1610,62 @@ export async function generateAILayout(
       checkoutIslandMin = checkoutX - STANDARD_PASSAGE_WIDTH
       checkoutIslandMax = checkoutX
 
-      // 1. Place L-Checkout (Rotation 180)
-      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 180)) {
+      // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
+      //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
+      // Braço vertical (encosta na parede de entrada y=0) — desce para o interior
+      if (!collidesWithObstacle(checkoutX, 0, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
-          `catalog-131${lineSuffix}`,
-          'Checkout em L',
-          '💳',
-          checkoutX,
-          checkoutY,
-          STANDARD_PASSAGE_WIDTH,
-          STANDARD_PASSAGE_WIDTH,
-          '#DBEAFE',
-          '#1D4ED8',
-          { rotation: 180, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          checkoutX, 0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
+        ))
+      }
+      // Braço horizontal — tocando o vertical só no canto inferior
+      if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, 1.0, 1.0, BALCAO_DEPTH, 0)) {
+        generatedItems.push(makeItem(
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          checkoutX - 1.0 - BALCAO_DEPTH, 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
 
-      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
-      placeCheckoutSurroundings(checkoutX, checkoutY, 180, placeOnLeft, 'Bottom')
+      // 2. Checkout L no corredor lateral da perfumaria — orientação rot 0, canto no
+      //    vértice perfumaria(esq)×entrada(cima). Borda esquerda a 1,2m das fraldas;
+      //    gôndolas reposicionadas à direita com ≥1m de corredor.
+      const numRowsLoc = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      const gondolaYStartLoc = (ENTRANCE_ISLAND_OFFSET + numRowsLoc * CESTAO_SIZE) + minCorridor
+      const newCheckoutY = (gondolaYStartLoc - 0.6) + STANDARD_PASSAGE_WIDTH
+      const checkoutLLeftX = FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
+      const checkoutFits = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43 <= storeWidth - WALL_SHELF_DEPTH
+      if (newCheckoutY <= balcaoY - minCorridor && checkoutFits) {
+        if (!collidesWithObstacle(checkoutLLeftX, gondolaYStartLoc - 0.6, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 0)) {
+          generatedItems.push(makeItem(
+            `catalog-131${lineSuffix}`, 'Checkout em L', '💳',
+            checkoutLLeftX, gondolaYStartLoc - 0.6, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, '#DBEAFE', '#1D4ED8',
+            { rotation: 0, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          ))
+          gondolaReserveLeft = checkoutLLeftX + STANDARD_PASSAGE_WIDTH + minCorridor
+        }
+      } else {
+        // Sem espaço para o checkout L — coloca cestões no corredor da perfumaria
+        const cestY = gondolaYStartLoc
+        if (cestY + CESTAO_SIZE <= balcaoY - minCorridor) {
+          if (!collidesWithObstacle(checkoutLLeftX, cestY, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              checkoutLLeftX, cestY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          if (!collidesWithObstacle(checkoutLLeftX + CESTAO_SIZE, cestY, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              checkoutLLeftX + CESTAO_SIZE, cestY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          gondolaReserveLeft = checkoutLLeftX + 2 * CESTAO_SIZE + minCorridor
+        }
+      }
+
+      // 3. Painel canaletado na parede de entrada (atrás da área dos BA)
+      placeCheckoutSurroundings(checkoutX, STANDARD_PASSAGE_WIDTH, 180, placeOnLeft, 'Bottom')
+
+      // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA (sob o BA vertical, à direita do horizontal)
+      if (!collidesWithObstacle(checkoutX - BALCAO_DEPTH, 1.0, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+        generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+          checkoutX - BALCAO_DEPTH, 1.0, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+      }
     }
 
     // Ilha de cestões na entrada: primeiro item que o cliente vê ao entrar (1.2m da parede)
@@ -1642,7 +1859,7 @@ export async function generateAILayout(
     placeWrapAroundShelves(storeWidth - MEDICINE_SHELF_DEPTH, 'y', 270, storeHeight - medShelfDepth, balcaoY, -1)
 
     // 3. Paredes laterais: esquerda (MIP + fralda no final) / direita (beleza)
-    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, CORNER_GAP_LIMIT, -1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(WALL_SHELF_DEPTH, 'y', 90, balcaoY, 0.40, -1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
     placeSmartWallSequence(storeWidth - WALL_SHELF_DEPTH, 'y', 270, balcaoY, CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
@@ -1651,7 +1868,16 @@ export async function generateAILayout(
       // Borda interna da ilha (borda inferior da fileira mais profunda na loja)
       const islandHighY = ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
       const gondolaYStart = islandHighY + minCorridor
-      placeHorizontalLayoutGondolas(gondolaYStart, balcaoY - minCorridor)
+      placeHorizontalLayoutGondolas(gondolaYStart, balcaoY - minCorridor, gondolaReserveLeft)
+
+      if (gondolaReserveLeft) {
+        const spaceMinY = gondolaYStart + STANDARD_PASSAGE_WIDTH + minCorridor
+        const spaceMaxY = balcaoY - minCorridor
+        const spaceMinX = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMaxX = gondolaReserveLeft
+
+        fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, false)
+      }
     }
 
     centralMinY = minCorridor
@@ -1663,6 +1889,19 @@ export async function generateAILayout(
     const backWallStart = 0.0
     const backWallEnd = storeHeight
     let currentY = backWallStart
+
+    // Regra 3: armários de controlados (1 a cada 50m²) na parede dos fundos (medicamentos).
+    const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
+    for (let c = 0; c < controlledCount && currentY + 0.5 <= backWallEnd - 1.0; c++) {
+      if (!collidesWithObstacle(MEDICINE_SHELF_DEPTH, currentY, 0.5, medShelfDepth, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
+          MEDICINE_SHELF_DEPTH, currentY, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          { rotation: 90, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
+        ))
+      }
+      currentY += 0.5
+    }
 
     while (currentY + 0.5 <= backWallEnd) {
       const remaining = backWallEnd - currentY
@@ -1704,11 +1943,11 @@ export async function generateAILayout(
 
     let checkoutIslandMin: number | undefined
     let checkoutIslandMax: number | undefined
+    let gondolaReserveBottom: number | undefined
 
     if (isLarge) {
       const entY = entrance?.y ?? (storeHeight / 2)
       const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
-      const checkoutX = storeWidth - STANDARD_PASSAGE_WIDTH
       let checkoutY = entY - 0.20
       let placeOnLeft = true
       if (entY < 2.0) {
@@ -1718,24 +1957,63 @@ export async function generateAILayout(
       checkoutIslandMin = checkoutY - STANDARD_PASSAGE_WIDTH
       checkoutIslandMax = checkoutY
 
-      // 1. Place L-Checkout (Rotation 270)
-      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 270)) {
+      // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
+      //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
+      // Braço perpendicular (encosta em x=storeWidth, entra na loja)
+      if (!collidesWithObstacle(storeWidth - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
-          `catalog-131${lineSuffix}`,
-          'Checkout em L',
-          '💳',
-          checkoutX,
-          checkoutY,
-          STANDARD_PASSAGE_WIDTH,
-          STANDARD_PASSAGE_WIDTH,
-          '#DBEAFE',
-          '#1D4ED8',
-          { rotation: 270, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          storeWidth - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
+        ))
+      }
+      // Braço paralelo — tocando o perpendicular só no canto
+      if (!collidesWithObstacle(storeWidth - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          storeWidth - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
 
-      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
-      placeCheckoutSurroundings(checkoutX, checkoutY, 270, placeOnLeft, 'Left')
+      // 2. Checkout L no corredor da perfumaria (parede inferior) — orientação rot 180,
+      //    canto no vértice perfumaria(baixo)×entrada(direita). Borda inferior a 1,2m das
+      //    fraldas; gôndolas reposicionadas acima com ≥1m de corredor.
+      const numRowsLoc = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      const gondolaXEndLoc = (storeWidth - ENTRANCE_ISLAND_OFFSET - numRowsLoc * CESTAO_SIZE) - minCorridor
+      const newCheckoutX = (gondolaXEndLoc - 0.6) - STANDARD_PASSAGE_WIDTH
+      const checkoutLBottomY = storeHeight - FRALDA_DEPTH - STANDARD_PASSAGE_WIDTH
+      const checkoutFits = (checkoutLBottomY - STANDARD_PASSAGE_WIDTH - minCorridor) >= (WALL_SHELF_DEPTH + 0.43)
+      if (newCheckoutX >= balcaoX + minCorridor && checkoutFits) {
+        if (!collidesWithObstacle(gondolaXEndLoc - 0.6, checkoutLBottomY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 180)) {
+          generatedItems.push(makeItem(
+            `catalog-131${lineSuffix}`, 'Checkout em L', '💳',
+            gondolaXEndLoc - 0.6, checkoutLBottomY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, '#DBEAFE', '#1D4ED8',
+            { rotation: 180, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          ))
+          gondolaReserveBottom = checkoutLBottomY - STANDARD_PASSAGE_WIDTH - minCorridor
+        }
+      } else {
+        // Sem espaço para o checkout L — coloca cestões no corredor da perfumaria (canto inf. dir.)
+        const cestX = gondolaXEndLoc - CESTAO_SIZE
+        const cestYbase = checkoutLBottomY - CESTAO_SIZE
+        if (newCheckoutX >= balcaoX + minCorridor && cestYbase >= WALL_SHELF_DEPTH) {
+          if (!collidesWithObstacle(cestX, cestYbase, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              cestX, cestYbase, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          if (!collidesWithObstacle(cestX, cestYbase - CESTAO_SIZE, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              cestX, cestYbase - CESTAO_SIZE, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          gondolaReserveBottom = cestYbase - CESTAO_SIZE - minCorridor
+        }
+      }
+
+      // 3. Painel canaletado na parede de entrada (atrás da área dos BA)
+      placeCheckoutSurroundings(storeWidth - STANDARD_PASSAGE_WIDTH, checkoutY, 270, placeOnLeft, 'Left')
+
+      // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA
+      if (!collidesWithObstacle(storeWidth - 1.0 - BALCAO_DEPTH, checkoutY - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+        generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+          storeWidth - 1.0 - BALCAO_DEPTH, checkoutY - BALCAO_DEPTH, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+      }
     }
 
     // Ilha de cestões na entrada (1.2m da parede direita, onde fica a entrada)
@@ -1929,7 +2207,7 @@ export async function generateAILayout(
 
     // 3. Place side wall sequences (perfumaria/MIPs)
     placeSmartWallSequence(0, 'x', 0, balcaoX, storeWidth - CORNER_GAP_LIMIT, 1, RIGHT_PREFIX)
-    placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, storeWidth - CORNER_GAP_LIMIT, 1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, storeWidth - 0.40, 1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
     {
@@ -1937,7 +2215,16 @@ export async function generateAILayout(
       // Borda interna da ilha (âncora da fileira mais profunda na loja, lado esquerdo)
       const islandInnerX = storeWidth - ENTRANCE_ISLAND_OFFSET - numIslandRows * CESTAO_SIZE
       const gondolaXEnd = islandInnerX - minCorridor
-      placeVerticalLayoutGondolas(balcaoX + minCorridor, gondolaXEnd)
+      placeVerticalLayoutGondolas(balcaoX + minCorridor, gondolaXEnd, undefined, gondolaReserveBottom)
+
+      if (gondolaReserveBottom) {
+        const spaceMinX = balcaoX + minCorridor
+        const spaceMaxX = gondolaXEnd
+        const spaceMinY = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMaxY = gondolaReserveBottom
+
+        fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, true)
+      }
     }
 
     centralMinX = balcaoX + minCorridor
@@ -1949,6 +2236,19 @@ export async function generateAILayout(
     const backWallStart = 0.0
     const backWallEnd = storeHeight
     let currentY = backWallStart
+
+    // Regra 3: armários de controlados (1 a cada 50m²) na parede dos fundos (medicamentos).
+    const controlledCount = Math.max(1, Math.ceil((storeWidth * storeHeight) / 50))
+    for (let c = 0; c < controlledCount && currentY + 0.5 <= backWallEnd - 1.0; c++) {
+      if (!collidesWithObstacle(backWallX, currentY + 0.5, 0.5, medShelfDepth, 270)) {
+        generatedItems.push(makeItem(
+          `catalog-101${lineSuffix}`, 'Armário de Controlados', '🔒',
+          backWallX, currentY + 0.5, 0.5, medShelfDepth, '#E0E7FF', '#4338CA',
+          { rotation: 270, isWallItem: true, fillColor: '#C7D2FE', strokeColor: '#4338CA' }
+        ))
+      }
+      currentY += 0.5
+    }
 
     while (currentY + 0.5 <= backWallEnd) {
       const remaining = backWallEnd - currentY
@@ -1990,11 +2290,11 @@ export async function generateAILayout(
 
     let checkoutIslandMin: number | undefined
     let checkoutIslandMax: number | undefined
+    let gondolaReserveTop: number | undefined
 
     if (isLarge) {
       const entY = entrance?.y ?? (storeHeight / 2)
       const entW = entrance?.width ?? STANDARD_PASSAGE_WIDTH
-      const checkoutX = STANDARD_PASSAGE_WIDTH
       let checkoutY = entY - 1.4
       let placeOnLeft = true
       if (entY < 2.0) {
@@ -2004,24 +2304,63 @@ export async function generateAILayout(
       checkoutIslandMin = checkoutY
       checkoutIslandMax = checkoutY + STANDARD_PASSAGE_WIDTH
 
-      // 1. Place L-Checkout (Rotation 90)
-      if (!collidesWithObstacle(checkoutX, checkoutY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 90)) {
+      // 1. Dois BA 100 MDF em junção de canto (diagonal), como na imagem do cliente:
+      //    os dois balcões se tocam APENAS no canto, com as arestas alinhadas.
+      // Braço perpendicular (encosta em x=0, entra na loja)
+      if (!collidesWithObstacle(0, checkoutY, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
-          `catalog-131${lineSuffix}`,
-          'Checkout em L',
-          '💳',
-          checkoutX,
-          checkoutY,
-          STANDARD_PASSAGE_WIDTH,
-          STANDARD_PASSAGE_WIDTH,
-          '#DBEAFE',
-          '#1D4ED8',
-          { rotation: 90, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          0, checkoutY, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
+        ))
+      }
+      // Braço paralelo — tocando o perpendicular só no canto
+      if (!collidesWithObstacle(1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
+        generatedItems.push(makeItem(
+          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
 
-      // 2. Painel canaletado atrás do checkout + vitrine ao lado (sem cestões de canto)
-      placeCheckoutSurroundings(checkoutX, checkoutY, 90, placeOnLeft, 'Right')
+      // 2. Checkout L no corredor da perfumaria (parede superior) — orientação rot 0,
+      //    canto no vértice perfumaria(cima)×entrada(esquerda). Borda superior a 1,2m das
+      //    fraldas; gôndolas reposicionadas abaixo com ≥1m de corredor.
+      const numRowsLoc = (storeWidth * storeHeight) >= 60 ? 2 : 1
+      const gondolaXStartLoc = (ENTRANCE_ISLAND_OFFSET + numRowsLoc * CESTAO_SIZE) + minCorridor
+      const newCheckoutX = (gondolaXStartLoc + 0.6) + STANDARD_PASSAGE_WIDTH
+      const checkoutLTopY = FRALDA_DEPTH + STANDARD_PASSAGE_WIDTH
+      const checkoutFits = (checkoutLTopY + STANDARD_PASSAGE_WIDTH + minCorridor + 0.43) <= (storeHeight - WALL_SHELF_DEPTH)
+      if (newCheckoutX <= balcaoX - minCorridor && checkoutFits) {
+        if (!collidesWithObstacle(gondolaXStartLoc + 0.6, checkoutLTopY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, 0)) {
+          generatedItems.push(makeItem(
+            `catalog-131${lineSuffix}`, 'Checkout em L', '💳',
+            gondolaXStartLoc + 0.6, checkoutLTopY, STANDARD_PASSAGE_WIDTH, STANDARD_PASSAGE_WIDTH, '#DBEAFE', '#1D4ED8',
+            { rotation: 0, width: STANDARD_PASSAGE_WIDTH, height: STANDARD_PASSAGE_WIDTH }
+          ))
+          gondolaReserveTop = checkoutLTopY + STANDARD_PASSAGE_WIDTH + minCorridor
+        }
+      } else {
+        // Sem espaço para o checkout L — coloca cestões no corredor da perfumaria (canto sup. esq.)
+        const cestX = gondolaXStartLoc
+        const cestYbase = checkoutLTopY
+        if (cestX + CESTAO_SIZE <= balcaoX - minCorridor) {
+          if (!collidesWithObstacle(cestX, cestYbase, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              cestX, cestYbase, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          if (!collidesWithObstacle(cestX, cestYbase + CESTAO_SIZE, CESTAO_SIZE, CESTAO_SIZE, 0))
+            generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+              cestX, cestYbase + CESTAO_SIZE, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+          gondolaReserveTop = cestYbase + 2 * CESTAO_SIZE + minCorridor
+        }
+      }
+
+      // 3. Painel canaletado na parede de entrada (atrás da área dos BA)
+      placeCheckoutSurroundings(STANDARD_PASSAGE_WIDTH, checkoutY, 90, placeOnLeft, 'Right')
+
+      // 4. Cestão no vão 0,4×0,4 do canto da junção dos BA
+      if (!collidesWithObstacle(1.0, checkoutY, CESTAO_SIZE, CESTAO_SIZE, 0)) {
+        generatedItems.push(makeItem(`catalog-71${lineSuffix}`, 'Cestão Promocional', '🧺',
+          1.0, checkoutY, CESTAO_SIZE, CESTAO_SIZE, '#FDF8F0', '#8B7355', { rotation: 0 }))
+      }
     }
 
     // Ilha de cestões na entrada (1.2m da parede esquerda, onde fica a entrada)
@@ -2216,7 +2555,7 @@ export async function generateAILayout(
     placeWrapAroundShelves(storeHeight, 'x', 180, storeWidth - medShelfDepth, balcaoX, -1)
 
     // 3. Place side wall sequences (perfumaria/MIPs)
-    placeSmartWallSequence(0, 'x', 0, balcaoX, CORNER_GAP_LIMIT, -1, LEFT_PREFIX, LEFT_SUFFIX)
+    placeSmartWallSequence(0, 'x', 0, balcaoX, 0.40, -1, LEFT_PREFIX, LEFT_SUFFIX) // Regra 1: menos vão no canto das fraldas
     placeSmartWallSequence(storeHeight, 'x', 180, balcaoX, CORNER_GAP_LIMIT, -1, RIGHT_PREFIX)
 
     // 4. Place Central Gondolas — respeitando 1m de corredor até a ilha de cestões
@@ -2225,7 +2564,16 @@ export async function generateAILayout(
       // Borda interna da ilha (borda direita da fileira mais profunda na loja)
       const islandHighX = ENTRANCE_ISLAND_OFFSET + numIslandRows * CESTAO_SIZE
       const gondolaXStart = islandHighX + minCorridor
-      placeVerticalLayoutGondolas(gondolaXStart, balcaoX - minCorridor)
+      placeVerticalLayoutGondolas(gondolaXStart, balcaoX - minCorridor, gondolaReserveTop)
+
+      if (gondolaReserveTop) {
+        const spaceMinX = gondolaXStart + STANDARD_PASSAGE_WIDTH + minCorridor
+        const spaceMaxX = balcaoX - minCorridor
+        const spaceMinY = WALL_SHELF_DEPTH + FRALDA_DEPTH + 0.1
+        const spaceMaxY = gondolaReserveTop
+
+        fillEmptyReserve(spaceMinX, spaceMaxX, spaceMinY, spaceMaxY, true)
+      }
     }
 
     centralMinX = minCorridor
