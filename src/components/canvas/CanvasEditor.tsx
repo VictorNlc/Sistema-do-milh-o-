@@ -283,8 +283,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     } catch { /* ignore invalid drops */ }
   }, [addItem, stageX, stageY, scale, stageRef])
 
-  // Grid lines
-  const renderGrid = () => {
+  // Grid lines memoized
+  const gridLines = useMemo(() => {
     if (!showGrid) return null
     const step = gridSize * PIXELS_PER_METER
     const lines = []
@@ -295,6 +295,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           points={[x, 0, x, canvasH]}
           stroke="rgba(197, 160, 40, 0.18)"
           strokeWidth={0.7}
+          listening={false}
         />
       )
     for (let y = 0; y <= canvasH; y += step)
@@ -304,21 +305,70 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           points={[0, y, canvasW, y]}
           stroke="rgba(197, 160, 40, 0.18)"
           strokeWidth={0.7}
+          listening={false}
         />
       )
     return lines
-  }
+  }, [showGrid, gridSize, canvasW, canvasH])
 
-  // Ruler marks
-  const renderRuler = () => {
+  // Ruler marks memoized
+  const rulerMarks = useMemo(() => {
     if (!showMeasures) return []
     const marks = []
     for (let x = 0; x <= storeWidth; x++)
-      marks.push(<Text key={`rx${x}`} x={x * PIXELS_PER_METER - 8} y={-18} text={`${x}`} fontSize={8} fill="#0B3D2E" fontStyle="600" opacity={0.8} />)
+      marks.push(<Text key={`rx${x}`} x={x * PIXELS_PER_METER - 8} y={-18} text={`${x}`} fontSize={8} fill="#0B3D2E" fontStyle="600" opacity={0.8} listening={false} />)
     for (let y = 0; y <= storeHeight; y++)
-      marks.push(<Text key={`ry${y}`} x={-22} y={y * PIXELS_PER_METER - 5} text={`${y}`} fontSize={8} fill="#0B3D2E" fontStyle="600" opacity={0.8} />)
+      marks.push(<Text key={`ry${y}`} x={-22} y={y * PIXELS_PER_METER - 5} text={`${y}`} fontSize={8} fill="#0B3D2E" fontStyle="600" opacity={0.8} listening={false} />)
     return marks
-  }
+  }, [showMeasures, storeWidth, storeHeight])
+
+  // Outer walls and dimension COTAs memoized
+  const outerWallsAndDimensions = useMemo(() => {
+    return (
+      <Group listening={false}>
+        {/* Walls */}
+        <Rect x={-WALL_THICKNESS} y={-WALL_THICKNESS} width={canvasW + 2 * WALL_THICKNESS} height={WALL_THICKNESS} fill={WALL_COLOR} />
+        <Rect x={-WALL_THICKNESS} y={canvasH} width={canvasW + 2 * WALL_THICKNESS} height={WALL_THICKNESS} fill={WALL_COLOR} />
+        <Rect x={-WALL_THICKNESS} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
+        <Rect x={canvasW} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
+
+        {/* Dimension labels */}
+        {/* Horizontal top dimension line */}
+        <Line points={[0, -22, canvasW, -22]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[0, -28, 0, -16]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[canvasW, -28, canvasW, -16]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[5, -25, 0, -22, 5, -19]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[canvasW - 5, -25, canvasW, -22, canvasW - 5, -19]} stroke="#71717a" strokeWidth={1} />
+        <Rect x={canvasW / 2 - 35} y={-28} width={70} height={12} fill="#FCF9F2" />
+        <Text
+          x={canvasW / 2 - 35} y={-26}
+          width={70}
+          text={`${storeWidth.toFixed(2).replace('.', ',')} m`}
+          fontSize={9} fontStyle="bold"
+          fill="#0B3D2E"
+          align="center"
+        />
+
+        {/* Vertical right dimension line */}
+        <Line points={[canvasW + 22, 0, canvasW + 22, canvasH]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[canvasW + 16, 0, canvasW + 28, 0]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[canvasW + 16, canvasH, canvasW + 28, canvasH]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[canvasW + 19, 5, canvasW + 22, 0, canvasW + 25, 5]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[canvasW + 19, canvasH - 5, canvasW + 22, canvasH, canvasW + 25, canvasH - 5]} stroke="#71717a" strokeWidth={1} />
+        <Rect x={canvasW + 16} y={canvasH / 2 - 35} width={12} height={70} fill="#FCF9F2" />
+        <Text
+          x={canvasW + 29} y={canvasH / 2 - 35}
+          text={`${storeHeight.toFixed(2).replace('.', ',')} m`}
+          fontSize={9} fontStyle="bold"
+          fill="#0B3D2E"
+          rotation={90}
+        />
+
+        {/* North indicator */}
+        <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(11, 61, 46, 0.6)" fontStyle="bold" />
+      </Group>
+    )
+  }, [storeWidth, storeHeight, canvasW, canvasH])
 
   // Draw measurements between gondolas/shelves on the floor
   const corridorMeasures = useMemo(() => {
@@ -632,7 +682,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         onClick={handleStageClick}
         onTap={handleStageClick}
       >
-        <Layer>
+        <Layer name="background">
           {/* Floor */}
           <Rect
             name="floor"
@@ -642,55 +692,21 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
             shadowOffsetX={4} shadowOffsetY={8}
           />
 
-          {/* Grid */}
-          {renderGrid()}
+          {/* Grid lines (memoized and listening=false) */}
+          {gridLines}
+        </Layer>
 
+        <Layer name="walls_and_measures" listening={false}>
+          {/* Ruler marks */}
+          {rulerMarks}
+
+          {/* Walls and COTAs */}
+          {outerWallsAndDimensions}
+        </Layer>
+
+        <Layer name="corridor_measures">
           {/* Corridor Measures */}
           {corridorMeasures}
-
-          {/* Ruler */}
-          {renderRuler()}
-
-          {/* Walls */}
-          <Rect x={-WALL_THICKNESS} y={-WALL_THICKNESS} width={canvasW + 2 * WALL_THICKNESS} height={WALL_THICKNESS} fill={WALL_COLOR} />
-          <Rect x={-WALL_THICKNESS} y={canvasH} width={canvasW + 2 * WALL_THICKNESS} height={WALL_THICKNESS} fill={WALL_COLOR} />
-          <Rect x={-WALL_THICKNESS} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
-          <Rect x={canvasW} y={-WALL_THICKNESS} width={WALL_THICKNESS} height={canvasH + 2 * WALL_THICKNESS} fill={WALL_COLOR} />
-
-          {/* Dimension labels */}
-          {/* Horizontal top dimension line */}
-          <Line points={[0, -22, canvasW, -22]} stroke="#71717a" strokeWidth={1} />
-          <Line points={[0, -28, 0, -16]} stroke="#71717a" strokeWidth={1.2} />
-          <Line points={[canvasW, -28, canvasW, -16]} stroke="#71717a" strokeWidth={1.2} />
-          <Line points={[5, -25, 0, -22, 5, -19]} stroke="#71717a" strokeWidth={1} />
-          <Line points={[canvasW - 5, -25, canvasW, -22, canvasW - 5, -19]} stroke="#71717a" strokeWidth={1} />
-          <Rect x={canvasW / 2 - 35} y={-28} width={70} height={12} fill="#FCF9F2" />
-          <Text
-            x={canvasW / 2 - 35} y={-26}
-            width={70}
-            text={`${storeWidth.toFixed(2).replace('.', ',')} m`}
-            fontSize={9} fontStyle="bold"
-            fill="#0B3D2E"
-            align="center"
-          />
-
-          {/* Vertical right dimension line */}
-          <Line points={[canvasW + 22, 0, canvasW + 22, canvasH]} stroke="#71717a" strokeWidth={1} />
-          <Line points={[canvasW + 16, 0, canvasW + 28, 0]} stroke="#71717a" strokeWidth={1.2} />
-          <Line points={[canvasW + 16, canvasH, canvasW + 28, canvasH]} stroke="#71717a" strokeWidth={1.2} />
-          <Line points={[canvasW + 19, 5, canvasW + 22, 0, canvasW + 25, 5]} stroke="#71717a" strokeWidth={1} />
-          <Line points={[canvasW + 19, canvasH - 5, canvasW + 22, canvasH, canvasW + 25, canvasH - 5]} stroke="#71717a" strokeWidth={1} />
-          <Rect x={canvasW + 16} y={canvasH / 2 - 35} width={12} height={70} fill="#FCF9F2" />
-          <Text
-            x={canvasW + 29} y={canvasH / 2 - 35}
-            text={`${storeHeight.toFixed(2).replace('.', ',')} m`}
-            fontSize={9} fontStyle="bold"
-            fill="#0B3D2E"
-            rotation={90}
-          />
-
-          {/* North indicator */}
-          <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(11, 61, 46, 0.6)" fontStyle="bold" />
         </Layer>
 
         {/* Heatmap overlay — only rendered when showHeatmap is true */}
@@ -733,7 +749,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           )
         })()}
 
-        <Layer>
+        <Layer name="items_layer">
           {items.map((item) => (
             <CanvasItem
               key={item.id}
