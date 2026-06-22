@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
 import { toast } from '../../store/toastStore'
 import { readFloorPlanImage, fileToBase64, FloorPlanData } from '../../services/floorPlanReader'
@@ -18,11 +18,34 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
   const [loading, setLoading] = useState(false)
   const [resultData, setResultData] = useState<FloorPlanData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Pending data URL from clientIntakeForm (sessionStorage)
+  const [pendingBase64, setPendingBase64] = useState<string | null>(null)
+  const [pendingMimeType, setPendingMimeType] = useState<string>('image/jpeg')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const store = useCanvasStore()
   const { setStoreDimensions, setEntrance, setPillars, clearCanvas, addItem, rotateItem } = store
+
+  // ── Auto-load floor plan submitted from ClientIntakeForm ──────────────────
+  useEffect(() => {
+    if (!isOpen) return
+    const dataUrl = sessionStorage.getItem('projefarma_floorplan_pending')
+    if (!dataUrl) return
+    sessionStorage.removeItem('projefarma_floorplan_pending')
+
+    // Extract base64 payload and mime type from the data URL
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (!match) return
+    const [, mimeType, base64] = match
+    setPendingBase64(base64)
+    setPendingMimeType(mimeType)
+    setPreviewUrl(dataUrl)
+    setFile(null)
+    setResultData(null)
+    setError(null)
+    toast.info('Planta baixa carregada! Clique em "Analisar" para continuar.')
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -33,6 +56,7 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
     }
     setFile(selectedFile)
     setPreviewUrl(URL.createObjectURL(selectedFile))
+    setPendingBase64(null)
     setResultData(null)
     setError(null)
   }
@@ -59,15 +83,25 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
   }
 
   const handleAnalyze = async () => {
-    if (!file) return
+    if (!file && !pendingBase64) return
 
     setLoading(true)
     setError(null)
     setResultData(null)
 
     try {
-      const base64 = await fileToBase64(file)
-      const res = await readFloorPlanImage(base64, file.type)
+      let base64: string
+      let mimeType: string
+      if (pendingBase64) {
+        // Pre-loaded from ClientIntakeForm via sessionStorage
+        base64 = pendingBase64
+        mimeType = pendingMimeType
+      } else {
+        base64 = await fileToBase64(file!)
+        mimeType = file!.type
+      }
+
+      const res = await readFloorPlanImage(base64, mimeType)
 
       if (res.success && res.data) {
         setResultData(res.data)

@@ -98,6 +98,32 @@ export default function Editor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── Lê dados do formulário de cadastro do cliente (ClientIntakeForm) ──────
+  useEffect(() => {
+    const raw = sessionStorage.getItem('projefarma_intake')
+    if (!raw) return
+    try {
+      const intake = JSON.parse(raw)
+      sessionStorage.removeItem('projefarma_intake') // consume once
+
+      if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
+        setStoreDimensions(Number(intake.width), Number(intake.height))
+        toast.success(`Dimensões aplicadas: ${intake.width}×${intake.height}m`)
+      } else if (intake.spaceMode === 'floorplan' && intake.floorPlanDataUrl) {
+        // Injects the image URL into a hidden input so FloorPlanReaderModal can consume it
+        sessionStorage.setItem('projefarma_floorplan_pending', intake.floorPlanDataUrl)
+        setShowFloorPlanReader(true)
+      }
+
+      if (intake.pharmacyName) {
+        useCanvasStore.getState().loadLayout({ layoutName: intake.pharmacyName })
+      }
+    } catch {
+      // ignore malformed data
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Prefetch ThreeDViewer in the background when browser is idle to ensure instant opening
   useEffect(() => {
     const prefetch = () => {

@@ -1,0 +1,499 @@
+import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import './ClientIntakeForm.css'
+
+interface FormData {
+  clientName: string
+  pharmacyName: string
+  cityState: string
+  phone: string
+  employees: string
+  spaceMode: 'dimensions' | 'floorplan'
+  width: string
+  height: string
+  floorPlanFile: File | null
+  floorPlanPreview: string | null
+}
+
+const EMPLOYEE_OPTIONS = [
+  '1 a 3 funcionários',
+  '4 a 7 funcionários',
+  '8 a 15 funcionários',
+  '16 a 30 funcionários',
+  'Mais de 30 funcionários',
+]
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+  if (digits.length <= 2) return `(${digits}`
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
+export default function ClientIntakeForm() {
+  const navigate = useNavigate()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general', string>>>({})
+
+  const [form, setForm] = useState<FormData>({
+    clientName: '',
+    pharmacyName: '',
+    cityState: '',
+    phone: '',
+    employees: '',
+    spaceMode: 'dimensions',
+    width: '',
+    height: '',
+    floorPlanFile: null,
+    floorPlanPreview: null,
+  })
+
+  const set = (field: keyof FormData, value: unknown) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+    setErrors(prev => ({ ...prev, [field]: undefined }))
+  }
+
+  // ── Step 1 validation ──────────────────────────────────────────────────
+  const validateStep1 = () => {
+    const errs: typeof errors = {}
+    if (!form.clientName.trim()) errs.clientName = 'Informe seu nome.'
+    if (!form.pharmacyName.trim()) errs.pharmacyName = 'Informe o nome da farmácia.'
+    if (!form.cityState.trim()) errs.cityState = 'Informe a cidade e estado.'
+    if (form.phone.replace(/\D/g, '').length < 10) errs.phone = 'Informe um telefone válido.'
+    if (!form.employees) errs.employees = 'Selecione o número de funcionários.'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  // ── Step 2 validation ──────────────────────────────────────────────────
+  const validateStep2 = () => {
+    const errs: typeof errors = {}
+    if (form.spaceMode === 'dimensions') {
+      const w = parseFloat(form.width)
+      const h = parseFloat(form.height)
+      if (!form.width || isNaN(w) || w < 3 || w > 100) errs.width = 'Largura deve ser entre 3m e 100m.'
+      if (!form.height || isNaN(h) || h < 3 || h > 100) errs.height = 'Comprimento deve ser entre 3m e 100m.'
+    } else {
+      if (!form.floorPlanFile) errs.floorPlanFile = 'Selecione uma imagem da planta baixa.'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const handleNext = () => {
+    if (validateStep1()) setStep(2)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    if (!allowed.includes(file.type)) {
+      setErrors(prev => ({ ...prev, floorPlanFile: 'Use JPG, PNG, WEBP ou PDF.' }))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = ev => {
+      set('floorPlanPreview', ev.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+    set('floorPlanFile', file)
+  }
+
+  const handleSubmit = async () => {
+    if (!validateStep2()) return
+    setIsSubmitting(true)
+
+    // Save client data to sessionStorage so Editor can consume it
+    const intakeData = {
+      clientName: form.clientName.trim(),
+      pharmacyName: form.pharmacyName.trim(),
+      cityState: form.cityState.trim(),
+      phone: form.phone,
+      employees: form.employees,
+      spaceMode: form.spaceMode,
+      width: form.spaceMode === 'dimensions' ? parseFloat(form.width) : null,
+      height: form.spaceMode === 'dimensions' ? parseFloat(form.height) : null,
+      hasFloorPlan: form.spaceMode === 'floorplan',
+      floorPlanDataUrl: form.spaceMode === 'floorplan' ? form.floorPlanPreview : null,
+    }
+    sessionStorage.setItem('projefarma_intake', JSON.stringify(intakeData))
+
+    // Small delay for UX
+    await new Promise(r => setTimeout(r, 700))
+
+    const params = new URLSearchParams()
+    if (form.spaceMode === 'dimensions') {
+      params.set('w', String(parseFloat(form.width)))
+      params.set('h', String(parseFloat(form.height)))
+    }
+    if (form.spaceMode === 'floorplan') {
+      params.set('floorplan', '1')
+    }
+
+    navigate(`/editor?${params.toString()}`)
+  }
+
+  return (
+    <div className="cif-root">
+      {/* Background decoration */}
+      <div className="cif-bg-blob blob-a" />
+      <div className="cif-bg-blob blob-b" />
+      <div className="cif-bg-blob blob-c" />
+
+      {/* Header */}
+      <header className="cif-header">
+        <button className="cif-logo" onClick={() => navigate('/')}>
+          <div className="cif-logo-mark">P</div>
+          <div>
+            <span className="cif-logo-name">ProjeLayout</span>
+            <span className="cif-logo-by">by Projefarma</span>
+          </div>
+        </button>
+        <button className="cif-back-btn" onClick={() => navigate('/')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Voltar
+        </button>
+      </header>
+
+      {/* Card */}
+      <main className="cif-main">
+        <div className="cif-card">
+
+          {/* Progress */}
+          <div className="cif-progress-wrap">
+            <div className={`cif-step-dot ${step >= 1 ? 'active' : ''}`}>
+              {step > 1 ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              ) : '1'}
+            </div>
+            <div className={`cif-progress-line ${step >= 2 ? 'filled' : ''}`} />
+            <div className={`cif-step-dot ${step >= 2 ? 'active' : ''}`}>2</div>
+          </div>
+          <div className="cif-step-labels">
+            <span className={step === 1 ? 'active' : ''}>Dados da Farmácia</span>
+            <span className={step === 2 ? 'active' : ''}>Espaço da Loja</span>
+          </div>
+
+          {/* ── STEP 1 ── */}
+          {step === 1 && (
+            <div className="cif-body cif-fade-in">
+              <div className="cif-step-header">
+                <div className="cif-step-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="cif-step-title">Dados da Farmácia</h2>
+                  <p className="cif-step-desc">Preencha suas informações para personalizarmos seu layout.</p>
+                </div>
+              </div>
+
+              <div className="cif-fields">
+                <div className="cif-field-row">
+                  <div className="cif-field">
+                    <label htmlFor="cif-clientName">Seu nome <span className="cif-required">*</span></label>
+                    <input
+                      id="cif-clientName"
+                      type="text"
+                      placeholder="Ex: João da Silva"
+                      value={form.clientName}
+                      onChange={e => set('clientName', e.target.value)}
+                      className={errors.clientName ? 'error' : ''}
+                    />
+                    {errors.clientName && <span className="cif-error-msg">{errors.clientName}</span>}
+                  </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-pharmacyName">Nome da farmácia <span className="cif-required">*</span></label>
+                    <input
+                      id="cif-pharmacyName"
+                      type="text"
+                      placeholder="Ex: Farmácia Saúde & Vida"
+                      value={form.pharmacyName}
+                      onChange={e => set('pharmacyName', e.target.value)}
+                      className={errors.pharmacyName ? 'error' : ''}
+                    />
+                    {errors.pharmacyName && <span className="cif-error-msg">{errors.pharmacyName}</span>}
+                  </div>
+                </div>
+
+                <div className="cif-field-row">
+                  <div className="cif-field">
+                    <label htmlFor="cif-cityState">Cidade / Estado <span className="cif-required">*</span></label>
+                    <input
+                      id="cif-cityState"
+                      type="text"
+                      placeholder="Ex: São Paulo / SP"
+                      value={form.cityState}
+                      onChange={e => set('cityState', e.target.value)}
+                      className={errors.cityState ? 'error' : ''}
+                    />
+                    {errors.cityState && <span className="cif-error-msg">{errors.cityState}</span>}
+                  </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-phone">Telefone para contato <span className="cif-required">*</span></label>
+                    <input
+                      id="cif-phone"
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      value={form.phone}
+                      onChange={e => set('phone', formatPhone(e.target.value))}
+                      className={errors.phone ? 'error' : ''}
+                    />
+                    {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
+                  </div>
+                </div>
+
+                <div className="cif-field">
+                  <label>Número de funcionários na loja <span className="cif-required">*</span></label>
+                  <div className="cif-employee-grid">
+                    {EMPLOYEE_OPTIONS.map(opt => (
+                      <button
+                        key={opt}
+                        type="button"
+                        className={`cif-emp-option ${form.employees === opt ? 'selected' : ''}`}
+                        onClick={() => set('employees', opt)}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                          <circle cx="9" cy="7" r="4"/>
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                  {errors.employees && <span className="cif-error-msg">{errors.employees}</span>}
+                </div>
+              </div>
+
+              <div className="cif-actions">
+                <button className="cif-btn-secondary" onClick={() => navigate('/')}>Cancelar</button>
+                <button className="cif-btn-primary" onClick={handleNext}>
+                  Próximo
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 2 ── */}
+          {step === 2 && (
+            <div className="cif-body cif-fade-in">
+              <div className="cif-step-header">
+                <div className="cif-step-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="cif-step-title">Espaço da Loja</h2>
+                  <p className="cif-step-desc">Informe as dimensões ou envie a planta baixa da sua farmácia.</p>
+                </div>
+              </div>
+
+              {/* Mode toggle */}
+              <div className="cif-mode-toggle">
+                <button
+                  type="button"
+                  className={`cif-mode-btn ${form.spaceMode === 'dimensions' ? 'active' : ''}`}
+                  onClick={() => set('spaceMode', 'dimensions')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <line x1="6" y1="7" x2="6" y2="17"/>
+                    <line x1="18" y1="7" x2="18" y2="17"/>
+                    <line x1="12" y1="9" x2="12" y2="15"/>
+                  </svg>
+                  Informar dimensões
+                </button>
+                <button
+                  type="button"
+                  className={`cif-mode-btn ${form.spaceMode === 'floorplan' ? 'active' : ''}`}
+                  onClick={() => set('spaceMode', 'floorplan')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Enviar planta baixa
+                </button>
+              </div>
+
+              {/* Dimensions mode */}
+              {form.spaceMode === 'dimensions' && (
+                <div className="cif-fields cif-fade-in">
+                  <div className="cif-dim-hint">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    Informe as dimensões internas da loja em metros. Se não souber com exatidão, uma estimativa já ajuda muito.
+                  </div>
+                  <div className="cif-field-row">
+                    <div className="cif-field">
+                      <label htmlFor="cif-width">Largura da loja <span className="cif-required">*</span></label>
+                      <div className="cif-input-unit">
+                        <input
+                          id="cif-width"
+                          type="number"
+                          min="3"
+                          max="100"
+                          step="0.5"
+                          placeholder="Ex: 8"
+                          value={form.width}
+                          onChange={e => set('width', e.target.value)}
+                          className={errors.width ? 'error' : ''}
+                        />
+                        <span className="cif-unit">m</span>
+                      </div>
+                      {errors.width && <span className="cif-error-msg">{errors.width}</span>}
+                    </div>
+                    <div className="cif-field">
+                      <label htmlFor="cif-height">Comprimento da loja <span className="cif-required">*</span></label>
+                      <div className="cif-input-unit">
+                        <input
+                          id="cif-height"
+                          type="number"
+                          min="3"
+                          max="100"
+                          step="0.5"
+                          placeholder="Ex: 12"
+                          value={form.height}
+                          onChange={e => set('height', e.target.value)}
+                          className={errors.height ? 'error' : ''}
+                        />
+                        <span className="cif-unit">m</span>
+                      </div>
+                      {errors.height && <span className="cif-error-msg">{errors.height}</span>}
+                    </div>
+                  </div>
+                  {form.width && form.height && !errors.width && !errors.height && (
+                    <div className="cif-area-preview">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      Área total: <strong>{(parseFloat(form.width) * parseFloat(form.height)).toFixed(1)} m²</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Floor plan upload mode */}
+              {form.spaceMode === 'floorplan' && (
+                <div className="cif-fields cif-fade-in">
+                  <div className="cif-dim-hint">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    Nossa IA irá analisar sua planta baixa e configurar automaticamente as dimensões e paredes da loja.
+                  </div>
+                  <div
+                    className={`cif-upload-zone ${form.floorPlanPreview ? 'has-file' : ''} ${errors.floorPlanFile ? 'error' : ''}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault()
+                      const file = e.dataTransfer.files[0]
+                      if (file) {
+                        const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>
+                        handleFileChange(fakeEvent)
+                      }
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChange}
+                    />
+                    {form.floorPlanPreview ? (
+                      <div className="cif-upload-preview">
+                        {form.floorPlanFile?.type === 'application/pdf' ? (
+                          <div className="cif-pdf-badge">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span>{form.floorPlanFile?.name}</span>
+                          </div>
+                        ) : (
+                          <img src={form.floorPlanPreview} alt="Planta baixa" className="cif-preview-img" />
+                        )}
+                        <button
+                          type="button"
+                          className="cif-remove-file"
+                          onClick={e => { e.stopPropagation(); set('floorPlanFile', null); set('floorPlanPreview', null) }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          Remover
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="cif-upload-empty">
+                        <div className="cif-upload-icon">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                          </svg>
+                        </div>
+                        <p className="cif-upload-title">Clique ou arraste a planta baixa aqui</p>
+                        <p className="cif-upload-sub">JPG, PNG, WEBP ou PDF · Máx. 10 MB</p>
+                      </div>
+                    )}
+                  </div>
+                  {errors.floorPlanFile && <span className="cif-error-msg">{errors.floorPlanFile}</span>}
+                </div>
+              )}
+
+              <div className="cif-actions">
+                <button className="cif-btn-secondary" onClick={() => setStep(1)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                  Voltar
+                </button>
+                <button
+                  className="cif-btn-primary"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="cif-spinner" />
+                      Preparando layout...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M3 9h18M9 21V9"/>
+                      </svg>
+                      Criar Meu Layout
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Trust badges */}
+        <div className="cif-trust">
+          <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Gratuito
+          </span>
+          <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Sem cadastro
+          </span>
+          <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Dados protegidos
+          </span>
+        </div>
+      </main>
+    </div>
+  )
+}
