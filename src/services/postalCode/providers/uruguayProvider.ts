@@ -1,8 +1,8 @@
 // ============================================================
-// Uruguay Provider — Consulta via IDE Uruguay (direcciones.ide.uy)
+// Uruguay Provider — Consulta via IDE Uruguay com fallback CSV
 // ============================================================
 
-import type { PostalCodeProvider, ProviderResult } from '../types'
+import type { PostalCodeProvider, ProviderResult, PostalLookupResult } from '../types'
 
 /** Resposta de localidade da IDE Uruguay */
 interface IdeLocalidad {
@@ -20,12 +20,22 @@ const DEPARTAMENTOS = [
   'San José', 'Soriano', 'Tacuarembó', 'Treinta y Tres',
 ]
 
-/** Cache em memória: código postal → { localidade, departamento } */
+/** Cache em memória para API: código postal → { localidade, departamento } */
 let postalCodeCache: Map<number, { localidad: string; departamento: string }> | null = null
 let cachePromise: Promise<void> | null = null
 
+/** Registro do CSV de zonas postais do Uruguai */
+interface UruguayPostalRecord {
+  department: string
+  locality: string
+  postalCode: string
+}
+
+/** Cache em memória para CSV: código postal → UruguayPostalRecord */
+let uruguayCsvMap: Map<string, UruguayPostalRecord> | null = null
+
 /**
- * Carrega todas as localidades de todos os departamentos e constrói o cache.
+ * Carrega todas as localidades de todos os departamentos e constrói o cache da API.
  * Executado apenas uma vez.
  */
 async function loadCache(): Promise<void> {
@@ -84,6 +94,124 @@ async function loadCache(): Promise<void> {
   return cachePromise
 }
 
+/**
+ * Carrega e parseia o CSV de fallback do Uruguai.
+ * Executado apenas uma vez.
+ */
+async function loadUruguayCsv(): Promise<Map<string, UruguayPostalRecord>> {
+  if (uruguayCsvMap) return uruguayCsvMap
+
+  try {
+    // Import dinâmico com ?raw — Vite retorna o conteúdo como string
+    const csvModule = await import('../../../data/ZONA_POSTAL_URUGUAI.csv?raw')
+    const csvText: string = csvModule.default
+
+    const map = new Map<string, UruguayPostalRecord>()
+    const lines = csvText.split('\n')
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+
+      const columns = line.split(';')
+      if (columns.length < 3) continue
+
+      const depto = columns[0]?.trim() || ''
+      const localidad = columns[1]?.trim() || ''
+      const codPost = columns[2]?.trim() || ''
+
+      if (!codPost || !depto) continue
+
+      const normalizedCode = codPost.replace(/\D/g, '').padStart(5, '0')
+
+      if (map.has(normalizedCode)) {
+        console.warn(`[UY Provider] Código postal duplicado no CSV: ${normalizedCode}. Mantendo o primeiro (${map.get(normalizedCode)?.locality}).`)
+      } else {
+        map.set(normalizedCode, {
+          department: depto,
+          locality: localidad,
+          postalCode: normalizedCode,
+        })
+      }
+    }
+
+    uruguayCsvMap = map
+    return map
+  } catch (err) {
+    console.error('[UY Provider] Erro ao carregar CSV do Uruguai:', err)
+    throw new Error('Falha ao carregar dados locais do Uruguai.')
+  }
+}
+
+/**
+ * Realiza consulta utilizando a API oficial.
+ */
+export async function lookupUruguayApi(postalCode: string): Promise<PostalLookupResult | null> {
+  await loadCache()
+
+  if (!postalCodeCache) {
+    return null
+  }
+
+  const code = parseInt(postalCode, 10)
+  const entry = postalCodeCache.get(code)
+
+  if (!entry) {
+    return null
+  }
+
+  return {
+    country: 'UY',
+    city: entry.localidad,
+    state: entry.departamento,
+  }
+}
+
+/**
+ * Realiza consulta utilizando o arquivo CSV local como fallback.
+ */
+export async function lookupUruguayCsv(postalCode: string): Promise<PostalLookupResult | null> {
+  const map = await loadUruguayCsv()
+  const searchCode = postalCode.replace(/\D/g, '').padStart(5, '0')
+  const entry = map.get(searchCode)
+
+  if (!entry) {
+    return null
+  }
+
+  return {
+    country: 'UY',
+    city: entry.locality,
+    state: entry.department,
+  }
+}
+
+/**
+ * Função dedicada com estratégia de fallback para código postal do Uruguai.
+ */
+export async function lookupUruguayPostalCode(postalCode: string): Promise<PostalLookupResult | null> {
+  console.log('[UY] Tentando consulta via API...')
+  try {
+    const apiResult = await lookupUruguayApi(postalCode)
+    if (apiResult) {
+      return apiResult
+    }
+    console.log('[UY] API sem resultado, iniciando fallback CSV...')
+    const csvResult = await lookupUruguayCsv(postalCode)
+    if (csvResult) {
+      console.log('[UY] Resultado encontrado via CSV.')
+    }
+    return csvResult
+  } catch (error) {
+    console.log('[UY] API sem resultado, iniciando fallback CSV...')
+    const csvResult = await lookupUruguayCsv(postalCode)
+    if (csvResult) {
+      console.log('[UY] Resultado encontrado via CSV.')
+    }
+    return csvResult
+  }
+}
+
 export const uruguayProvider: PostalCodeProvider = {
   countryCode: 'UY',
   postalCodeLength: 5,
@@ -109,29 +237,17 @@ export const uruguayProvider: PostalCodeProvider = {
     }
 
     try {
-      await loadCache()
-    } catch {
-      return { success: false, error: 'Serviço temporariamente indisponível. Tente novamente.' }
-    }
-
-    if (!postalCodeCache) {
-      return { success: false, error: 'Serviço temporariamente indisponível. Tente novamente.' }
-    }
-
-    const code = parseInt(digits, 10)
-    const entry = postalCodeCache.get(code)
-
-    if (!entry) {
-      return { success: false, error: 'Código postal não encontrado.' }
-    }
-
-    return {
-      success: true,
-      data: {
-        country: 'UY',
-        city: entry.localidad,
-        state: entry.departamento,
-      },
+      const data = await lookupUruguayPostalCode(digits)
+      if (!data) {
+        return { success: false, error: 'Código postal não encontrado.' }
+      }
+      return {
+        success: true,
+        data,
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Erro ao carregar dados postais. Tente novamente.' }
     }
   },
 }
+

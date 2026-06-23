@@ -27,6 +27,32 @@ export function getProvider(countryCode: string): PostalCodeProvider | null {
 }
 
 /**
+ * Converte uma string para o formato Capitalizado / Title Case.
+ * Preserva as partículas comuns em minúsculas (de, del, la, y, do, da, etc.).
+ */
+export function capitalizeText(str: string): string {
+  if (!str) return ''
+  const words = str.toLowerCase().split(/\s+/)
+  const lowercaseWords = new Set([
+    'de', 'del', 'la', 'las', 'el', 'los', 'y', 'al', 'o', 'e', 'en', // Espanhol
+    'do', 'da', 'dos', 'das', 'de', 'e', 'em' // Português
+  ])
+
+  const processed = words.map((word, index) => {
+    if (word === '') return ''
+    if (lowercaseWords.has(word) && index > 0 && index < words.length - 1) {
+      return word
+    }
+    if (word.includes('-')) {
+      return word.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('-')
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1)
+  })
+
+  return processed.join(' ')
+}
+
+/**
  * Busca endereço por código postal, delegando ao provider correto.
  *
  * @param countryCode - Código ISO do país (ex: 'BR', 'AR')
@@ -46,7 +72,22 @@ export async function lookupPostalCode(
     }
   }
 
-  return provider.lookup(postalCode)
+  const result = await provider.lookup(postalCode)
+
+  if (result.success && result.data) {
+    const rawCity = result.data.city
+    const rawState = result.data.state
+    return {
+      ...result,
+      data: {
+        ...result.data,
+        city: capitalizeText(rawCity),
+        state: rawState.length === 2 ? rawState.toUpperCase() : capitalizeText(rawState),
+      },
+    }
+  }
+
+  return result
 }
 
 /**
