@@ -57,6 +57,9 @@ export default function ClientIntakeForm() {
   const [postalMessage, setPostalMessage] = useState<string | null>(null)
   const [lastFetchedKey, setLastFetchedKey] = useState<string>('')
 
+  // Freight / geocoding message (UY manual flow)
+  const [freightMessage, setFreightMessage] = useState<string | null>(null)
+
   const [form, setForm] = useState<FormData>({
     clientName: '',
     pharmacyName: '',
@@ -98,12 +101,20 @@ export default function ClientIntakeForm() {
     setPostalLoading(false)
 
     if (result.success && result.data) {
+      // UY: não preencher cidade/estado automaticamente (múltiplas cidades por CEP)
+      if (country === 'UY') {
+        setPostalMessage(null)
+        console.log('[UY] Código postal válido. Cidade e departamento devem ser informados manualmente.')
+        return
+      }
+
       setForm(prev => ({
         ...prev,
         city: result.data!.city,
         state: result.data!.state,
       }))
       setPostalMessage(null)
+      setFreightMessage(null)
 
       // Pipeline: Geocoding → Distância → Frete (tudo em console)
       const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
@@ -120,6 +131,16 @@ export default function ClientIntakeForm() {
   // Auto-trigger lookup when postal code changes and country is selected
   useEffect(() => {
     if (!form.country) return
+
+    // UY: não auto-preencher cidade/estado, não limpar campos manuais
+    if (form.country === 'UY') {
+      const sanitized = sanitizePostalCode(form.country, form.postalCode)
+      const expectedLength = getPostalCodeLength(form.country, form.postalCode)
+      if (sanitized.length === expectedLength) {
+        performLookup(form.country, form.postalCode)
+      }
+      return
+    }
 
     const sanitized = sanitizePostalCode(form.country, form.postalCode)
     const expectedLength = getPostalCodeLength(form.country, form.postalCode)
@@ -143,8 +164,36 @@ export default function ClientIntakeForm() {
   useEffect(() => {
     setForm(prev => ({ ...prev, postalCode: '', city: '', state: '' }))
     setPostalMessage(null)
+    setFreightMessage(null)
     setLastFetchedKey('')
   }, [form.country])
+
+  // ── UY: Geocoding + Frete com cidade/estado manuais ─────────────────────
+  useEffect(() => {
+    if (form.country !== 'UY') return
+    if (!form.city.trim() || form.city.trim().length < 2) return
+    if (!form.state.trim() || form.state.trim().length < 2) return
+
+    setFreightMessage(null)
+
+    const timer = setTimeout(async () => {
+      console.log('[UY] Utilizando cidade e departamento informados manualmente pelo usuário.')
+      console.log({ city: form.city, state: form.state, country: 'UY' })
+
+      const geoResult = await getCoordinates('UY', form.state.trim(), form.city.trim())
+
+      if (!geoResult.success || !geoResult.data) {
+        console.warn('[UY] Cidade não localizada no Nominatim.')
+        setFreightMessage('Não foi possível localizar a cidade, precisa calcular manualmente.')
+        return
+      }
+
+      setFreightMessage(null)
+      calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+    }, 1500) // debounce de 1.5s para aguardar digitação
+
+    return () => clearTimeout(timer)
+  }, [form.country, form.city, form.state])
 
   // ── Postal code input handler ───────────────────────────────────────────
   const handlePostalCodeChange = (value: string) => {
@@ -410,41 +459,65 @@ export default function ClientIntakeForm() {
                   </div>
                 </div>
 
-                {/* City + State row (readonly, auto-filled) */}
+                {/* City + State row */}
                 <div className="cif-field-row">
                   <div className="cif-field">
                     <label htmlFor="cif-city">
                       Cidade
-                      {form.country && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                      {form.country && form.country !== 'UY' && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                      {form.country === 'UY' && <span className="cif-required">*</span>}
                     </label>
                     <input
                       id="cif-city"
                       type="text"
-                      placeholder={form.country ? 'Preenchido pelo código postal' : 'Selecione o país primeiro'}
+                      placeholder={
+                        !form.country
+                          ? 'Selecione o país primeiro'
+                          : form.country === 'UY'
+                            ? 'Informe a cidade'
+                            : 'Preenchido pelo código postal'
+                      }
                       value={form.city}
-                      readOnly
-                      className={`${errors.city ? 'error' : ''} cif-readonly`}
-                      tabIndex={-1}
+                      readOnly={form.country !== 'UY'}
+                      onChange={form.country === 'UY' ? e => set('city', e.target.value) : undefined}
+                      className={`${errors.city ? 'error' : ''} ${form.country !== 'UY' ? 'cif-readonly' : ''}`}
+                      tabIndex={form.country === 'UY' ? 0 : -1}
                     />
                     {errors.city && <span className="cif-error-msg">{errors.city}</span>}
                   </div>
                   <div className="cif-field">
                     <label htmlFor="cif-state">
                       Estado / Província
-                      {form.country && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                      {form.country && form.country !== 'UY' && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                      {form.country === 'UY' && <span className="cif-required">*</span>}
                     </label>
                     <input
                       id="cif-state"
                       type="text"
-                      placeholder={form.country ? 'Preenchido pelo código postal' : 'Selecione o país primeiro'}
+                      placeholder={
+                        !form.country
+                          ? 'Selecione o país primeiro'
+                          : form.country === 'UY'
+                            ? 'Informe o departamento'
+                            : 'Preenchido pelo código postal'
+                      }
                       value={form.state}
-                      readOnly
-                      className={`${errors.state ? 'error' : ''} cif-readonly`}
-                      tabIndex={-1}
+                      readOnly={form.country !== 'UY'}
+                      onChange={form.country === 'UY' ? e => set('state', e.target.value) : undefined}
+                      className={`${errors.state ? 'error' : ''} ${form.country !== 'UY' ? 'cif-readonly' : ''}`}
+                      tabIndex={form.country === 'UY' ? 0 : -1}
                     />
                     {errors.state && <span className="cif-error-msg">{errors.state}</span>}
                   </div>
                 </div>
+
+                {/* UY: Mensagem de geocoding/frete */}
+                {form.country === 'UY' && freightMessage && (
+                  <div className="cif-freight-msg">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    {freightMessage}
+                  </div>
+                )}
 
                 <div className="cif-field-row">
                   <div className="cif-field">

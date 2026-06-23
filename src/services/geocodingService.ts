@@ -36,6 +36,31 @@ const COUNTRY_NAMES_EN: Record<string, string> = {
 }
 
 /**
+ * Normaliza campos de texto para a geocodificação do Uruguai.
+ * Remove acentos, caracteres especiais, espaços duplicados e aplica Capitalize.
+ *
+ * @param value - Valor do campo (cidade ou estado)
+ * @returns String normalizada
+ */
+function normalizeUruguayLocation(value: string): string {
+  if (!value) return ''
+  // 1. Remover acentos
+  let normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  // 2. Remover caracteres especiais desnecessários (mantém apenas letras, números e espaços)
+  normalized = normalized.replace(/[^a-zA-Z0-9\s]/g, '')
+  // 3. Remover espaços duplicados e extras
+  normalized = normalized.replace(/\s+/g, ' ').trim()
+  // 4. Aplicar Capitalize/Title Case
+  return normalized
+    .split(' ')
+    .map(word => {
+      if (!word) return ''
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
+/**
  * Obtém as coordenadas geográficas (latitude e longitude) de uma localidade
  * utilizando a API pública do Nominatim (OpenStreetMap).
  *
@@ -54,8 +79,31 @@ export async function getCoordinates(
   console.log('[Geocoding] Iniciando consulta...')
   console.log({ country, state, city })
 
+  let finalCity = city
+  let finalState = state
+  let finalCountry = country
+
+  if (countryCode === 'UY' || country === 'Uruguay' || country === 'UY') {
+    console.log('[UY] Valores originais:', {
+      city,
+      state,
+    })
+
+    const normalizedCity = normalizeUruguayLocation(city)
+    const normalizedState = normalizeUruguayLocation(state)
+
+    finalCity = normalizedCity
+    finalState = normalizedState
+    finalCountry = 'Uruguay'
+
+    console.log('[UY] Valores normalizados:', {
+      normalizedCity,
+      normalizedState,
+    })
+  }
+
   // Monta a query: Cidade, Estado, País
-  const query = `${city}, ${state}, ${country}`
+  const query = `${finalCity}, ${finalState}, ${finalCountry}`
 
   const params = new URLSearchParams({
     format: 'jsonv2',
