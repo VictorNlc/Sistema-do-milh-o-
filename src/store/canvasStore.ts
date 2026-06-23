@@ -41,6 +41,7 @@ interface CanvasState {
   stageY: number
   showMeasures: boolean
   showGrid: boolean
+  stageInstance: any | null
   // === HISTORY (undo/redo) ===
   history: HistorySnapshot[]
   historyIndex: number
@@ -65,6 +66,7 @@ interface CanvasState {
   toggleMeasures: () => void
   setScale: (scale: number) => void
   setStagePosition: (x: number, y: number) => void
+  setStageInstance: (stage: any | null) => void
   addItem: (itemTemplate: PharmacyItemTemplate, x: number, y: number) => string
   updateItemPosition: (id: string, x: number, y: number) => void
   updateItemSize: (id: string, width: number, height: number) => void
@@ -115,6 +117,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   stageY: 0,
   showMeasures: true,
   showGrid: true,
+  stageInstance: null,
 
   // === HISTORY ===
   history: [],
@@ -264,6 +267,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setScale: (scale) => set({ scale: Math.max(0.3, Math.min(3, scale)) }),
 
   setStagePosition: (x, y) => set({ stageX: x, stageY: y }),
+  setStageInstance: (stage) => set({ stageInstance: stage }),
 
   // =========================================================================
   // Adiciona um novo item no canvas

@@ -109,7 +109,27 @@ export function exportLayoutToPDF(
 
     if (layoutImageDataUrl) {
       try {
-        doc.addImage(layoutImageDataUrl, 'PNG', margin + 5, y + 5, contentW - 10, previewH - 10)
+        // Preserve the layout's real proportions (contain-fit, centered) so the
+        // image is never stretched/distorted inside the preview frame.
+        const boxX = margin + 5
+        const boxY = y + 5
+        const boxW = contentW - 10
+        const boxH = previewH - 10
+
+        let drawW = boxW
+        let drawH = boxH
+        try {
+          const props = doc.getImageProperties(layoutImageDataUrl)
+          if (props && props.width > 0 && props.height > 0) {
+            const scale = Math.min(boxW / props.width, boxH / props.height)
+            drawW = props.width * scale
+            drawH = props.height * scale
+          }
+        } catch { /* fall back to box dimensions if properties can't be read */ }
+
+        const drawX = boxX + (boxW - drawW) / 2
+        const drawY = boxY + (boxH - drawH) / 2
+        doc.addImage(layoutImageDataUrl, 'PNG', drawX, drawY, drawW, drawH)
       } catch (err) {
         console.error('Error adding layout image to PDF:', err)
         doc.setFont('Helvetica', 'normal')

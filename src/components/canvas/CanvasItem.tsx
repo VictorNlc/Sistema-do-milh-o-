@@ -24,12 +24,12 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   const storeWidth = useCanvasStore(state => state.storeWidth)
   const storeHeight = useCanvasStore(state => state.storeHeight)
 
-  const x = item.x * PIXELS_PER_METER
-  const y = item.y * PIXELS_PER_METER
-  const w = item.width * PIXELS_PER_METER
-  const h = item.height * PIXELS_PER_METER
+  const x = (item.x ?? 0) * PIXELS_PER_METER
+  const y = (item.y ?? 0) * PIXELS_PER_METER
+  const w = (item.width ?? 0.5) * PIXELS_PER_METER
+  const h = (item.height ?? 0.5) * PIXELS_PER_METER
 
-  const isSmall = w < 25 || h < 25
+  const isSmall = isNaN(w) || isNaN(h) || w < 25 || h < 25
   const isPillar = item.isPillar ?? item.id?.includes('pilar')
   const isDoor = item.isDoor ?? item.id?.includes('porta')
   const isRoom = item.isRoom ?? (item.category === 'SERVICOS' || item.category === 'OPERACIONAL')
@@ -42,8 +42,8 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     const node = drawingsGroupRef.current
     if (!node) return
 
-    // Cache when not selected and not dragging
-    const shouldCache = !isSelected && !isDragging
+    // Cache when not selected, not dragging, and dimensions are valid
+    const shouldCache = !isSelected && !isDragging && !isNaN(w) && !isNaN(h) && w > 0 && h > 0
 
     // Small timeout to make sure elements are rendered on canvas first
     const timer = setTimeout(() => {

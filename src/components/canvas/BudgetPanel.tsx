@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
+import { getFullLayoutDataUrl } from '../../utils/canvasExport'
+import { toast } from '../../store/toastStore'
 import './BudgetPanel.css'
 
 interface GroupedBudgetItem {
@@ -14,13 +16,14 @@ interface GroupedBudgetItem {
 }
 
 export default function BudgetPanel() {
-  const { items, storeWidth, storeHeight, storeType, layoutName } = useCanvasStore(
+  const { items, storeWidth, storeHeight, storeType, layoutName, stageInstance } = useCanvasStore(
     useShallow(state => ({
       items: state.items,
       storeWidth: state.storeWidth,
       storeHeight: state.storeHeight,
       storeType: state.storeType,
       layoutName: state.layoutName,
+      stageInstance: state.stageInstance,
     }))
   )
 
@@ -58,30 +61,26 @@ export default function BudgetPanel() {
 
   const handleExportPDF = async () => {
     try {
+      let layoutImageDataUrl: string | undefined
+      try {
+        if (stageInstance) {
+          layoutImageDataUrl = getFullLayoutDataUrl(stageInstance, storeWidth, storeHeight)
+        }
+      } catch (err) {
+        console.error('Error generating image for budget PDF:', err)
+      }
+
       const { exportLayoutToPDF } = await import('../../services/pdfExport')
       const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
-      // Get reference to Konva stage
-      // In Vite React, Konva stage is managed via standard references, we can pass null or find stage
-      // exportLayoutToPDF is safe even if stageRef.current is missing
-      const stage = document.querySelector('.konvajs-content') as unknown as { toDataURL: () => string } | null
-      const fakeStageRef = {
-        current: stage ? {
-          toDataURL: (opts?: Record<string, unknown>) => {
-            // Find canvas
-            const canvas = document.querySelector('canvas')
-            return canvas ? canvas.toDataURL('image/png') : ''
-          }
-        } : null
-      }
-      const success = exportLayoutToPDF(layoutData, fakeStageRef)
+      const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
-        alert('Relatório de Orçamento PDF gerado com sucesso!')
+        toast.success('Relatório de Orçamento PDF gerado com sucesso!')
       } else {
-        alert('Erro ao gerar PDF')
+        toast.error('Erro ao gerar PDF')
       }
     } catch (err) {
       console.error(err)
-      alert('Erro ao exportar orçamento em PDF')
+      toast.error('Erro ao exportar orçamento em PDF')
     }
   }
 

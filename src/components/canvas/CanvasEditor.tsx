@@ -55,6 +55,16 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const containerRef = useRef<HTMLDivElement>(null)
   const internalRef = useRef<Konva.Stage | null>(null)
   const stageRef = externalStageRef ?? internalRef
+  // Per-instance handle to THIS editor's Konva stage. The app keeps a hidden
+  // desktop + mobile copy mounted at all times sharing a single stageRef, so
+  // stageRef.current is ambiguous (resolves to whichever mounted last). We use
+  // this dedicated ref to know which stage actually belongs to this instance.
+  const myStageRef = useRef<Konva.Stage | null>(null)
+  const assignStageRef = useCallback((node: Konva.Stage | null) => {
+    myStageRef.current = node
+    // Keep the shared/internal RefObject in sync for existing consumers.
+    ;(stageRef as React.MutableRefObject<Konva.Stage | null>).current = node
+  }, [stageRef])
   const [containerSize, setContainerSize] = useState({ width: 600, height: 500 })
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [editingCorridor, setEditingCorridor] = useState<EditingCorridor | null>(null)
@@ -84,6 +94,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const updateItemPosition = useCanvasStore(state => state.updateItemPosition)
   const deleteSelected = useCanvasStore(state => state.deleteSelected)
   const addItem = useCanvasStore(state => state.addItem)
+  const setStageInstance = useCanvasStore(state => state.setStageInstance)
 
   const handleItemSelect = useCallback((id: string | null) => {
     setSelectedItem(id)
@@ -130,19 +141,32 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const canvasW = storeWidth * PIXELS_PER_METER
   const canvasH = storeHeight * PIXELS_PER_METER
 
-  // Responsive container size
+  // Responsive container size + register this editor's stage as the active one
   useEffect(() => {
     const update = () => {
       if (containerRef.current) {
         const r = containerRef.current.getBoundingClientRect()
         setContainerSize({ width: r.width, height: r.height })
+        // Only register while this container is actually visible. On desktop the
+        // mobile copy is display:none (size 0) and vice-versa, so this ensures the
+        // store always points at the on-screen stage — exports capture that one
+        // instead of the hidden, zero-sized copy.
+        if (r.width > 0 && r.height > 0 && myStageRef.current) {
+          setStageInstance(myStageRef.current)
+        }
       }
     }
     update()
     const ro = new ResizeObserver(update)
     if (containerRef.current) ro.observe(containerRef.current)
-    return () => ro.disconnect()
-  }, [])
+    return () => {
+      ro.disconnect()
+      // Clear only if the store still points at this instance's stage.
+      if (useCanvasStore.getState().stageInstance === myStageRef.current) {
+        setStageInstance(null)
+      }
+    }
+  }, [setStageInstance])
 
   const hasInitialized = useRef(false)
 
@@ -665,7 +689,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       )}
 
       <Stage
-        ref={stageRef}
+        ref={assignStageRef}
         width={containerSize.width}
         height={containerSize.height}
         x={stageX}
@@ -683,6 +707,12 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         onTap={handleStageClick}
       >
         <Layer name="background">
+          {/* Stage Background (Sketchup style cream backdrop) */}
+          <Rect
+            x={-1000} y={-1000} width={canvasW + 2000} height={canvasH + 2000}
+            fill="#FCF9F2"
+            listening={false}
+          />
           {/* Floor */}
           <Rect
             name="floor"

@@ -1,0 +1,3011 @@
+# Dossiê Completo de Cópias e Textos do Sistema
+
+Este documento reúne todas as copies (títulos, botões, descrições, labels, mensagens da IA) do sistema ProjeLayout.
+
+## 📄 Arquivo: `src\App.tsx`
+- /admin
+- /agendar
+- /agendar/:layoutId
+- /editor
+- /editor/:id
+- /layout/:token
+- /meus-projetos
+- /novo-layout
+- Falha na sincronização inicial:
+- react
+- react-router-dom
+
+---
+
+## 📄 Arquivo: `src\components\StoreConfigModal.tsx`
+- 0.25rem
+- 0.5rem
+- 0.75rem
+- 1.5rem
+- 1rem
+- 420px
+- 90vh
+- Comprimento (m)
+- Configurações da Loja
+- Configurações da loja salvas
+- Densidade do Layout (Corredores)
+- Largura (m)
+- Linha
+- Pilares (JSON)
+- Porta de Entrada (JSON)
+- Saída de Emergência (JSON)
+- auto
+- btn btn-ghost btn-sm
+- btn btn-primary btn-sm
+- center
+- compact
+- fixed
+- flex-end
+- form-group
+- input input-sm
+- modal-content
+- modal-overlay
+- normal
+- number
+- premium
+- react
+- rgba(0,0,0,0.4)
+- spacious
+- var(--r-md)
+- var(--sh-lg)
+- var(--surface)
+- var(--surface-card)
+- var(--text-muted)
+
+---
+
+## 📄 Arquivo: `src\components\admin\SketchupImporter.tsx`
+- -especial
+- -premium
+- 0.25rem
+- 0.5rem
+- 0.75rem
+- 1.25rem
+- 1.5rem
+- 1px solid var(--border)
+- 1rem
+- 280px
+- 2rem
+- : i === stepIndex ?
+- A IA está analisando o layout…
+- Alta
+- Arraste o print do SketchUp aqui
+- Baixa
+- Clique para trocar a imagem
+- Comprimento da loja (metros)
+- Detectando móveis e posições…
+- Enviando para análise com IA…
+- Erro ao analisar imagem.
+- Erro:
+- Faça upload de uma imagem primeiro.
+- Imagem muito grande. Máximo: 20MB.
+- Largura da loja (metros)
+- Layout de referência removido.
+- Lendo a imagem…
+- Linha
+- Manipulação
+- Mapeando para o catálogo…
+- Média
+- Nenhum item para salvar.
+- Nome deste layout (opcional)
+- Popular
+- Por favor, selecione uma imagem PNG ou JPG.
+- Premium
+- Preview do layout
+- Remover item
+- Tem certeza que quer remover este layout de referência?
+- analyzing
+- btn btn-ghost
+- btn btn-ghost btn-sm danger
+- btn btn-primary
+- btn btn-primary sketchup-analyze-btn
+- btn-icon-sm danger
+- card
+- catalog-1
+- catalog-13
+- catalog-2
+- catalog-3
+- catalog-4
+- catalog-5
+- catalog-6
+- catalog-7
+- catalog-8
+- center
+- confidence-high
+- confidence-low
+- confidence-mid
+- contain
+- currentColor
+- done
+- dragover
+- file
+- form-group
+- idle
+- image/
+- image/png,image/jpeg,image/webp
+- input
+- label
+- loading-step-icon
+- mapping
+- number
+- ou clique para selecionar — PNG, JPG até 20MB
+- porta
+- premium
+- pt-BR
+- react
+- reading
+- reference-empty
+- reference-empty-icon
+- reference-layout-actions
+- reference-layout-card
+- reference-layout-info
+- reference-layout-meta
+- reference-layout-name
+- reference-layout-thumb
+- reference-layout-thumb-placeholder
+- reference-layouts-grid
+- reference-layouts-section
+- reference-layouts-title
+- rx=
+- ry=
+- sending
+- sketchup-final-actions
+- sketchup-form
+- sketchup-item-actions
+- sketchup-item-icon
+- sketchup-item-info
+- sketchup-item-meta
+- sketchup-item-name
+- sketchup-item-row
+- sketchup-items-grid
+- sketchup-loading
+- sketchup-loading-spinner
+- sketchup-loading-steps
+- sketchup-loading-text
+- sketchup-preview-canvas
+- sketchup-preview-container
+- sketchup-preview-section
+- sketchup-preview-title
+- sketchup-results
+- sketchup-results-count
+- sketchup-results-header
+- sketchup-results-title
+- strokeLinecap=
+- strokeLinejoin=
+- text
+- upload-change-hint
+- upload-icon
+- upload-preview
+- upload-subtitle
+- upload-title
+- var(--surface)
+- var(--text-muted)
+- 🎉 Layout de referência salvo! A IA usará esse modelo nos próximos projetos.
+- 📐 Pré-visualização
+
+---
+
+## 📄 Arquivo: `src\components\ai\AiChat.tsx`
+- .env
+- 0 && px
+- 0 && py
+- 0 4px 10px rgba(16, 235, 122, 0.3)
+- 10px
+- 11px
+- 12px
+- 14px
+- 1px 4px
+- 1px solid rgba(245, 158, 11, 0.2)
+- 2-digit
+- 3px
+- 40px
+- 6px
+- 76px
+- 8px
+- 8px 12px
+- AI
+- Bottom
+- ChatGPT Ativo
+- Como posicionar pilares no layout?
+- Configure sua chave API no arquivo
+- Dicas para perfumaria
+- Digite sua dúvida...
+- Dimensões insuficientes para gerar o layout.
+- ESTRUTURA
+- Enter
+- Erro desconhecido
+- Gerar layout farmácia popular
+- Itens
+- Layout estratégico gerado!
+- Left
+- Loja
+- Modo Offline
+- NFD
+- Olá! Sou o assistente de layout da **Projefarma**. Posso sugerir layouts e responder dúvidas sobre normas. Para respostas mais inteligentes, configure sua chave API da OpenAI no arquivo **.env**.
+- Pergunte ao ChatGPT...
+- Pilar / Coluna
+- Porta de Entrada
+- Projefarma AI Assistant
+- Quais as normas ANVISA para farmácias?
+- Qual o corredor mínimo recomendado?
+- Right
+- Saída de Emergência
+- Tipo
+- Top
+- VITE_OPENAI_API_KEY=sk-...
+- absolute
+- ai
+- aic-avatar
+- aic-bubble
+- aic-bubble aic-typing
+- aic-bubble-text
+- aic-close
+- aic-ctx
+- aic-ctx-k
+- aic-ctx-sep
+- aic-dot
+- aic-gen
+- aic-head
+- aic-head-left
+- aic-input
+- aic-input-container
+- aic-input-row
+- aic-msg aic-msg-ai
+- aic-msg-avatar
+- aic-msgs
+- aic-name
+- aic-quick
+- aic-quick-btn
+- aic-root
+- aic-send
+- aic-stat
+- aic-stat-label
+- aic-stat-val
+- aic-stats
+- aic-status
+- aic-time
+- assistant
+- baixo
+- bottom
+- btn btn-primary btn-sm btn-full
+- btn-gen-layout
+- center
+- cima
+- coluna
+- direita
+- emergencia
+- entrada
+- esquerda
+- frente
+- fundo
+- input aic-input
+- left
+- linear-gradient(135deg, var(--green-500) 0%, var(--green-900) 100%)
+- normal
+- npm run dev
+- ocupado
+- para
+- pilar
+- porta
+- porta-entrada
+- porta-saida-emergencia
+- pt-BR
+- react
+- relative
+- rgba(245, 158, 11, 0.1)
+- rgba(255,255,255,0.03)
+- rgba(255,255,255,0.08)
+- rgba(255,255,255,0.1)
+- rgba(255,255,255,0.4)
+- right
+- round
+- saida
+- smooth
+- text
+- top
+- topo
+- total
+- user
+- uuid
+- var(--primary)
+- white
+- zustand/react/shallow
+- ⚠️ A loja é muito pequena. O mínimo recomendado é 4m x 4m.
+- 🔑 **Chave API não configurada.** Adicione sua chave OpenAI no arquivo `.env`:\n\n`VITE_OPENAI_API_KEY=sk-...`\n\nDepois reinicie o servidor com `npm run dev`.
+- 🧠 Analisando espaço e gerando layout estratégico...
+- 🧠 GPT
+
+---
+
+## 📄 Arquivo: `src\components\canvas\BudgetPanel.tsx`
+- Arraste móveis das categorias "Gôndolas", "Balcões" ou "Perfumaria" para estimar o orçamento.
+- Balcões
+- Contem rodapé na cor
+- Contem rodapé na cor de sua escolha e fundo adesivado.
+- Contem rodapé na cor e fundo adesivado
+- Erro ao gerar PDF
+- Error generating image for budget PDF:
+- Estimativa de custo baseada no layout planejado
+- Gôndolas
+- Meu Layout
+- Nenhum móvel do catálogo adicionado ao layout.
+- Perfumaria
+- Relatório de Orçamento PDF gerado com sucesso!
+- Resumo do Orçamento
+- Total Estimado
+- btn btn-primary btn-full budget-pdf-btn
+- budget-card
+- budget-card-code
+- budget-card-finish
+- budget-card-footer
+- budget-card-header
+- budget-card-icon
+- budget-card-meta
+- budget-card-name
+- budget-card-price
+- budget-card-qty
+- budget-card-subtotal
+- budget-empty
+- budget-empty-icon
+- budget-empty-tip
+- budget-footer
+- budget-header
+- budget-list
+- budget-root
+- budget-subtitle
+- budget-title
+- budget-total-label
+- budget-total-row
+- budget-total-value
+- currentColor
+- de sua escolha.
+- pt-BR
+- react
+- round
+- zustand/react/shallow
+
+---
+
+## 📄 Arquivo: `src\components\canvas\CanvasEditor.tsx`
+- = 0.30 && dist
+- = pX1 + 5 && candidateX + 18
+- = pY1 + 5 && candidateY + 5
+- BODY
+- Backspace
+- CANVAS
+- Enter
+- Escape
+- Frio
+- Mapa de Calor
+- Quente
+- Simulação de fluxo de clientes
+- Soltar para adicionar
+- application/json
+- background
+- bold
+- ce-corridor-input
+- ce-drop
+- ce-drop-label
+- ce-drop-overlay
+- center
+- corridor_measures
+- decimal
+- default
+- end
+- floor
+- fontStyle=
+- items_layer
+- keydown
+- konva
+- porta-entrada
+- porta-saida-emergencia
+- react
+- react-konva
+- rgba(0,0,0,0)
+- rgba(0,0,0,0.75)
+- rgba(11, 61, 46, 0.12)
+- rgba(197, 160, 40, 0.18)
+- rgba(255,20,10,0.9)
+- rgba(255,200,10,0.9)
+- rgba(255,255,255,0.3)
+- rgba(255,255,255,0.45)
+- rgba(255,255,255,0.8)
+- rgba(30,80,200,0.9)
+- start
+- text
+- undefined
+- walls_and_measures
+
+---
+
+## 📄 Arquivo: `src\components\canvas\CanvasItem.tsx`
+- ACESSIBILIDADE
+- BALCOES
+- ENTRADA
+- Failed to cache item:
+- GONDOLAS
+- OPERACIONAL
+- P. ENTRADA
+- P. SAÍDA
+- PERFUMARIA
+- PILAR
+- REFRIGERACAO
+- S. EMERGÊNCIA
+- SERVICOS
+- [Especial]
+- [Premium]
+- bold
+- catalog-131
+- center
+- checkout em l
+- checkout l
+- display
+- entrada
+- middle
+- obstacle
+- pilar
+- porta
+- react
+- react-konva
+- rgba(0,0,0,0.15)
+- rgba(0,0,0,0.4)
+- rgba(15, 23, 42, 0.05)
+- round
+- undefined
+- white
+- ⚠️ EMERGÊNCIA
+
+---
+
+## 📄 Arquivo: `src\components\canvas\CustomerSimulationLayer.tsx`
+- caminhar
+- corpinho
+- frente
+- konva
+- react
+- react-konva
+- rgba(0,0,0,0.1)
+- rgba(0,0,0,0.3)
+
+---
+
+## 📄 Arquivo: `src\components\canvas\ErgonomyPanel.tsx`
+- 0.05em
+- 9px
+- Atenção
+- Atenção Necessária
+- Auditoria de Ergonomia
+- Crítico
+- Excelente
+- Fechar
+- OK
+- Pode Melhorar
+- Pontuação do layout
+- currentColor
+- dialog
+- ergo-btn-rerun
+- ergo-close
+- ergo-content
+- ergo-footer
+- ergo-header
+- ergo-icon
+- ergo-item-desc
+- ergo-item-title
+- ergo-list
+- ergo-panel
+- ergo-score-bar
+- ergo-score-label
+- ergo-score-row
+- ergo-score-text
+- ergo-title
+- ergo-track
+- ergo-track-fill
+- error
+- ok
+- react
+- rgba(255,255,255,0.3)
+- round
+- score-bad
+- score-great
+- score-ok
+- uppercase
+- warning
+- zustand/react/shallow
+
+---
+
+## 📄 Arquivo: `src\components\canvas\FloorPlanReaderModal.tsx`
+- 1px solid rgba(239, 68, 68, 0.2)
+- Analisando sua planta baixa...
+- Analisar
+- Arraste a imagem ou clique para selecionar
+- Atenção:
+- Comprimento
+- Configurações e estruturas da planta aplicadas com sucesso!
+- ESTRUTURA
+- Erro ao gerar layout automático:
+- Erro desconhecido ao processar a imagem.
+- Erro na requisição
+- Estrutura Identificada
+- Falha na Leitura:
+- Falha na análise da imagem.
+- Fechar
+- Largura
+- Layout otimizado gerado automaticamente pela IA!
+- Leitor de Planta Baixa com IA
+- Nenhum
+- Nenhuma
+- Não identificada
+- Pilares
+- Planta baixa analisada com sucesso!
+- Planta baixa carregada
+- Planta baixa carregada! Clique em "Analisar" para continuar.
+- Por favor, envie um arquivo de imagem válido (PNG, JPEG ou JPG).
+- Porta de Entrada
+- Sala Interna
+- Sala ou parede divisória identificada via IA
+- Salas e Paredes Divisórias
+- Suporta PNG, JPEG, JPG de até 10MB
+- auto
+- btn btn-primary btn-sm
+- btn btn-secondary btn-sm
+- center
+- currentColor
+- file
+- fplan-body
+- fplan-close
+- fplan-container
+- fplan-desc
+- fplan-dropzone
+- fplan-filename
+- fplan-foot
+- fplan-head
+- fplan-img-preview
+- fplan-loading-box
+- fplan-loading-text
+- fplan-overlay
+- fplan-preview-box
+- fplan-result-card
+- fplan-result-label
+- fplan-result-value
+- fplan-result-warning
+- fplan-results-box
+- fplan-results-grid
+- fplan-results-title
+- fplan-spinner
+- fplan-title
+- fplan-upload-icon
+- fplan-upload-subtext
+- fplan-upload-text
+- image/
+- image/*
+- image/jpeg
+- normal
+- pilar
+- porta-entrada
+- premium
+- projefarma_floorplan_pending
+- react
+- rgba(239, 68, 68, 0.08)
+- round
+- uuid
+
+---
+
+## 📄 Arquivo: `src\components\canvas\ItemLibrary.tsx`
+- --item-fill
+- --item-stroke
+- -especial
+- -premium
+- 10px
+- 6px
+- 8px
+- ACESSIBILIDADE
+- BALCOES
+- BALCÕES
+- BIBLIOTECA
+- Balcões
+- Buscar itens...
+- DISPLAYS
+- Dimensões insuficientes para gerar layout
+- Displays
+- EQUIPAMENTOS
+- ESTRUTURA
+- Enter
+- Erro ao gerar layout
+- Fixo
+- GONDOLAS
+- Importe sua planta baixa por foto ou otimize o layout atual.
+- Inteligência Artificial
+- Layout otimizado gerado!
+- MÓVEIS
+- Móveis
+- Nenhum item encontrado
+- OPERACIONAL
+- PERFUMARIA
+- Prateleiras
+- REFRIGERACAO
+- SERVICOS
+- Todos
+- Toque para adicionar · Arraste
+- absolute
+- all
+- application/json
+- auto
+- balcão
+- banqueta
+- btn btn-primary btn-sm btn-full
+- btn btn-secondary btn-sm btn-full
+- btn-sidebar-floorplan
+- button
+- cadeira
+- caixa
+- center
+- check-out
+- checkout
+- cofre
+- coluna
+- copy
+- counters
+- currentColor
+- displays
+- end
+- fill=
+- furniture
+- height=
+- lib-body
+- lib-catalog-panel
+- lib-empty
+- lib-footer
+- lib-ia-card
+- lib-ia-card-head
+- lib-ia-desc
+- lib-ia-sparkle
+- lib-ia-title
+- lib-item
+- lib-list
+- lib-meta
+- lib-name
+- lib-nav-item-icon
+- lib-nav-item-text
+- lib-nav-vertical
+- lib-root
+- lib-scroll-area
+- lib-search
+- lib-search-ico
+- lib-search-input
+- lib-search-wrap
+- lib-subfilters
+- lib-swatch-svg
+- lib-tag
+- mocho
+- normal
+- off
+- pilar
+- poltrona
+- ponta
+- porta
+- premium
+- react
+- rgba(0,0,0,0.15)
+- rgba(14, 165, 233, 0.15)
+- rgba(148, 163, 184, 0.2)
+- rgba(148, 163, 184, 0.4)
+- rgba(16, 185, 129, 0.15)
+- rgba(239, 68, 68, 0.15)
+- round
+- rx
+- rx=
+- ry=
+- safe
+- saida
+- search
+- shelves
+- shelving
+- stroke=
+- strokeWidth=
+- structure
+- width=
+- zustand/react/shallow
+
+---
+
+## 📄 Arquivo: `src\components\canvas\ThreeDViewer.tsx`
+- + wallColorHex.toString(16).padStart(6,
+- .hud-header
+- .ios-toggle
+- .lock-card
+- .three-customizer
+- .three-dpad
+- 0 10px 30px rgba(0,0,0,0.5)
+- 0.02em
+- 10px
+- 1px solid rgba(16, 185, 129, 0.25)
+- 1px solid rgba(16, 185, 129, 0.3)
+- 1px solid rgba(255, 255, 255, 0.15)
+- 1px solid var(--green-400)
+- 20px
+- 220px
+- 3px solid var(--green-400)
+- 4px
+- 4px 10px
+- 6px
+- 6px 12px
+- 8px
+- Arquivo não encontrado (recebido HTML de fallback da SPA)
+- Arraste a tela
+- ArrowDown
+- ArrowLeft
+- ArrowRight
+- ArrowUp
+- BA 120
+- BA 1200
+- BA120
+- BA1200
+- BALCOES
+- BALCÃO EM L
+- BALCÃO L
+- BANCO NACIONAL
+- BOUTIQUE MODA
+- BUTTON
+- CAFÉ GOURMET
+- CANAL
+- CANALETADO
+- CATALOG-101
+- CATALOG-102
+- CATALOG-111
+- CATALOG-14-
+- CATALOG-71
+- CATALOG-72
+- CATALOG-91
+- CATALOG-92
+- CESTAO
+- CESTÃO
+- CHECK OUT L
+- CHECKOUT L
+- CONTROLADO
+- CTRL
+- Caixa / Pagamentos
+- Clique na tela para iniciar
+- Cor das Paredes
+- Customizar
+- Customizar Espaço
+- DERMO
+- ESC
+- ESMALTE
+- ESMALTES
+- Erro ao descartar geometria:
+- Erro ao descartar material:
+- Erro ao descartar renderizador:
+- Erro ao focar canvas:
+- Erro ao liberar pointer lock:
+- Erro ao remover canvas:
+- Erro no loop de animação 3D:
+- Erro no mouse move:
+- Erro no setup 3D:
+- Erro no touch move:
+- Exibir Placas de Setorização
+- Exibir Produtos nas Prateleiras
+- FARMÁCIA PROJEFARMA
+- FILA
+- FILA INTELIGENTE
+- FILA_INTELIGENTE
+- Fechar Ajustes
+- Fechar Alerta
+- Focar Cursor
+- GOND
+- GONDOLA
+- GONDOLAS
+- Gerando maquete 3D...
+- GÔNDOLA
+- Higiene & Conveniência
+- INPUT
+- Key
+- KeyA
+- KeyD
+- KeyS
+- KeyW
+- LIVRARIA CULTURAL
+- MED
+- MED 500
+- MED 807
+- MED DUPLO
+- MEDICAMENTO
+- Medicamentos
+- Modo de Visualização
+- Mova o mouse
+- Mova o mouse ou arraste para olhar ao redor, e use as teclas **W, A, S, D** ou os botões para navegar.
+- Mover
+- MÓVEL
+- Nenhum contexto 2D disponível para textura de sinalização
+- Nenhuma
+- Nome da Farmácia (Fachada)
+- Não
+- OPERACIONAL
+- PADARIA BELA VISTA
+- PERFUMARIA
+- Perfumaria & Cosméticos
+- Piso (Textura & Cor)
+- Pointer lock recusado:
+- Promise rejeitada no 3D (normalmente Pointer Lock):
+- REFRIGERACAO
+- Sim
+- Sombras de Alta Qualidade
+- Space
+- TEXTAREA
+- Visualização 3D
+- WASD / Setas
+- YXZ
+- ] || keys[
+- ].includes(e.key?.toLowerCase() ||
+- absolute
+- aereo
+- all var(--dur-fast) var(--ease-out)
+- arrowdown
+- arrowleft
+- arrowright
+- arrowup
+- atendimento
+- auto
+- balcão
+- blue
+- blur
+- bold 44px sans-serif
+- btn btn-primary btn-md
+- btn btn-secondary btn-md
+- btn btn-secondary btn-sm
+- btn btn-secondary btn-sm hud-close
+- camera-presets pointer-events-auto
+- canvas
+- catalog-131
+- center
+- cestao
+- checkbox
+- concrete
+- content-type
+- contextmenu
+- controlado
+- currentColor
+- cust-grid
+- cust-input
+- cust-label
+- cust-section
+- cust-title
+- dermo
+- door
+- dpad-btn dpad-down
+- dpad-btn dpad-left
+- dpad-btn dpad-right
+- dpad-btn dpad-up
+- dpad-center
+- entrada
+- esmalte
+- farmaceutico
+- fila
+- first-person
+- function
+- geral
+- gondolabranca
+- gray
+- grid
+- high-performance
+- hud-debug-telemetry
+- hud-header
+- hud-instructions
+- hud-loader
+- hud-title
+- ios-toggle
+- ios-track
+- itens
+- keydown
+- keyup
+- lock-card
+- manipulacao
+- marble
+- medicamento
+- mediump
+- middle
+- mint
+- monospace
+- mousedown
+- mousemove
+- mouseup
+- orbit
+- para andar ·
+- para liberar o cursor
+- para olhar ·
+- para olhar · Pressione
+- perfumaria
+- pointerlockchange
+- porta
+- pre-wrap
+- premium
+- preset-title
+- productsGroup
+- react
+- resize
+- rgba(0, 0, 0, 0)
+- rgba(0, 0, 0, 0.15)
+- rgba(0, 0, 0, 0.45)
+- rgba(0, 0, 0, 0.75)
+- rgba(16, 185, 129, 0.1)
+- rgba(239, 68, 68, 0.95)
+- rgba(255, 255, 255, 0.05)
+- round
+- spin
+- text
+- text/html
+- three
+- three-container
+- three-customizer pointer-events-auto
+- three-dpad pointer-events-auto
+- three-hud
+- three-lock-overlay
+- three-overlay
+- toggle-row
+- toggle-row-label
+- touchend
+- touchmove
+- touchstart
+- transparent
+- undefined
+- underline
+- unhandledrejection
+- var(--fs-2xs)
+- var(--fs-xs)
+- var(--green-400)
+- var(--primary)
+- var(--r-md)
+- var(--sh-green-sm)
+- var(--text-2)
+- wheel
+- white
+- wood
+- zustand/react/shallow
+- ⚠️ Erro no Modo 3D
+- ⚠️ [3D Viewer] container é nulo. Setup abortado.
+- 🎬 [3D Viewer] Effect 1 (Setup) iniciando...
+- 📏 [3D Viewer] Effect 2 (Dimensões) atualizando para:
+- 📸 Tour
+- 🔄 [3D Viewer] Effect 3 (Furniture Sync) rodando para
+
+---
+
+## 📄 Arquivo: `src\components\ui\Toaster.tsx`
+- Notificações
+- region
+- toast-container
+- toast-icon
+- toast-message
+
+---
+
+## 📄 Arquivo: `src\components\ui\TutorialOverlay.tsx`
+- .editor-canvas
+- .editor-sidebar-right
+- .lib-nav-vertical
+- .statusbar-tools
+- .tb-right
+- 0 0 0 9999px rgba(3, 15, 10, 0.75)
+- 1. Biblioteca & Porta de Entrada 🚪
+- 2. Área de Trabalho (Canvas) 📐
+- 2px solid #FCD34D
+- 3. Propriedades de Itens ⚙️
+- 4. Assistente de IA Inteligente 🤖
+- 5. Análises e Simulações 📊
+- 6. Salvar, Exportar e Consultoria 📑
+- 8px
+- Ao clicar em qualquer móvel no canvas, este painel (ou as abas de orçamento) permite alterar rótulos, girar 90°, duplicar, excluir ou ajustar as posições com precisão milimétrica.
+- Aqui ficam todos os móveis do catálogo. **ATENÇÃO:** O primeiro passo obrigatório é clicar na categoria **Estrutura** (ícone de grade) e adicionar a **Porta de Entrada** para demarcar os fluxos corretos!
+- Bem-vindo ao ProjeLayout! 🚀
+- Concluir
+- Esta é a planta física da sua farmácia. Arraste os móveis livremente. Use o scroll do mouse para ajustar o zoom e movimente a tela arrastando o canvas com o botão direito.
+- Este guia rápido vai te ensinar a desenhar a farmácia perfeita utilizando as ferramentas exclusivas da Projefarma. Vamos começar?
+- Gerar Layout com IA
+- No rodapé, use o **Mapa de Calor** para ver zonas quentes, **Simule o Fluxo** de clientes em tempo real, ou ative a **Auditoria** de conformidade com as regras NBR 9050.
+- Nosso chat de IA integrado pode responder dúvidas de layout e normas ANVISA. Clique em **"Gerar Layout com IA"** para preencher a loja com uma distribuição otimizada automaticamente!
+- Próximo
+- Pular tutorial
+- all 0.3s cubic-bezier(0.4, 0, 0.2, 1)
+- bottom
+- btn btn-ghost btn-sm tut-btn-prev
+- btn btn-primary btn-sm tut-btn-next
+- center
+- fixed
+- left
+- projefarma_tutorial_seen
+- react
+- resize
+- right
+- scroll
+- top
+- translate(-50%, -50%)
+- true
+- tut-backdrop-fallback
+- tut-card
+- tut-card-body
+- tut-card-desc
+- tut-card-foot
+- tut-card-head
+- tut-card-skip
+- tut-card-step
+- tut-card-title
+- tut-overlay-root
+
+---
+
+## 📄 Arquivo: `src\config\layoutDimensions.ts`
+- em cima
+
+---
+
+## 📄 Arquivo: `src\data\items.ts`
+- Acessibilidade
+- Aparador 100x90x25cm | Cód: 211 | Preço: R$ 999.15
+- Aplicação de 1 spot por vão, chapéu alongado em 12cm
+- Armário de controlados 100x190x21 | Cód: 102 | Preço: R$ 2262.02
+- Armário de controlados 100x190x21 | Cód: 102 | Preço: R$ 2322.02
+- Armário de controlados 50x190x21 | Cód: 101 | Preço: R$ 1131.01
+- Armário de controlados 50x190x21 | Cód: 101 | Preço: R$ 1166.01
+- BALCOES
+- Balcão de atendimento expositor com 1 prateleiras 100x105x40cm TODO MDP | Cód: 55 | Preço: R$ 893.46
+- Balcão de atendimento expositor com 1 prateleiras 100x105x40cm TODO MDP | Cód: 55 | Preço: R$ 928.43
+- Balcão de atendimento expositor com 1 prateleiras 100x105x40cm | Cód: 51 | Preço: R$ 864.38
+- Balcão de atendimento expositor com 1 prateleiras 100x105x40cm | Cód: 51 | Preço: R$ 899.14
+- Balcão de atendimento expositor com 1 prateleiras 60x105x40cm | Cód: 54 | Preço: R$ 613.60
+- Balcão de atendimento expositor com 1 prateleiras 60x105x40cm | Cód: 54 | Preço: R$ 648.60
+- Balcão de atendimento expositor com 1 prateleiras 70x105x40cm | Cód: 53 | Preço: R$ 687.37
+- Balcão de atendimento expositor com 1 prateleiras 70x105x40cm | Cód: 53 | Preço: R$ 722.37
+- Balcão de atendimento expositor com 1 prateleiras 80x105x40cm | Cód: 52 | Preço: R$ 750.50
+- Balcão de atendimento expositor com 1 prateleiras 80x105x40cm | Cód: 52 | Preço: R$ 785.50
+- Balcão de atendimento expositor com 2 prateleiras 100x105x40cm | Cód: 56 | Preço: R$ 1298.55
+- Balcão de atendimento expositor com 2 prateleiras 100x105x40cm | Cód: 56 | Preço: R$ 1333.12
+- Balcão de atendimento expositor com 2 prateleiras 60x105x40cm | Cód: 59 | Preço: R$ 662.65
+- Balcão de atendimento expositor com 2 prateleiras 60x105x40cm | Cód: 59 | Preço: R$ 697.64
+- Balcão de atendimento expositor com 2 prateleiras 70x105x40cm | Cód: 58 | Preço: R$ 758.87
+- Balcão de atendimento expositor com 2 prateleiras 70x105x40cm | Cód: 58 | Preço: R$ 763.87
+- Balcão de atendimento expositor com 2 prateleiras 80x105x40cm | Cód: 57 | Preço: R$ 948.60
+- Balcão de atendimento expositor com 2 prateleiras 80x105x40cm | Cód: 57 | Preço: R$ 983.60
+- Balcão de caixa com 1 prateleira 105x40x100cm | Cód: 63 | Preço: R$ 1610.91
+- Balcão de caixa com 1 prateleira 105x40x100cm | Cód: 63 | Preço: R$ 1645.61
+- Balcão de caixa com 1 prateleira 105x40x60cm com gaveta | Cód: 62 | Preço: R$ 1245.00
+- Balcão de caixa com 1 prateleira 105x40x60cm com gaveta | Cód: 62 | Preço: R$ 1280.00
+- Balcão de caixa com 1 prateleira 105x40x60cm | Cód: 61 | Preço: R$ 756.38
+- Balcão de caixa com 1 prateleira 105x40x60cm | Cód: 61 | Preço: R$ 931.28
+- Balcão de pia consultório 90x80x50cm | Cód: 201 | Preço: R$ 1206.15
+- Balcão de pia consultório 90x80x50cm | Cód: 201 | Preço: R$ 1259.12
+- Balcões e Caixas
+- Base de fraldas 80,7x40 | Cód: 181 | Preço: R$ 258.73
+- Base de fraldas 80,7x40 | Cód: 181 | Preço: R$ 308.14
+- Cantoneira 40x40x1,05 | Cód: 151 | Preço: R$ 435.62
+- Cantoneira 40x40x1,05 | Cód: 151 | Preço: R$ 465.21
+- Cestões com identificador 0,40x0,85X0,40cm FECHADO | Cód: 72 | Preço: R$ 553.95
+- Cestões com identificador 0,40x0,85X0,40cm FECHADO | Cód: 72 | Preço: R$ 588.95
+- Cestões com identificador 0,40x0,85X0,40cm | Cód: 71 | Preço: R$ 553.95
+- Cestões com identificador 0,40x0,85X0,40cm | Cód: 71 | Preço: R$ 588.95
+- ESTRUTURA
+- Espaço Kids 80,7x1,90x26cm | Cód: 182 | Preço: R$ 1000000.00
+- Espaço Kids 80,7x1,90x26cm | Cód: 182 | Preço: R$ 1863.21
+- Estrutura e Obstáculos
+- Expositor de MIP 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 42 | Preço: R$ 1115.15
+- Expositor de MIP 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 42 | Preço: R$ 975.15
+- Expositor de MIP 80,7x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 41 | Preço: R$ 1221.93
+- Expositor de MIP 80,7x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 41 | Preço: R$ 1421.35
+- Expositor de MIP DOR E FEBRE 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 43 | Preço: R$ 1115.15
+- Expositor de MIP DOR E FEBRE 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 43 | Preço: R$ 975.15
+- Expositor de MIP GRIPE E ALERGIA 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 44 | Preço: R$ 1115.15
+- Expositor de MIP GRIPE E ALERGIA 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 44 | Preço: R$ 975.15
+- Expositor de MIP PRIMEIROS SOCORROS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 47 | Preço: R$ 1115.15
+- Expositor de MIP PRIMEIROS SOCORROS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 47 | Preço: R$ 975.15
+- Expositor de MIP SISTEMA DIGESTIVO 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 45 | Preço: R$ 1115.15
+- Expositor de MIP SISTEMA DIGESTIVO 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 45 | Preço: R$ 975.15
+- Expositor de MIP VITAMINAS E SUPLEMENTOS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 46 | Preço: R$ 1115.15
+- Expositor de MIP VITAMINAS E SUPLEMENTOS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 46 | Preço: R$ 975.15
+- Expositor de MIP VITNATU 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 48 | Preço: R$ 1115.15
+- Expositor de MIP VITNATU 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 48 | Preço: R$ 975.15
+- Expositor de bomboniere 57x15cm | Cód: 231 | Preço: R$ 347.82
+- Expositor de bomboniere 97x15cm | Cód: 232 | Preço: R$ 611.49
+- Expositor de dermocosméticos 50x190x26 BRANCO | Cód: 92 | Preço: R$ 1111.23
+- Expositor de dermocosméticos 50x190x26 BRANCO | Cód: 92 | Preço: R$ 1171.23
+- Expositor de dermocosméticos 50x190x26 PRETO | Cód: 91 | Preço: R$ 1547.23
+- Expositor de dermocosméticos 50x190x26 PRETO | Cód: 91 | Preço: R$ 1647.32
+- Expositor de esmalteria 190x50x26cm | Cód: 111 | Preço: R$ 1589.00
+- Expositor de esmalteria 190x50x26cm | Cód: 111 | Preço: R$ 963.29
+- Expositor de maquiagem 190x50x26cm | Cód: 121 | Preço: R$ 1158.30
+- Expositor de maquiagem 190x50x26cm | Cód: 121 | Preço: R$ 1218.30
+- Expositor de medicamento Com 18 prateleiras 100x1,90x21cm - duplo de 50cm | Cód: 23 | Preço: R$ 1463.46
+- Expositor de medicamento Com 18 prateleiras 100x1,90x21cm - duplo de 50cm | Cód: 23 | Preço: R$ 1493.83
+- Expositor de medicamento Com 9 prateleiras 50x1,90x21cm | Cód: 22 | Preço: R$ 731.73
+- Expositor de medicamento Com 9 prateleiras 50x1,90x21cm | Cód: 22 | Preço: R$ 761.73
+- Expositor de medicamento Com 9 prateleiras 80,7x1,90x21cm | Cód: 21 | Preço: R$ 1008.64
+- Expositor de medicamento Com 9 prateleiras 80,7x1,90x21cm | Cód: 21 | Preço: R$ 1038.47
+- Expositor de perfumaria Com 6 prateleiras 55x1,90x26cm | Cód: 13 | Preço: R$ 831.42
+- Expositor de perfumaria Com 6 prateleiras 55x1,90x26cm | Cód: 13 | Preço: R$ 861.52
+- Expositor de perfumaria Com 6 prateleiras 80,7x1,90x26cm | Cód: 11 | Preço: R$ 1036.39
+- Expositor de perfumaria Com 6 prateleiras 80,7x1,90x26cm | Cód: 11 | Preço: R$ 1066.14
+- Expositor de perfumaria Vitrine Com 5 prateleiras em MDP 80,7x1,90x26cm | Cód: 15 | Preço: R$ 860.25
+- Expositor de perfumaria Vitrine Com 5 prateleiras em MDP 80,7x1,90x26cm | Cód: 15 | Preço: R$ 890.65
+- Expositor de perfumaria Vitrine Com 5 prateleiras em VIDRO 80,7x1,90x26cm | Cód: 16 | Preço: R$ 1023.55
+- Expositor de perfumaria Vitrine Com 5 prateleiras em VIDRO 80,7x1,90x26cm | Cód: 16 | Preço: R$ 993.55
+- Expositor de perfumaria com 4 prateleiras 80,7x1,90x40cm | Cód: 12 | Preço: R$ 1189.38
+- Expositor de perfumaria com 4 prateleiras 80,7x1,90x40cm | Cód: 12 | Preço: R$ 1219.39
+- Expositor em L check Out | Cód: 131 | Preço: R$ 3406.37
+- Expositor em L check Out | Cód: 131 | Preço: R$ 3756.37
+- Fechamentos superiores | Cód: 171 | Preço: R$ 1390.00
+- Fechamentos superiores | Cód: 171 | Preço: R$ 590.00
+- GONDOLAS
+- Gôndola Central com 12 prateleiras centrais e 8 prateleiras nas ponteiras 300x114x43cm PRETO | Cód: 34 | Preço: R$ 4815.25
+- Gôndola Central com 12 prateleiras centrais e 8 prateleiras nas ponteiras 300x114x43cm PRETO | Cód: 34 | Preço: R$ 4865.55
+- Gôndola Central com 12 prateleiras centrais e 8 prateleiras nas ponteiras 300x114x43cm | Cód: 33 | Preço: R$ 3360.67
+- Gôndola Central com 12 prateleiras centrais e 8 prateleiras nas ponteiras 300x114x43cm | Cód: 33 | Preço: R$ 3390.67
+- Gôndola Central com 4 prateleiras centrais e 8 prateleiras nas ponteiras 170x114x43cm | Cód: 31 | Preço: R$ 2003.14
+- Gôndola Central com 4 prateleiras centrais e 8 prateleiras nas ponteiras 170x114x43cm | Cód: 31 | Preço: R$ 2053.14
+- Gôndola Central com 8 prateleiras centrais e 8 prateleiras nas ponteiras 220x114x43cm PRETO | Cód: 35 | Preço: R$ 3152.76
+- Gôndola Central com 8 prateleiras centrais e 8 prateleiras nas ponteiras 220x114x43cm PRETO | Cód: 35 | Preço: R$ 3202.15
+- Gôndola Central com 8 prateleiras centrais e 8 prateleiras nas ponteiras 220x114x43cm | Cód: 32 | Preço: R$ 2635.63
+- Gôndola Central com 8 prateleiras centrais e 8 prateleiras nas ponteiras 220x114x43cm | Cód: 32 | Preço: R$ 2685.14
+- Gôndolas e Prateleiras
+- Iluminação por vão | Cód: 221 | Preço: R$ 75.00
+- Iluminação por vão | Cód: 221 | Preço: R$ 95.00
+- MDP 15mm - Possui 2 portas. Não acompanha pia e torneira.
+- MDP 15mm Branco TX. Rodape na cor
+- MDP 15mm branco TX
+- MDP 15mm branco TX - Possui uma prateleira e 2 vista de vidro com expositor de preço. Rodape na cor
+- MDP 15mm branco TX - modelo fechado. Expositor de preço. Rodape na cor
+- MDP 15mm branco TX - possui 18 prateleiras, uma porta e trava com chave testeira superior de 30cm e rodapé 7,5 cm. Rodape na cor
+- MDP 15mm branco TX - possui 9 prateleiras, uma porta e trava com chave testeira superior de 30cm e rodapé 7,5 cm. Rodape na cor
+- MDP 15mm branco TX - rodapé 7,5 cm, testeira 30 cm. Possui 5 prateleiras de vidro, iluminação de LED ao fundo. Rodape na cor
+- MDP 15mm branco TX - rodapé 7,5 cm. Rodape na cor
+- MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado
+- MDP 15mm branco TX - testeira superior com altura de 30 cm. Rodape na cor
+- MDP 15mm branco TX – com corrediças, trilho de ferro e puxador
+- MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro
+- MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor
+- MDP 15mm branco TX – rodapé com altura de 7,5 cm, Todo em MDP. Rodape na cor
+- MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor
+- MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor
+- MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor
+- MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor
+- MDP 15mm branco TX – testeira superior com altura de 30 cm, mesa em MDP de 30mm. Não acompanha cadeira e itens decorativos. Rodape na cor
+- MDP 15mm preto TX - rodapé 7,5 cm, testeira 30 cm. Possui 5 prateleiras de vidro, iluminação de LED ao fundo. Rodape na cor
+- MDP 15mm/MDP 30mm Branco
+- MDP 18mm/MDP 37mm Carvalho Treviso
+- MDP 6mm Branco TX
+- Maca consultório 2,00x60 | Cód: 191 | Preço: R$ 3422.10
+- Maca consultório 2,00x60 | Cód: 191 | Preço: R$ 3432.15
+- Mesa consultório 90X75X50cm BRANCO | Cód: 214 | Preço: R$ 1604.92
+- Mesa consultório 90X75X50cm CARVALHO | Cód: 215 | Preço: R$ 2365.87
+- Mesa consultório até 150X75X50cm | Cód: 213 | Preço: R$ 3481.62
+- Mesa consultório em L 1,70x1,40 | Cód: 212 | Preço: R$ 4521.66
+- OPERACIONAL
+- Operacional
+- PERFUMARIA
+- Painel lateral de caixa 1,90x40x26cm | Cód: 81 | Preço: R$ 519.30
+- Painel lateral de caixa 1,90x40x26cm | Cód: 81 | Preço: R$ 564.30
+- Painel lateral de caixa 1,90x55x26cm | Cód: 82 | Preço: R$ 598.25
+- Painel lateral de caixa 1,90x55x26cm | Cód: 82 | Preço: R$ 633.25
+- Perfis de 2,75m de pvc branco
+- Perfumaria e Cosméticos
+- Pilar / Coluna
+- Pilar estrutural da loja
+- Porta de Correr até 100 x 2.12 | Cód: 161 | Preço: R$ 819.06
+- Porta de Correr até 100 x 2.12 | Cód: 161 | Preço: R$ 829.06
+- Porta de Entrada
+- Porta principal de entrada
+- Porta vai e vem | Cód: 162 | Preço: R$ 437.58
+- Porta vai e vem | Cód: 162 | Preço: R$ 447.58
+- Refrigeração
+- SERVICOS
+- Saída de Emergência
+- Saída de emergência obrigatória
+- Serviços e Consultórios
+- [Especial] APARADOR 1000mm
+- [Especial] BA 1000mm / PDV 1000mm
+- [Especial] BA 600mm / PDV 600mm
+- [Especial] BA 700mm / PDV 700mm
+- [Especial] BA 800mm / PDV 800mm
+- [Especial] BA MDF 1000mm / BA FECHADO 1000mm / BA MIP 1000mm
+- [Especial] BA VIDRO 1000mm / BA VD 1000mm / BA POMBAL 1000mm
+- [Especial] BA VIDRO 600mm / BA VD 600mm / BA POMBAL 600mm
+- [Especial] BA VIDRO 700mm / BA VD 700mm / BA POMBAL 700mm
+- [Especial] BA VIDRO 800mm / BA VD 800mm / BA POMBAL 800mm
+- [Especial] BOMB 570
+- [Especial] BOMB 970
+- [Especial] CAIXA 1000mm / CAIXA 800mm
+- [Especial] CAIXA 600mm
+- [Especial] CAIXA 600mm GAVETA
+- [Especial] CANTONEIRA 400mm
+- [Especial] CESTÃO
+- [Especial] CESTÃO FECHADO
+- [Especial] DERMO 500mm / DERMO BRANCO 500mm / DERMO 807mm
+- [Especial] DERMO PRETO 500mm
+- [Especial] FECHAMENTO
+- [Especial] GANCHOS
+- [Especial] GOND 1700mm / GOND 1500mm
+- [Especial] GOND 2200mm / GOND 2000mm
+- [Especial] GOND 3000mm
+- [Especial] GOND PRETA 2200mm
+- [Especial] GOND PRETA 3000mm
+- [Especial] ILUMINAÇÃO
+- [Especial] LAT CAIXA 400mm / lat cx 400
+- [Especial] LAT CAIXA 550mm / lat cx 550
+- [Especial] MACA 2000mm
+- [Especial] MAQ 500mm
+- [Especial] MED 500
+- [Especial] MED 807
+- [Especial] MED DUPLO 1000
+- [Especial] MESA 1000mm
+- [Especial] MESA amadeirado 1500mm
+- [Especial] MESA amadeirado 900mm
+- [Especial] MESA em l amadeirado
+- [Especial] MIP 500mm
+- [Especial] MIP 807mm
+- [Especial] PAINEL CANALETADO 807mm / 400mm PAINEL CANALETADO
+- [Especial] PERFIL CANALETADO
+- [Especial] PF 400 PROF 807m
+- [Especial] PF 550mm
+- [Especial] PF 807mm / pf 807 com fundo
+- [Especial] PF CANALETADO 807mm / PF 807mm CANALETADO
+- [Especial] PORTA CORRER
+- [Especial] PORTA VAI VEM
+- [Especial] VITRINE 807mm / VITRINE
+- [Especial] VITRINE 807mm VIDRO / VITRINE VIDRO
+- [Especial] ba pia 900mm
+- [Especial] base 1200mm
+- [Especial] controlado 1000
+- [Especial] controlado 500mm
+- [Especial] esmaltes 500mm
+- [Especial] l checkout L
+- [Premium] APARADOR
+- [Premium] BA 100
+- [Premium] BA 100 MDF
+- [Premium] BA 60
+- [Premium] BA 70
+- [Premium] BA 80
+- [Premium] BA VD 100
+- [Premium] BA VD 60
+- [Premium] BA VD 70
+- [Premium] BA VD 80
+- [Premium] BOMB 57
+- [Premium] BOMB 97
+- [Premium] CANTONEIRA
+- [Premium] CESTÃO
+- [Premium] CESTÃO FECHADO
+- [Premium] CHECK OUT L
+- [Premium] CTRL 100
+- [Premium] CTRL 50
+- [Premium] CX 100
+- [Premium] CX 60
+- [Premium] CX GAV 60
+- [Premium] DERMO BRANCO
+- [Premium] DERMO PRETO
+- [Premium] ESM
+- [Premium] FECHAMENTO
+- [Premium] FRALDA
+- [Premium] GOND 170
+- [Premium] GOND 220
+- [Premium] GOND 220 PRETO
+- [Premium] GOND 300
+- [Premium] GOND 300 PRETO
+- [Premium] ILUM
+- [Premium] KIDS
+- [Premium] LAT CX 40
+- [Premium] LAT CX 55
+- [Premium] MACA
+- [Premium] MAQ
+- [Premium] MED 500
+- [Premium] MED 807
+- [Premium] MED DUPLO 1000
+- [Premium] MESA 150
+- [Premium] MESA 90 BR
+- [Premium] MESA 90 CARV
+- [Premium] MESA L
+- [Premium] MIP 500
+- [Premium] MIP 807
+- [Premium] MIP DOR E FEBRE
+- [Premium] MIP GRIPE E ALERGIA
+- [Premium] MIP PRIM SOCORROS
+- [Premium] MIP SIST DIGESTIVO
+- [Premium] MIP VIT E SUPLEMENTOS
+- [Premium] MIP VITNATU
+- [Premium] PAINEL CANAL
+- [Premium] PF 550
+- [Premium] PF 807
+- [Premium] PF 807 PROF
+- [Premium] PF CANAL 807
+- [Premium] PF VIT MDF 807
+- [Premium] PF VIT VIDRO 807
+- [Premium] PIA
+- [Premium] PORTA CORRER
+- [Premium] PORTA VAI VEM
+- catalog-101-especial
+- catalog-101-premium
+- catalog-102-especial
+- catalog-102-premium
+- catalog-11-especial
+- catalog-11-premium
+- catalog-111-especial
+- catalog-111-premium
+- catalog-12-especial
+- catalog-12-premium
+- catalog-121-especial
+- catalog-121-premium
+- catalog-13-especial
+- catalog-13-premium
+- catalog-131-especial
+- catalog-131-premium
+- catalog-14-especial
+- catalog-14-premium
+- catalog-141-especial
+- catalog-141-premium
+- catalog-15-especial
+- catalog-15-premium
+- catalog-151-especial
+- catalog-151-premium
+- catalog-16-especial
+- catalog-16-premium
+- catalog-161-especial
+- catalog-161-premium
+- catalog-162-especial
+- catalog-162-premium
+- catalog-171-especial
+- catalog-171-premium
+- catalog-181-especial
+- catalog-181-premium
+- catalog-182-especial
+- catalog-182-premium
+- catalog-191-especial
+- catalog-191-premium
+- catalog-201-especial
+- catalog-201-premium
+- catalog-21-especial
+- catalog-21-premium
+- catalog-211-especial
+- catalog-211-premium
+- catalog-212-especial
+- catalog-212-premium
+- catalog-213-especial
+- catalog-213-premium
+- catalog-214-especial
+- catalog-214-premium
+- catalog-215-especial
+- catalog-215-premium
+- catalog-22-especial
+- catalog-22-premium
+- catalog-221-especial
+- catalog-221-premium
+- catalog-23-especial
+- catalog-23-premium
+- catalog-231-especial
+- catalog-231-premium
+- catalog-232-especial
+- catalog-232-premium
+- catalog-251-especial
+- catalog-261-especial
+- catalog-31-especial
+- catalog-31-premium
+- catalog-32-especial
+- catalog-32-premium
+- catalog-33-especial
+- catalog-33-premium
+- catalog-34-especial
+- catalog-34-premium
+- catalog-35-especial
+- catalog-35-premium
+- catalog-41-especial
+- catalog-41-premium
+- catalog-42-especial
+- catalog-42-premium
+- catalog-43-especial
+- catalog-43-premium
+- catalog-44-especial
+- catalog-44-premium
+- catalog-45-especial
+- catalog-45-premium
+- catalog-46-especial
+- catalog-46-premium
+- catalog-47-especial
+- catalog-47-premium
+- catalog-48-especial
+- catalog-48-premium
+- catalog-51-especial
+- catalog-51-premium
+- catalog-52-especial
+- catalog-52-premium
+- catalog-53-especial
+- catalog-53-premium
+- catalog-54-especial
+- catalog-54-premium
+- catalog-55-especial
+- catalog-55-premium
+- catalog-56-especial
+- catalog-56-premium
+- catalog-57-especial
+- catalog-57-premium
+- catalog-58-especial
+- catalog-58-premium
+- catalog-59-especial
+- catalog-59-premium
+- catalog-61-especial
+- catalog-61-premium
+- catalog-62-especial
+- catalog-62-premium
+- catalog-63-especial
+- catalog-63-premium
+- catalog-71-especial
+- catalog-71-premium
+- catalog-72-especial
+- catalog-72-premium
+- catalog-81-especial
+- catalog-81-premium
+- catalog-82-especial
+- catalog-82-premium
+- catalog-91-especial
+- catalog-91-premium
+- catalog-92-especial
+- catalog-92-premium
+- pilar
+- porta-entrada
+- porta-saida-emergencia
+
+---
+
+## 📄 Arquivo: `src\main.tsx`
+- react
+- react-dom/client
+- react-router-dom
+- root
+
+---
+
+## 📄 Arquivo: `src\pages\Admin.tsx`
+- 0.5rem
+- 0.9375rem
+- 1.25rem
+- 1.5rem
+- Agendamentos
+- Bem-vindo ao painel administrativo!
+- Concluído
+- Confirmado
+- Em análise
+- Enter
+- Layout sem nome
+- Layout thumbnail
+- Layouts
+- Nenhum agendamento encontrado
+- Nenhum layout criado ainda
+- Novo
+- Novos
+- Painel Admin
+- Painel Administrativo
+- Projefarma
+- Projefarma — Acesso restrito a consultores
+- Proposta enviada
+- Senha de acesso
+- Senha incorreta.
+- Senha padrão: projefarma2025
+- Status atualizado!
+- admin-content
+- admin-empty
+- admin-empty-icon
+- admin-filters
+- admin-header
+- admin-header-inner
+- admin-header-stats
+- admin-hint
+- admin-login
+- admin-login-card animate-scale-in
+- admin-login-desc
+- admin-login-icon
+- admin-login-title
+- admin-logo
+- admin-logo-icon
+- admin-logo-sub
+- admin-logo-title
+- admin-page
+- admin-pass
+- admin-section
+- admin-stat
+- admin-stat-label
+- admin-stat-val
+- admin-tab-appointments
+- admin-tab-layouts
+- admin-tab-sketchup
+- admin-tabs
+- admin-tabs-inner
+- appointment-card card
+- appointments
+- appointments-list
+- appt-actions
+- appt-avatar
+- appt-client
+- appt-contact
+- appt-detail
+- appt-detail appt-notes
+- appt-details
+- appt-header
+- appt-name
+- badge-amber
+- badge-blue
+- badge-gray
+- badge-green
+- btn btn-ghost btn-sm
+- btn btn-ghost btn-sm btn-full
+- btn btn-primary btn-full
+- btn btn-primary btn-sm
+- btn btn-secondary btn-sm
+- btn-admin-login
+- concluido
+- confirmado
+- currentColor
+- em_analise
+- form-group
+- height=
+- input
+- input input-sm
+- label
+- layout-admin-actions
+- layout-admin-card card
+- layout-admin-date
+- layout-admin-info
+- layout-admin-name
+- layout-admin-size
+- layout-thumb
+- layout-thumb-placeholder
+- layouts
+- layouts-grid
+- novo
+- password
+- projefarma2025
+- proposta_enviada
+- pt-BR
+- react
+- react-router-dom
+- rx=
+- ry=
+- sketchup
+- strokeLinecap=
+- strokeLinejoin=
+- var(--text-1)
+- var(--text-3)
+- width=
+
+---
+
+## 📄 Arquivo: `src\pages\ClientIntakeForm.tsx`
+- 1 a 3 funcionários
+- 16 a 30 funcionários
+- 4 a 7 funcionários
+- 8 a 15 funcionários
+- Cancelar
+- Cidade / Estado
+- Clique ou arraste a planta baixa aqui
+- Comprimento da loja
+- Comprimento deve ser entre 3m e 100m.
+- Dados da Farmácia
+- Espaço da Loja
+- Ex: 12
+- Ex: 8
+- Ex: Farmácia Saúde & Vida
+- Ex: João da Silva
+- Ex: São Paulo / SP
+- Informe a cidade e estado.
+- Informe as dimensões ou envie a planta baixa da sua farmácia.
+- Informe o nome da farmácia.
+- Informe seu nome.
+- JPG, PNG, WEBP ou PDF · Máx. 10 MB
+- Largura da loja
+- Largura deve ser entre 3m e 100m.
+- Mais de 30 funcionários
+- Nome da farmácia
+- Número de funcionários na loja
+- Planta baixa
+- Preencha suas informações para personalizarmos seu layout.
+- ProjeLayout
+- Selecione o número de funcionários.
+- Selecione uma imagem da planta baixa.
+- Seu nome
+- Telefone para contato
+- Use JPG, PNG, WEBP ou PDF.
+- application/pdf
+- button
+- by Projefarma
+- cif-actions
+- cif-area-preview
+- cif-back-btn
+- cif-bg-blob blob-a
+- cif-bg-blob blob-b
+- cif-bg-blob blob-c
+- cif-body cif-fade-in
+- cif-btn-primary
+- cif-btn-secondary
+- cif-card
+- cif-cityState
+- cif-clientName
+- cif-dim-hint
+- cif-employee-grid
+- cif-error-msg
+- cif-field
+- cif-field-row
+- cif-fields
+- cif-fields cif-fade-in
+- cif-header
+- cif-height
+- cif-input-unit
+- cif-logo
+- cif-logo-by
+- cif-logo-mark
+- cif-logo-name
+- cif-main
+- cif-mode-toggle
+- cif-pdf-badge
+- cif-pharmacyName
+- cif-phone
+- cif-preview-img
+- cif-progress-wrap
+- cif-remove-file
+- cif-required
+- cif-root
+- cif-spinner
+- cif-step-desc
+- cif-step-header
+- cif-step-icon
+- cif-step-labels
+- cif-step-title
+- cif-trust
+- cif-unit
+- cif-upload-empty
+- cif-upload-icon
+- cif-upload-preview
+- cif-upload-sub
+- cif-upload-title
+- cif-width
+- cityState
+- clientName
+- currentColor
+- cy=
+- dimensions
+- employees
+- error
+- file
+- filled
+- floorPlanFile
+- floorPlanPreview
+- floorplan
+- general
+- has-file
+- height=
+- image/jpeg
+- image/jpeg,image/png,image/webp,application/pdf
+- image/png
+- image/webp
+- number
+- pharmacyName
+- phone
+- projefarma_intake
+- react
+- react-router-dom
+- round
+- rx=
+- selected
+- spaceMode
+- strokeLinecap=
+- strokeLinejoin=
+- tel
+- text
+- width=
+
+---
+
+## 📄 Arquivo: `src\pages\Editor.tsx`
+- , alignItems:
+- , gap:
+- -0.01em
+- -4px
+- 0 0 8px #10B981
+- 0 20px 50px rgba(11, 61, 46, 0.06)
+- 0 4px 12px rgba(16, 185, 129, 0.15)
+- 0 4px 12px rgba(16, 185, 129, 0.3)
+- 0.9em
+- 1. Clique nos três pontos (canto superior direito) e abra **Configurações**.
+- 1. Digite
+- 1.2fr 1fr
+- 1.5px solid #10b981
+- 1.5px solid #FCD34D
+- 1.5px solid var(--border-sm)
+- 1.5px solid var(--dourado)
+- 10px
+- 11px
+- 12px
+- 15px 0
+- 16px
+- 16px 0
+- 16px 20px
+- 18px
+- 1fr 1fr
+- 1fr 1fr 1fr
+- 1px solid var(--border-sm)
+- 1px solid var(--border-xs)
+- 2. Busque pelo parâmetro
+- 2. Vá na seção **Sistema** no menu lateral esquerdo.
+- 20px
+- 24px
+- 28px
+- 3. Ative a opção **"Usar aceleração gráfica quando disponível"** (ou aceleração de hardware).
+- 3. Certifique-se de que o valor está definido como
+- 38px
+- 3px solid var(--green-400)
+- 4. Reinicie seu navegador e tente carregar o 3D novamente.
+- 40px
+- 42px
+- 460px
+- 50px
+- 60vh
+- 6px
+- 8px
+- 8px 0
+- 90vw
+- Ajuste de Posição
+- Assistente IA
+- Auditoria
+- Biblioteca
+- Camadas
+- Como ativar no Google Chrome / Brave / Edge:
+- Como usar o sistema
+- Como verificar no Firefox:
+- Comprimento (m)
+- Configurações da loja
+- Desfazer
+- Desfazer (Ctrl+Z)
+- Duplicar
+- Entrada - X (m)
+- Entrada - Y (m)
+- Erro ao gerar PDF
+- Erro ao processar dados de intake:
+- Erro ao salvar
+- Exportar Planta
+- Farmácia Premium
+- Fluxo / Densidade
+- Frente
+- Girar 90°
+- Grade
+- IA Assistant
+- Imagem PNG baixada!
+- Iniciando motor 3D...
+- Início
+- Largura
+- Largura (m)
+- Layout
+- Layout não encontrado
+- Layout salvo
+- Limpar todo o layout?
+- Linha
+- M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18
+- Mapa de Calor
+- Meu Layout
+- Mostrar grid
+- Mostrar medidas
+- New Pharmacy Layout
+- Ocultar Calor
+- Orientação da Entrada
+- Orientação da Saída
+- Orçamento
+- Orçamento CSV baixado!
+- Orçamento Excel gerado!
+- Parar Fluxo
+- Pilares (x,y por linha)
+- Planta Baixa (IA)
+- Profundidade
+- Project status: Connected
+- Projefarma
+- Refazer
+- Relatório PDF gerado!
+- Remover
+- Rótulo / Nome
+- Salvar
+- Salvar / Agendar
+- Salvo
+- Saída de Emergência - X (m)
+- Saída de Emergência - Y (m)
+- Scroll = zoom · Arrastar canvas = mover · Del = remover
+- Selecione um item no canvas
+- Simular Fluxo
+- Snap ao grid
+- Trás
+- Usar aceleração gráfica quando disponível
+- Visualizar 3D
+- WebGL ainda está indisponível. Ative a aceleração de hardware nas configurações.
+- WebGL detectado com sucesso! Iniciando 3D...
+- about:config
+- absolute
+- active-auditoria
+- active-heatmap
+- active-simulation
+- ai
+- all 0.2s ease
+- auto
+- blur(12px)
+- bold
+- btn btn-danger
+- btn btn-danger btn-sm
+- btn btn-danger btn-sm btn-full
+- btn btn-ghost btn-sm
+- btn btn-primary btn-lg btn-full
+- btn btn-primary btn-sm btn-full
+- btn btn-secondary
+- btn btn-secondary btn-sm
+- btn btn-secondary btn-sm btn-full
+- btn btn-secondary btn-xs
+- btn btn-sm
+- btn btn-sq btn-ghost
+- btn btn-sq btn-xs btn-ghost
+- btn-3d
+- btn-save
+- btn-schedule
+- btn-store
+- btn-topbar-floorplan
+- budget
+- calc(100% + 8px)
+- canvas
+- center
+- checkbox
+- compact
+- currentColor
+- cy=
+- desk-label
+- desktop-only
+- dimensions
+- drawer properties-drawer open mobile-only
+- drawer-actions
+- drawer-backdrop open mobile-only
+- drawer-close
+- drawer-content
+- drawer-handle
+- drawer-title
+- drawer-title-swatch
+- drawer-titlebar
+- editor-body desktop-only
+- editor-canvas
+- editor-root
+- editor-sidebar-left
+- editor-sidebar-right
+- end
+- experimental-webgl
+- fadeIn 0.2s ease-out
+- false
+- fill=
+- fixed
+- flex-start
+- floorplan
+- form-group
+- grid
+- height=
+- hidden
+- id
+- image/jpeg
+- in-density
+- in-entrance-orient
+- in-entrance-x
+- in-entrance-y
+- in-exit-orient
+- in-exit-x
+- in-exit-y
+- in-h
+- in-pillars
+- in-w
+- inline-block
+- inline-flex
+- input
+- input input-sm
+- ios-toggle
+- ios-track
+- konva
+- label
+- layout
+- library
+- m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5zM19 17l1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z
+- mc-act-btn
+- mc-act-icon
+- middle
+- mnav-ai
+- mnav-btn
+- mnav-budget
+- mnav-icon
+- mnav-label
+- mnav-layout
+- mnav-library
+- mnav-plus
+- mob-label
+- mobile-canvas-actions
+- mobile-content-area mobile-only
+- mobile-nav
+- mobile-save-action
+- mobile-top-zoom
+- mt-zoom-btn
+- mt-zoom-val
+- na barra de endereços e dê enter.
+- normal
+- nudge-btn
+- nudge-center
+- nudge-pad
+- nudge-pad-section
+- number
+- premium
+- projefarma_floorplan_pending
+- projefarma_intake
+- projefarma_tutorial_seen
+- props-actions
+- props-body
+- props-head
+- props-head-close
+- props-head-name
+- props-head-swatch
+- props-panel
+- props-sep
+- pt-BR
+- react
+- react-router-dom
+- relative
+- requestIdleCallback
+- rgba(0, 0, 0, 0.45)
+- rgba(11, 61, 46, 0.05)
+- rgba(16, 185, 129, 0.15)
+- rgba(16, 185, 129, 0.3)
+- rgba(255,255,255,0.4)
+- round
+- rx=
+- ry=
+- sb-body-right
+- sb-tabs-right
+- scale(1)
+- scale(1.1)
+- settings-2col
+- settings-pop
+- settings-pop-body
+- settings-pop-foot
+- settings-pop-head
+- space-between
+- spacious
+- spin
+- springIn 0.3s var(--ease-spring)
+- statusbar desktop-only
+- statusbar-dot
+- statusbar-item
+- statusbar-item statusbar-right
+- statusbar-tools
+- stepper-controls
+- stepper-item
+- stepper-label
+- stepper-value
+- steppers-grid
+- strokeLinecap=
+- strokeLinejoin=
+- strokeWidth=
+- tab-ai
+- tab-budget
+- tb
+- tb-brand
+- tb-btn
+- tb-btn desktop-only
+- tb-btn tb-btn-primary desktop-only
+- tb-mark
+- tb-name
+- tb-right
+- tb-sep desktop-only
+- tb-status desktop-only
+- tb-store
+- tb-store-arrow
+- tb-store-label desktop-only
+- tb-store-val
+- tb-title desktop-only
+- tb-tool
+- tb-tools desktop-only
+- tb-zoom desktop-only
+- tb-zoom-btn
+- tb-zoom-val
+- text
+- three-lazy-loading-placeholder
+- tog-grid
+- tog-measures
+- tog-snap
+- toggle-row
+- toggle-row-label
+- transparent
+- tut-help-trigger desktop-only
+- var(--border-xs)
+- var(--dourado)
+- var(--fs-md)
+- var(--fs-sm)
+- var(--fs-xs)
+- var(--green-400)
+- var(--r-md)
+- var(--r-xl)
+- var(--s1)
+- var(--s2)
+- var(--sh-lg)
+- var(--surface)
+- var(--surface-card)
+- var(--surface-muted)
+- var(--surface-subtle)
+- var(--text-1)
+- var(--text-2)
+- var(--text-3)
+- var(--text-muted)
+- var(--verde-escuro)
+- var(--white)
+- webgl
+- webgl-warning-body
+- webgl-warning-container
+- webgl-warning-foot
+- webgl-warning-head
+- webgl-warning-overlay
+- webgl-warning-title
+- webgl.disabled
+- white
+- width=
+- zustand/react/shallow
+
+---
+
+## 📄 Arquivo: `src\pages\Home.tsx`
+- #como-funciona
+- #depoimentos
+- --type-color
+- .reveal
+- /admin
+- /meus-projetos
+- /novo-layout
+- 0px 0px -10% 0px
+- 1px solid var(--green-400)
+- 3px
+- 6px
+- 8px
+- A IA analisa o espaço e gera um layout otimizado para o seu tipo de farmácia.
+- A IA sugeriu posicionar a perfumaria na entrada e as vendas aumentaram 23% no primeiro mês!
+- Adicione pilares, paredes e portas conforme a planta real.
+- Agende com um Consultor
+- Agende sua consultoria
+- Ana Paula R.
+- Arraste móveis e equipamentos para criar o layout da sua farmácia de forma intuitiva.
+- Belo Horizonte, MG
+- Carlos M.
+- Como funciona
+- Conclua o layout e agende uma reunião gratuita com um especialista Projefarma.
+- Consegui planejar toda a minha farmácia em menos de 1 hora! O consultor ficou impressionado com o layout já pronto.
+- Curitiba, PR
+- Deixe a IA sugerir ou arraste os itens manualmente.
+- Depoimentos
+- Digite o comprimento e a largura da sua loja em metros.
+- Editor Visual Drag & Drop
+- Exportação em PDF e PNG
+- Farmácia
+- Farmácia Popular
+- Farmácia Premium
+- Fernanda L.
+- Ferramenta incrível! Marquei os pilares da minha loja e o layout ficou perfeito sem nenhum obstáculo nos corredores.
+- Funcionalidades
+- Gere com IA ou monte
+- Gratuito, sem cadastro, resultado em minutos.
+- Informe as dimensões
+- Manipulação
+- Marque os obstáculos
+- Marque pilares, paredes e obstáculos reais para um planejamento fiel à sua loja.
+- Medidas em Tempo Real
+- Novo
+- Para todos os modelos
+- Pilares e Obstáculos
+- Planejamento de layout com IA para farmácias
+- ProjeLayout
+- ProjeLayout Dashboard Preview
+- ProjeLayout Editor
+- Pronto para planejar sua farmácia?
+- Qual é o seu tipo de farmácia?
+- Quem já usou aprovou
+- Salve o layout e agende uma reunião gratuita com um especialista.
+- Simples e rápido
+- Sugestões com Inteligência Artificial
+- São Paulo, SP
+- Tudo que você precisa
+- Veja as dimensões e distâncias em metros enquanto posiciona cada item.
+- auto
+- badge badge-green
+- block
+- btn btn-ghost btn-sm
+- btn btn-primary btn-sm
+- btn btn-primary btn-sm hide-desktop
+- btn btn-primary btn-xl
+- btn btn-primary btn-xl glow-pulse
+- btn btn-secondary btn-lg
+- btn btn-secondary btn-xl
+- btn-criar-layout
+- btn-cta-final
+- by Projefarma
+- center
+- como-funciona
+- container
+- container cta-inner
+- container hero-inner
+- container home-footer-inner
+- container home-header-inner
+- cta-desc
+- cta-section reveal
+- cta-title
+- currentColor
+- depoimentos
+- feat-icon-svg
+- feature-card reveal
+- feature-desc
+- feature-icon
+- feature-title
+- features
+- features-grid
+- footer-copy
+- height=
+- hero
+- hero-actions fade-in
+- hero-badge fade-in
+- hero-bg-decoration
+- hero-canvas-preview
+- hero-desc fade-in
+- hero-glow-blob blob-1
+- hero-glow-blob blob-2
+- hero-glow-blob blob-3
+- hero-hint
+- hero-illustration scale-in
+- hero-title scale-in
+- hero-title-highlight
+- home
+- home-footer
+- home-header
+- home-logo
+- home-logo-by
+- home-logo-icon
+- home-logo-icon small
+- home-logo-text
+- home-logo-text small
+- home-nav hide-mobile
+- how-it-works
+- inline-flex
+- manipulacao
+- popular
+- premium
+- preview-dot green
+- preview-dot red
+- preview-dot yellow
+- preview-header
+- preview-title
+- react
+- react-router-dom
+- reveal-visible
+- round
+- rx=
+- ry=
+- section-eyebrow reveal
+- section-title reveal
+- smooth
+- step reveal
+- step-connector
+- step-desc
+- step-icon
+- step-number
+- step-title
+- steps
+- store-type-arrow
+- store-type-card reveal
+- store-type-icon
+- store-type-label
+- store-type-svg
+- store-types
+- store-types-grid
+- strokeLinecap=
+- strokeLinejoin=
+- testimonial-author
+- testimonial-avatar
+- testimonial-card reveal
+- testimonial-city
+- testimonial-name
+- testimonial-stars
+- testimonial-text
+- testimonials
+- testimonials-grid
+- tipos
+- var(--green-400)
+- var(--r-xl)
+- var(--s4)
+- width=
+- © 2026 Projefarma. Todos os direitos reservados.
+
+---
+
+## 📄 Arquivo: `src\pages\Projects.tsx`
+- ).localeCompare(b.layoutName ??
+- /editor
+- 1px solid #ef4444
+- 2-digit
+- Abrir
+- BRL
+- Buscar projeto...
+- Cancelar
+- Crie seu primeiro layout para começar!
+- Duplicar
+- Enter
+- Excluir
+- Excluir projeto?
+- Gerencie, compare e abra qualquer projeto abaixo
+- Início
+- Itens Total
+- Layout
+- Layout sem nome
+- Maior preço
+- Mais recentes
+- Meus Projetos
+- Nenhum projeto encontrado
+- Nome A-Z
+- Orçamento Acum.
+- Projetos
+- Renomear
+- Renomear Projeto
+- Salvar
+- Sem miniatura
+- Seus Layouts Salvos
+- Tente um termo diferente.
+- currency
+- currentColor
+- fill=
+- height=
+- name
+- numeric
+- price
+- proj-body
+- proj-btn
+- proj-btn proj-btn-ghost
+- proj-btn proj-btn-primary
+- proj-card
+- proj-card-action
+- proj-card-action danger
+- proj-card-badge
+- proj-card-body
+- proj-card-dot
+- proj-card-footer
+- proj-card-meta
+- proj-card-name
+- proj-card-price
+- proj-card-thumb
+- proj-card-thumb-placeholder
+- proj-controls
+- proj-empty
+- proj-empty-icon
+- proj-grid
+- proj-header
+- proj-header-actions
+- proj-header-brand
+- proj-header-title
+- proj-hero
+- proj-rename-actions
+- proj-rename-modal
+- proj-rename-overlay
+- proj-root
+- proj-search
+- proj-search-icon
+- proj-sort
+- proj-stat
+- proj-stat-label
+- proj-stat-val
+- proj-stats
+- pt-BR
+- react
+- react-router-dom
+- recent
+- round
+- rx=
+- short
+- strokeLinecap=
+- strokeLinejoin=
+- text
+- var(--text-3)
+- width=
+
+---
+
+## 📄 Arquivo: `src\pages\Schedule.tsx`
+- /editor
+- Agendamento
+- Cidade
+- Cidade e Estado *
+- Confirmar Agendamento
+- Confirmação
+- Conte mais sobre o projeto, dúvidas específicas...
+- Dados Pessoais
+- Dados pessoais
+- Data
+- Data *
+- Data e Hora
+- E-mail
+- E-mail *
+- Erro ao agendar. Tente novamente.
+- Escolha a melhor data e hora para você
+- Escolha o Horário
+- Ex: São Paulo, SP
+- Farmácia
+- Horário
+- Horário disponível *
+- Layout
+- Layout salvo:
+- Manipulação
+- Nome
+- Nos conte mais sobre seu projeto
+- Observações
+- Observações (opcional)
+- Outro
+- Para o consultor entrar em contato antes da reunião
+- Popular
+- Premium
+- Reunião Agendada!
+- Reunião agendada com sucesso!
+- Revise e confirme seu agendamento
+- Seu nome
+- Seus Dados
+- Sua Farmácia
+- Telefone
+- Tipo
+- Tipo de Farmácia *
+- Um e-mail de confirmação foi enviado para
+- WhatsApp / Telefone *
+- auto
+- badge badge-green
+- btn btn-ghost btn-sm
+- btn btn-primary
+- btn btn-primary btn-full
+- btn btn-primary btn-lg
+- btn btn-secondary
+- btn btn-secondary btn-full
+- btn-confirm-appointment
+- city
+- confirm-notes
+- confirm-row
+- confirm-section
+- confirm-section-title
+- confirmation-grid
+- currentColor
+- cy=
+- date
+- done
+- email
+- form-fields
+- form-group
+- height=
+- input
+- label
+- layout-preview-card
+- layout-preview-info
+- long
+- name
+- notes
+- numeric
+- phone
+- pt-BR
+- react
+- react-router-dom
+- round
+- rx=
+- ry=
+- sched-city
+- sched-date
+- sched-email
+- sched-name
+- sched-notes
+- sched-phone
+- sched-type
+- schedule-content
+- schedule-form card card-elevated animate-scale-in
+- schedule-form-actions
+- schedule-form-body
+- schedule-form-desc
+- schedule-form-header
+- schedule-form-title
+- schedule-header
+- schedule-logo-icon
+- schedule-page
+- schedule-steps
+- schedule-success animate-scale-in
+- seu@email.com
+- step-dot
+- step-label hide-mobile
+- step-line
+- storeType
+- strokeLinecap=
+- strokeLinejoin=
+- success-actions
+- success-desc
+- success-detail-row
+- success-details card
+- success-email
+- success-hint
+- success-icon
+- success-title
+- tel
+- text
+- time
+- time-grid
+- width=
+- ← Voltar
+
+---
+
+## 📄 Arquivo: `src\pages\SharedLayout.tsx`
+- /editor
+- Este link pode ter expirado ou é inválido.
+- Gostou do layout? Agende uma consulta gratuita com a Projefarma!
+- Itens
+- Layout
+- Layout da Farmácia
+- Layout não encontrado
+- Pilares
+- ProjeLayout
+- animate-scale-in
+- badge badge-blue
+- badge badge-green
+- btn btn-primary
+- btn btn-primary btn-full
+- btn btn-secondary btn-full
+- by Projefarma
+- currentColor
+- cy=
+- height=
+- not-found-icon
+- react-router-dom
+- rx=
+- ry=
+- shared-badges
+- shared-content
+- shared-cta
+- shared-header
+- shared-info-card card card-elevated animate-scale-in
+- shared-info-header
+- shared-item
+- shared-item-icon
+- shared-item-size
+- shared-items-grid
+- shared-items-list
+- shared-items-title
+- shared-layout-page
+- shared-logo-icon
+- shared-logo-sub
+- shared-logo-title
+- shared-not-found
+- shared-stat
+- shared-stat-label
+- shared-stat-val
+- shared-stats
+- shared-thumb
+- shared-title
+- strokeLinecap=
+- strokeLinejoin=
+- strokeWidth=
+- width=
+- Área total
+
+---
+
+## 📄 Arquivo: `src\services\chatGptLayoutGenerator.ts`
+- ### Balcão de Atendimento e Caixa (Paralelo a X = 2.21):
+- ).join(
+- - Entrada: posição (
+- - Lado Inferior: Lateral Caixa na ponta inferior, seguido por Caixa e Balcão.
+- - Lado Superior: Lateral Caixa na ponta superior, seguido por Caixa e Balcão.
+- - Nenhum
+- - Pilares:
+- - Posicionados em X = 2.21m.
+- - Rotação: 270 graus (virados para a direita).
+- - Saída de emergência: posição (
+- -especial
+- -premium
+- = -0.5 && item.x
+- = -0.5 && item.y
+- A IA demorou muito para responder. Tente novamente.
+- AbortError
+- Authorization
+- Bottom
+- Chave API inválida.
+- Chave API inválida. Verifique sua chave no arquivo .env
+- Chave API não configurada. Adicione sua chave no arquivo .env (VITE_OPENAI_API_KEY=sk-...)
+- Compact
+- Content-Type
+- Erro de conexão. Verifique sua internet e tente novamente.
+- Erro desconhecido
+- Failed to fetch
+- Gerar Layout com IA
+- JSON
+- Left
+- Limite de requisições atingido. Aguarde um momento e tente novamente.
+- Limite de requisições. Aguarde.
+- NetworkError
+- Normal
+- POST
+- Resposta da IA não é um array válido.
+- Resposta vazia da API.
+- Resposta vazia da API. Tente novamente.
+- Right
+- Sem créditos OpenAI.
+- Sem créditos na conta OpenAI. Verifique seu billing em platform.openai.com
+- Spacious
+- Top
+- X_atual + largura_do_item
+- X_atual + largura_do_próximo_item
+- Y_atual + largura_do_item
+- abort
+- application/json
+- assistant
+- door
+- gpt-4o-mini
+- itemId
+- json ...
+- number
+- porta
+- porta-entrada
+- premium
+- sua-chave-api-aqui
+- system
+- user
+- ⚠️ A IA retornou um formato inválido. Tente novamente.
+- 🌐 Erro de conexão.
+- 🔑 Chave API não configurada. Adicione no arquivo .env: VITE_OPENAI_API_KEY=sk-...
+
+---
+
+## 📄 Arquivo: `src\services\customerSimulation.ts`
+- BA
+- BALCOES
+- GONDOLAS
+- PERFUMARIA
+- caixa
+- cestão
+- checkout
+
+---
+
+## 📄 Arquivo: `src\services\ergonomyValidator.ts`
+- , b: ReturnType
+- = MIN_WHEELCHAIR && gap
+- BALCOES
+- Corredor abaixo do mínimo para cadeirantes
+- Corredor estreito (abaixo do ideal de 1,20m)
+- Corredores dentro da norma
+- Expositor de MIP distante do Balcão
+- GONDOLAS
+- MIP
+- MIPs próximos ao Balcão
+- Os 1,5m após a porta de entrada estão desimpedidos. Bom fluxo de chegada!
+- Todos os expositores de MIP estão dentro de 3m do balcão de atendimento. Ótimo!
+- corridor-ideal
+- corridor-ok
+- corridor-wheelchair
+- entrance-blocked
+- entrance-ok
+- error
+- mip-far
+- mip-ok
+- occupancy-high
+- occupancy-ok
+- ok
+- warning
+- Área de entrada livre
+- Área de entrada obstruída
+
+---
+
+## 📄 Arquivo: `src\services\excelExport.ts`
+- !cols
+- ).trim() ||
+- Acessibilidade
+- Altura (m)
+- BRL
+- Balcões e Caixas
+- Categoria
+- Código
+- Data:
+- Dimensões:
+- Estrutura e Obstáculos
+- Gôndolas e Prateleiras
+- Largura (m)
+- Layout
+- Nome
+- Operacional
+- Orçamento Detalhado
+- PROJEFARMA — ORÇAMENTO DE LAYOUT
+- Perfumaria e Cosméticos
+- Preço Unit.
+- Preço Unitário
+- Profundidade (m)
+- Projeto:
+- Qtd
+- Quantidade
+- Refrigeração
+- Resumo
+- Serviços e Consultórios
+- Subtotal
+- Total Geral:
+- Total de Itens:
+- \uFEFF
+- catalog-
+- currency
+- pt-BR
+- text/csv;charset=utf-8;
+- xlsx
+
+---
+
+## 📄 Arquivo: `src\services\floorPlanReader.ts`
+- A IA falhou em identificar as dimensões básicas da loja.
+- A análise da imagem demorou muito e o tempo limite expirou.
+- AbortError
+- Authorization
+- Chave API da OpenAI não configurada. Configure a variável VITE_OPENAI_API_KEY no arquivo .env.
+- Content-Type
+- Erro desconhecido
+- POST
+- Parede Divisória
+- Resposta vazia da API de Visão da OpenAI.
+- Sala de Aplicação
+- Sala de Injeção
+- analysis
+- application/json
+- data:*/*;base64,
+- emergencyExit
+- entrance
+- gpt-4o-mini
+- image/jpeg
+- image_url
+- json ...
+- json_object
+- name
+- number
+- obstacles
+- pillars
+- storeHeight
+- storeWidth
+- sua-chave-api-aqui
+- text
+- user
+
+---
+
+## 📄 Arquivo: `src\services\heatmapGenerator.ts`
+- BALCOES
+- GONDOLAS
+- PERFUMARIA
+- REFRIGERACAO
+- caixa
+- checkout
+- cx
+
+---
+
+## 📄 Arquivo: `src\services\heuristicLayoutGenerator.ts`
+- , cx, cy, CESTAO_SIZE, CESTAO_SIZE,
+- , drawX, drawY, g.len, 0.43,
+- , storeBottom,
+- , storeTop,
+- , storeWidth,
+- , stroke:
+- , w: 0.5, color:
+- , w: 0.55, color:
+- , w: 0.807, color:
+- , w: FRALDA_WIDTH, depth: FRALDA_DEPTH, color:
+- -especial
+- -premium
+- = centralMinX && cand.x + CESTAO_SIZE
+- = centralMinY && cand.y + CESTAO_SIZE
+- A loja é muito pequena. O mínimo recomendado é 4m x 4m para uma farmácia funcional.
+- Adicione uma porta de entrada ao canvas antes de gerar o layout.
+- Armário de Controlados
+- BA 100 MDF
+- Balcão de Atendimento
+- Balcão farmacêutico em posição de destaque transmite confiança
+- Bottom
+- Caixa
+- Caixa próxima à saída facilita o fluxo de pagamento
+- Cestão Promocional
+- Checkout em L
+- Coloque o balcão de atendimento ao fundo para guiar o fluxo de clientes
+- Consultório de beleza agrega valor ao serviço
+- Consultório farmacêutico aumenta fidelização
+- Corredor central de entrada deve conduzir ao fundo
+- Dedique 30-40% do espaço para perfumaria e cosméticos
+- Dermocosméticos
+- Divida o espaço em zonas: medicamentos, perfumaria, higiene e serviços
+- ESTRUTURA
+- Esmaltes
+- Expositor Esmaltes
+- Expositor Maquiagem
+- Farmácia Popular
+- Farmácia Premium
+- Farmácia de Manipulação
+- Fraldas
+- GONDOLAS
+- Geladeira específica para fórmulas é obrigatória
+- Gôndola Central
+- Gôndolas paralelas às paredes laterais criam corredores bem definidos
+- Iluminação e exposição dos produtos são diferenciais
+- Lateral Caixa
+- Left
+- MIP Dor e Febre
+- MIP Gripe e Alergia
+- MIP Sist. Digestivo
+- Maquiagem
+- Medicamentos MIP
+- Perfumaria
+- Perfumaria 550
+- Porta de Entrada
+- Prateleira Medicamentos
+- Right
+- Sala de atendimento farmacêutico individualizado é diferencial
+- Saída de Emergência
+- Top
+- Use ilhas centrais para criar experiência de browsing
+- Vitrine PF
+- Zona quente (entrada) para promoções e lançamentos
+- catalog-11
+- catalog-11-premium
+- catalog-111
+- catalog-121
+- catalog-13
+- catalog-14
+- catalog-141
+- catalog-181
+- catalog-21
+- catalog-21-premium
+- catalog-22
+- catalog-23
+- catalog-31-premium
+- catalog-41
+- catalog-42
+- catalog-43
+- catalog-44
+- catalog-45
+- catalog-51-premium
+- catalog-55-premium
+- catalog-61-premium
+- catalog-92
+- catalog-92-premium
+- clearLeft && s
+- compact
+- door
+- entrada
+- experiência do cliente e perfumaria
+- normal
+- porta
+- porta-entrada
+- porta-saida-emergencia
+- premium
+- saida
+- salão de vendas
+- spacious
+- uuid
+- volume de vendas e acessibilidade
+- Área de manipulação deve ser separada da área de vendas
+- Área de medicamentos ao fundo aumenta o tempo de permanência
+- área técnica e manipulação
+- ⚠️ Layout com mais de 60% de ocupação. Verifique se os corredores estão adequados.
+- 💡 Espaço subutilizado. Considere adicionar mais prateleiras ou displays.
+
+---
+
+## 📄 Arquivo: `src\services\pdfExport.ts`
+- Aproveitamento de Espaço
+- Confira abaixo os detalhes e estatísticas do planejamento da sua loja.
+- Dimensões
+- Dimensões reais:
+- Error adding layout image to PDF:
+- Error generating PDF:
+- Espaço de Corredores:
+- Este relatório é um excelente ponto de partida. Apresente este layout para um de
+- Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.
+- Helvetica
+- Item
+- Layout de Farmácia
+- Lista Detalhada de Itens
+- Manipulação
+- Modelo de negócio:
+- Nenhum item adicionado ao layout.
+- PNG
+- Planta Baixa (Layout Visual)
+- Popular
+- Premium
+- Preço Total
+- Preço Unit.
+- ProjeLayout
+- ProjeLayout by Projefarma
+- Próximos Passos: Agende sua Consultoria Gratuita!
+- Página 1 de 2
+- Página 2 de 2
+- Qtd.
+- Quantidade de móveis:
+- RELATÓRIO DE PLANEJAMENTO · PROJEFARMA
+- Taxa de Ocupação:
+- [Imagem n\u00e3o dispon\u00edvel]
+- [Sem imagem]
+- bold
+- garantir aprovação da ANVISA e criar um orçamento sob medida para o seu negócio.
+- jspdf
+- layout
+- mm
+- normal
+- nossos consultores técnicos da Projefarma para refinar as distâncias de acessibilidade,
+- portrait
+- pt-BR
+- Área total:
+
+---
+
+## 📄 Arquivo: `src\services\sketchupVision.ts`
+- -especial
+- -premium
+- = -0.5 && item.x
+- = -0.5 && item.y
+- BALCOES
+- Content-Type
+- ESTRUTURA
+- Erro desconhecido
+- Failed to fetch
+- GONDOLAS
+- JSON
+- NetworkError
+- OPERACIONAL
+- PERFUMARIA
+- POST
+- Resposta da IA não é um array válido.
+- Resposta vazia da API.
+- application/json
+- catalog-1
+- catalog-13
+- catalog-2
+- catalog-3
+- catalog-4
+- catalog-5
+- catalog-6
+- catalog-7
+- catalog-8
+- catalog-9
+- catalogId
+- category
+- createdAt
+- data:image
+- detectedName
+- emergencia
+- gpt-4o
+- high
+- id
+- image_url
+- nome visto
+- number
+- pilar
+- porta
+- premium
+- projefarma_reference_layouts
+- sua-chave-api-aqui
+- text
+- updatedAt
+- user
+- uuid
+- ⏳ Limite de requisições. Aguarde um momento.
+- ⚠️ A IA retornou um formato inválido. Tente novamente.
+- 🌐 Erro de conexão. Verifique sua internet.
+- 💳 Sem créditos na conta OpenAI.
+- 🔑 Chave API inválida.
+- 🔑 Chave API não configurada. Verifique o arquivo .env (VITE_OPENAI_API_KEY)
+
+---
+
+## 📄 Arquivo: `src\services\storage.ts`
+- Error saving appointment:
+- Falha crítica ao salvar mesmo sem miniaturas:
+- Quota de localStorage excedida no salvamento. Tentando recuperação...
+- Recuperação passo 1 falhou. Salvando layout sem miniatura...
+- appointments
+- createdAt
+- id
+- layouts
+- novo
+- projelayout_appointments
+- projelayout_layouts
+- status
+- uuid
+- ⚠️ Erro ao sincronizar agendamento com o Supabase:
+- ⚠️ Erro ao sincronizar layout com o Supabase:
+- ⚠️ Falha crítica ao rodar sincronização com o Supabase:
+- ⚠️ Falha de rede ao sincronizar agendamento:
+- ⚠️ Falha de rede ao sincronizar layout:
+- ⚠️ Não foi possível carregar os agendamentos do Supabase:
+- ⚠️ Não foi possível carregar os layouts do Supabase:
+- ✅ Agendamento sincronizado com o Supabase:
+- ✅ Layout sincronizado com o Supabase:
+- ✅ Sincronização com o Supabase concluída.
+- 🔄 Iniciando sincronização bidirecional com o Supabase...
+
+---
+
+## 📄 Arquivo: `src\services\supabase.ts`
+- @supabase/supabase-js
+- ⚠️ Credenciais do Supabase não configuradas no arquivo .env. O sistema continuará funcionando localmente com localStorage.
+
+---
+
+## 📄 Arquivo: `src\store\canvasStore.ts`
+- Bottom
+- Layout
+- Left
+- Meu Layout
+- OPERACIONAL
+- Right
+- SERVICOS
+- Top
+- display
+- emergencia
+- get().historyIndex
+- normal
+- obstacle
+- pilar
+- popular
+- porta
+- porta-entrada
+- porta-saida-emergencia
+- premium
+- uuid
+- zustand
+
+---
+
+## 📄 Arquivo: `src\store\toastStore.ts`
+- error
+- info
+- success
+- zustand
+
+---
+
+## 📄 Arquivo: `src\types\index.ts`
+- ACESSIBILIDADE
+- BALCOES
+- ESTRUTURA
+- GONDOLAS
+- OPERACIONAL
+- PERFUMARIA
+- REFRIGERACAO
+- SERVICOS
+- compact
+- concluido
+- confirmado
+- door
+- em_analise
+- error
+- info
+- manipulacao
+- measure
+- normal
+- novo
+- pillar
+- popular
+- premium
+- proposta_enviada
+- spacious
+- success
+
+---
+
+## 📄 Arquivo: `src\utils\canvasExport.ts`
+- Error generating full layout data URL:
+- image/png
+- konva
+
+---
+
+## 📄 Arquivo: `src\vite-env.d.ts`
+- vite/client
+
+---

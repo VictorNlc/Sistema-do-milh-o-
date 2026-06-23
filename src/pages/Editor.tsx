@@ -14,6 +14,7 @@ import BudgetPanel from '../components/canvas/BudgetPanel'
 import ErgonomyPanel from '../components/canvas/ErgonomyPanel'
 import { exportToCSV, exportToXLSX } from '../services/excelExport'
 import FloorPlanReaderModal from '../components/canvas/FloorPlanReaderModal'
+import { getFullLayoutDataUrl } from '../utils/canvasExport'
 import './Editor.css'
 
 const ThreeDViewer = lazy(() => import('../components/canvas/ThreeDViewer'))
@@ -104,7 +105,7 @@ export default function Editor() {
   const [showWebGLWarning, setShowWebGLWarning] = useState(false)
 
   const {
-    storeWidth, storeHeight, storeType, layoutDensity, items, selectedItemId,
+    storeWidth, storeHeight, storeType, layoutDensity, items, layoutName, selectedItemId,
     entrance, emergencyExit, pillars,
     snapToGrid, showGrid, showMeasures,
     setStoreDimensions, setStoreType, setLayoutDensity, setPillars, setEntrance, setEmergencyExit,
@@ -243,14 +244,32 @@ export default function Editor() {
     }
   }
 
+  // The visible canvas stage. Two CanvasEditor copies (desktop + mobile) are
+  // mounted at once and share stageRef, so stageRef.current may resolve to the
+  // hidden one. The store tracks whichever is actually on-screen — prefer it.
+  const getActiveStage = useCallback(
+    (): Konva.Stage | null =>
+      (useCanvasStore.getState().stageInstance as Konva.Stage | null) ?? stageRef.current,
+    []
+  )
+
   const handleSave = useCallback(() => {
     let thumbnail = null
-    try { thumbnail = stageRef.current?.toDataURL({ mimeType: 'image/jpeg', quality: 0.6, pixelRatio: 0.25 }) } catch {}
+    try {
+      const stage = getActiveStage()
+      if (stage) {
+        thumbnail = getFullLayoutDataUrl(stage, storeWidth, storeHeight, {
+          mimeType: 'image/jpeg',
+          quality: 0.6,
+          pixelRatio: 0.25,
+        })
+      }
+    } catch {}
     const saved = saveLayout({ storeWidth, storeHeight, storeType, items, thumbnail })
     if (saved) toast.success('Layout salvo')
     else toast.error('Erro ao salvar')
     return saved
-  }, [storeWidth, storeHeight, storeType, items])
+  }, [storeWidth, storeHeight, storeType, items, getActiveStage])
 
   const handleSchedule = () => {
     const saved = handleSave()
@@ -259,7 +278,9 @@ export default function Editor() {
 
   const downloadLayoutPNG = useCallback((silent = false) => {
     try {
-      const uri = stageRef.current?.toDataURL({ pixelRatio: 2 })
+      const stage = getActiveStage()
+      if (!stage) return false
+      const uri = getFullLayoutDataUrl(stage, storeWidth, storeHeight)
       if (!uri) return false
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const a = Object.assign(document.createElement('a'), { download: `projelayout-imagem-${timestamp}.png`, href: uri })
@@ -274,7 +295,7 @@ export default function Editor() {
       }
       return false
     }
-  }, [])
+  }, [storeWidth, storeHeight, getActiveStage])
 
   const handleExportPNG = () => {
     downloadLayoutPNG(false)
@@ -286,14 +307,17 @@ export default function Editor() {
       // Capture image BEFORE async import so the Konva stage is guaranteed to be mounted
       let layoutImageDataUrl: string | undefined
       try {
-        layoutImageDataUrl = stageRef.current?.toDataURL({ pixelRatio: 2 }) ?? undefined
+        const stage = getActiveStage()
+        if (stage) {
+          layoutImageDataUrl = getFullLayoutDataUrl(stage, storeWidth, storeHeight)
+        }
       } catch { /* canvas may be tainted — proceed without image */ }
 
       // Also download the PNG file separately
       downloadLayoutPNG(true)
 
       const { exportLayoutToPDF } = await import('../services/pdfExport')
-      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: store.layoutName || 'Meu Layout' }
+      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
       const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
         toast.success('Relatório PDF gerado!')
@@ -307,7 +331,7 @@ export default function Editor() {
   const handleExportCSV = () => {
     try {
       downloadLayoutPNG(true)
-      exportToCSV(items, store.layoutName || 'Meu Layout')
+      exportToCSV(items, layoutName || 'Meu Layout')
       toast.success('Orçamento CSV baixado!')
       setShowExportOptions(false)
     } catch { toast.error('Erro ao exportar CSV') }
@@ -316,7 +340,7 @@ export default function Editor() {
   const handleExportXLSX = async () => {
     try {
       downloadLayoutPNG(true)
-      await exportToXLSX(items, store.layoutName || 'Meu Layout', storeWidth, storeHeight)
+      await exportToXLSX(items, layoutName || 'Meu Layout', storeWidth, storeHeight)
       toast.success('Orçamento Excel gerado!')
       setShowExportOptions(false)
     } catch { toast.error('Erro ao exportar Excel') }
@@ -341,7 +365,7 @@ export default function Editor() {
 
 
         <div className="tb-title desktop-only" style={{ fontSize: '12px', fontWeight: 700, color: 'white', letterSpacing: '-0.01em' }}>
-          {store.layoutName || 'New Pharmacy Layout'}
+          {layoutName || 'New Pharmacy Layout'}
         </div>
 
         <div className="tb-sep desktop-only" />
@@ -729,60 +753,58 @@ export default function Editor() {
 
       {/* ─── MOBILE SCREEN AREA ─── */}
       <div className="mobile-content-area mobile-only">
-        {activeMobileTab === 'layout' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-            {/* Mobile zoom widget */}
-            <MobileZoomControls />
-            
-            {/* Canvas */}
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-              <CanvasEditor stageRef={stageRef} showHeatmap={showHeatmap} showSimulation={showSimulation} />
-            </div>
-
-            {/* Mobile canvas controls row */}
-            <div className="mobile-canvas-actions">
-              <button className="mc-act-btn" onClick={undo} disabled={!canUndo()}>
-                <div className="mc-act-icon"><I.Undo /></div>
-                <span>Desfazer</span>
-              </button>
-              <button className="mc-act-btn" onClick={redo} disabled={!canRedo()}>
-                <div className="mc-act-icon"><I.Redo /></div>
-                <span>Refazer</span>
-              </button>
-              <button className="mc-act-btn" onClick={handleOpen3D}>
-                <div className="mc-act-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                </div>
-                <span>3D</span>
-              </button>
-              <button className="mc-act-btn" onClick={() => {
-                if (selectedItem) {
-                  // selection properties drawer will open automatically
-                } else {
-                  toast.info("Selecione um item no canvas")
-                }
-              }}>
-                <div className="mc-act-icon"><I.Layers /></div>
-                <span>Camadas</span>
-              </button>
-              <button className="mc-act-btn" onClick={toggleGrid}>
-                <div className="mc-act-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-                </div>
-                <span>Grade</span>
-              </button>
-            </div>
-
-            {/* Mobile save/schedule button */}
-            <div className="mobile-save-action">
-              <button className="btn btn-primary btn-lg btn-full" onClick={handleSchedule} style={{ background: '#10b981' }}>
-                <I.Cal />
-                <span>Salvar / Agendar</span>
-                <span style={{ marginLeft: 'auto' }}>▾</span>
-              </button>
-            </div>
+        <div style={{ display: activeMobileTab === 'layout' ? 'flex' : 'none', flex: 1, flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+          {/* Mobile zoom widget */}
+          <MobileZoomControls />
+          
+          {/* Canvas */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <CanvasEditor stageRef={stageRef} showHeatmap={showHeatmap} showSimulation={showSimulation} />
           </div>
-        )}
+
+          {/* Mobile canvas controls row */}
+          <div className="mobile-canvas-actions">
+            <button className="mc-act-btn" onClick={undo} disabled={!canUndo()}>
+              <div className="mc-act-icon"><I.Undo /></div>
+              <span>Desfazer</span>
+            </button>
+            <button className="mc-act-btn" onClick={redo} disabled={!canRedo()}>
+              <div className="mc-act-icon"><I.Redo /></div>
+              <span>Refazer</span>
+            </button>
+            <button className="mc-act-btn" onClick={handleOpen3D}>
+              <div className="mc-act-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              </div>
+              <span>3D</span>
+            </button>
+            <button className="mc-act-btn" onClick={() => {
+              if (selectedItem) {
+                // selection properties drawer will open automatically
+              } else {
+                toast.info("Selecione um item no canvas")
+              }
+            }}>
+              <div className="mc-act-icon"><I.Layers /></div>
+              <span>Camadas</span>
+            </button>
+            <button className="mc-act-btn" onClick={toggleGrid}>
+              <div className="mc-act-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+              </div>
+              <span>Grade</span>
+            </button>
+          </div>
+
+          {/* Mobile save/schedule button */}
+          <div className="mobile-save-action">
+            <button className="btn btn-primary btn-lg btn-full" onClick={handleSchedule} style={{ background: '#10b981' }}>
+              <I.Cal />
+              <span>Salvar / Agendar</span>
+              <span style={{ marginLeft: 'auto' }}>▾</span>
+            </button>
+          </div>
+        </div>
         
         {activeMobileTab === 'library' && (
           <div style={{ flex: 1, overflow: 'hidden' }}>
