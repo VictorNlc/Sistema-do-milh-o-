@@ -697,3 +697,24 @@
   margin-top: 4px;
   display: block;
 }
+
+/* ── Freight / Geocoding message (UY) ── */
+.cif-freight-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(120, 53, 0, 0.85);
+  line-height: 1.5;
+  animation: cif-fadeIn 0.3s ease;
+}
+.cif-freight-msg svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  stroke: rgb(217, 119, 6);
+}
