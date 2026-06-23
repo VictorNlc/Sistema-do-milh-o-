@@ -72,6 +72,14 @@ export default function BudgetPanel() {
 
       const { exportLayoutToPDF } = await import('../../services/pdfExport')
       const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
+      // Fallback if stageInstance didn't generate image url
+      if (!layoutImageDataUrl) {
+        const stage = document.querySelector('.konvajs-content')
+        layoutImageDataUrl = stage ? (() => {
+          const canvas = document.querySelector('canvas')
+          return canvas ? canvas.toDataURL('image/png') : undefined
+        })() : undefined
+      }
       const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
         toast.success('Relatório de Orçamento PDF gerado com sucesso!')
@@ -121,9 +129,9 @@ export default function BudgetPanel() {
                 </div>
                 <span className="budget-card-qty">x{group.qty}</span>
               </div>
-              
+
               {group.finish && <p className="budget-card-finish">{formatFinish(group.finish)}</p>}
-              
+
               <div className="budget-card-footer">
                 <span className="budget-card-price">Unit: R$ {group.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 <span className="budget-card-subtotal">R$ {group.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -140,8 +148,8 @@ export default function BudgetPanel() {
             R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
-        <button 
-          className="btn btn-primary btn-full budget-pdf-btn" 
+        <button
+          className="btn btn-primary btn-full budget-pdf-btn"
           onClick={handleExportPDF}
           disabled={groupedItems.length === 0}
         >

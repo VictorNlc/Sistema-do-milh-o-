@@ -1,11 +1,24 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  SUPPORTED_COUNTRIES,
+  lookupPostalCode,
+  formatPostalCode,
+  sanitizePostalCode,
+  isPostalCodeComplete,
+  getPostalCodePlaceholder,
+  getPostalCodeMaxLength,
+  getPostalCodeLength,
+} from '../services/postalCode'
 import './ClientIntakeForm.css'
 
 interface FormData {
   clientName: string
   pharmacyName: string
-  cityState: string
+  country: string
+  postalCode: string
+  city: string
+  state: string
   phone: string
   employees: string
   spaceMode: 'dimensions' | 'floorplan'
@@ -35,12 +48,20 @@ export default function ClientIntakeForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general', string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general' | 'postalCode', string>>>({})
+
+  // Postal code lookup state
+  const [postalLoading, setPostalLoading] = useState(false)
+  const [postalMessage, setPostalMessage] = useState<string | null>(null)
+  const [lastFetchedKey, setLastFetchedKey] = useState<string>('')
 
   const [form, setForm] = useState<FormData>({
     clientName: '',
     pharmacyName: '',
-    cityState: '',
+    country: '',
+    postalCode: '',
+    city: '',
+    state: '',
     phone: '',
     employees: '',
     spaceMode: 'dimensions',
@@ -55,12 +76,95 @@ export default function ClientIntakeForm() {
     setErrors(prev => ({ ...prev, [field]: undefined }))
   }
 
+  // ── Postal code auto-lookup ─────────────────────────────────────────────
+  const performLookup = useCallback(async (country: string, postalCode: string) => {
+    const sanitized = sanitizePostalCode(country, postalCode)
+    const key = `${country}:${sanitized}`
+
+    // Prevent duplicate calls for the same country+postal code
+    if (key === lastFetchedKey) return
+
+    if (!isPostalCodeComplete(country, postalCode)) return
+
+    setLastFetchedKey(key)
+    setPostalLoading(true)
+    setPostalMessage(null)
+    setErrors(prev => ({ ...prev, postalCode: undefined }))
+
+    const result = await lookupPostalCode(country, postalCode)
+
+    setPostalLoading(false)
+
+    if (result.success && result.data) {
+      setForm(prev => ({
+        ...prev,
+        city: result.data!.city,
+        state: result.data!.state,
+      }))
+      setPostalMessage(null)
+    } else {
+      setForm(prev => ({ ...prev, city: '', state: '' }))
+      setPostalMessage(result.error || 'Código postal inválido.')
+    }
+  }, [lastFetchedKey])
+
+  // Auto-trigger lookup when postal code changes and country is selected
+  useEffect(() => {
+    if (!form.country) return
+
+    const sanitized = sanitizePostalCode(form.country, form.postalCode)
+    const expectedLength = getPostalCodeLength(form.country)
+
+    // Clear city/state if postal code is incomplete
+    if (sanitized.length < expectedLength) {
+      if (form.city || form.state) {
+        setForm(prev => ({ ...prev, city: '', state: '' }))
+      }
+      setPostalMessage(null)
+      return
+    }
+
+    // Auto-fetch when postal code is complete
+    if (sanitized.length === expectedLength) {
+      performLookup(form.country, form.postalCode)
+    }
+  }, [form.postalCode, form.country, performLookup, form.city, form.state])
+
+  // Reset location fields when country changes
+  useEffect(() => {
+    setForm(prev => ({ ...prev, postalCode: '', city: '', state: '' }))
+    setPostalMessage(null)
+    setLastFetchedKey('')
+  }, [form.country])
+
+  // ── Postal code input handler ───────────────────────────────────────────
+  const handlePostalCodeChange = (value: string) => {
+    if (form.country) {
+      set('postalCode', formatPostalCode(form.country, value))
+    } else {
+      set('postalCode', value)
+    }
+  }
+
   // ── Step 1 validation ──────────────────────────────────────────────────
   const validateStep1 = () => {
     const errs: typeof errors = {}
     if (!form.clientName.trim()) errs.clientName = 'Informe seu nome.'
     if (!form.pharmacyName.trim()) errs.pharmacyName = 'Informe o nome da farmácia.'
-    if (!form.cityState.trim()) errs.cityState = 'Informe a cidade e estado.'
+    if (!form.country) errs.country = 'Selecione o país.'
+    if (!form.postalCode.trim()) errs.postalCode = 'Informe o CEP / Código postal.'
+
+    // Validate postal code format per country
+    if (form.country && form.postalCode.trim()) {
+      const sanitized = sanitizePostalCode(form.country, form.postalCode)
+      const expectedLength = getPostalCodeLength(form.country)
+      if (sanitized.length !== expectedLength) {
+        errs.postalCode = `Código postal deve conter ${expectedLength} dígitos.`
+      }
+    }
+
+    if (!form.city.trim()) errs.city = 'Cidade não preenchida. Verifique o código postal.'
+    if (!form.state.trim()) errs.state = 'Estado não preenchido. Verifique o código postal.'
     if (form.phone.replace(/\D/g, '').length < 10) errs.phone = 'Informe um telefone válido.'
     if (!form.employees) errs.employees = 'Selecione o número de funcionários.'
     setErrors(errs)
@@ -106,11 +210,17 @@ export default function ClientIntakeForm() {
     if (!validateStep2()) return
     setIsSubmitting(true)
 
+    const selectedCountry = SUPPORTED_COUNTRIES.find(c => c.code === form.country)
+
     // Save client data to sessionStorage so Editor can consume it
     const intakeData = {
       clientName: form.clientName.trim(),
       pharmacyName: form.pharmacyName.trim(),
-      cityState: form.cityState.trim(),
+      country: form.country,
+      countryName: selectedCountry?.name || form.country,
+      postalCode: form.postalCode.trim(),
+      city: form.city.trim(),
+      state: form.state.trim(),
       phone: form.phone,
       employees: form.employees,
       spaceMode: form.spaceMode,
@@ -135,6 +245,9 @@ export default function ClientIntakeForm() {
 
     navigate(`/editor?${params.toString()}`)
   }
+
+  // ── Postal code label per country ───────────────────────────────────────
+  const postalCodeLabel = form.country === 'BR' ? 'CEP' : 'CEP / Postal Code'
 
   return (
     <div className="cif-root">
@@ -223,19 +336,85 @@ export default function ClientIntakeForm() {
                   </div>
                 </div>
 
+                {/* Country + Postal Code row */}
                 <div className="cif-field-row">
                   <div className="cif-field">
-                    <label htmlFor="cif-cityState">Cidade / Estado <span className="cif-required">*</span></label>
-                    <input
-                      id="cif-cityState"
-                      type="text"
-                      placeholder="Ex: São Paulo / SP"
-                      value={form.cityState}
-                      onChange={e => set('cityState', e.target.value)}
-                      className={errors.cityState ? 'error' : ''}
-                    />
-                    {errors.cityState && <span className="cif-error-msg">{errors.cityState}</span>}
+                    <label htmlFor="cif-country">País <span className="cif-required">*</span></label>
+                    <select
+                      id="cif-country"
+                      value={form.country}
+                      onChange={e => set('country', e.target.value)}
+                      className={errors.country ? 'error' : ''}
+                    >
+                      <option value="" disabled>Selecione o país</option>
+                      {SUPPORTED_COUNTRIES.map(c => (
+                        <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                      ))}
+                    </select>
+                    {errors.country && <span className="cif-error-msg">{errors.country}</span>}
                   </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-postalCode">
+                      {postalCodeLabel} <span className="cif-required">*</span>
+                    </label>
+                    <div className="cif-input-cep-wrap">
+                      <input
+                        id="cif-postalCode"
+                        type="text"
+                        placeholder={form.country ? getPostalCodePlaceholder(form.country) : 'Código postal'}
+                        value={form.postalCode}
+                        onChange={e => handlePostalCodeChange(e.target.value)}
+                        className={errors.postalCode || postalMessage ? 'error' : ''}
+                        maxLength={form.country ? getPostalCodeMaxLength(form.country) : 20}
+                      />
+                      {postalLoading && (
+                        <div className="cif-cep-loading">
+                          <span className="cif-spinner-sm" />
+                        </div>
+                      )}
+                    </div>
+                    {errors.postalCode && <span className="cif-error-msg">{errors.postalCode}</span>}
+                    {postalMessage && !errors.postalCode && <span className="cif-error-msg">{postalMessage}</span>}
+                  </div>
+                </div>
+
+                {/* City + State row (readonly, auto-filled) */}
+                <div className="cif-field-row">
+                  <div className="cif-field">
+                    <label htmlFor="cif-city">
+                      Cidade
+                      {form.country && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                    </label>
+                    <input
+                      id="cif-city"
+                      type="text"
+                      placeholder={form.country ? 'Preenchido pelo código postal' : 'Selecione o país primeiro'}
+                      value={form.city}
+                      readOnly
+                      className={`${errors.city ? 'error' : ''} cif-readonly`}
+                      tabIndex={-1}
+                    />
+                    {errors.city && <span className="cif-error-msg">{errors.city}</span>}
+                  </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-state">
+                      Estado / Província
+                      {form.country && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                    </label>
+                    <input
+                      id="cif-state"
+                      type="text"
+                      placeholder={form.country ? 'Preenchido pelo código postal' : 'Selecione o país primeiro'}
+                      value={form.state}
+                      readOnly
+                      className={`${errors.state ? 'error' : ''} cif-readonly`}
+                      tabIndex={-1}
+                    />
+                    {errors.state && <span className="cif-error-msg">{errors.state}</span>}
+                  </div>
+                </div>
+
+                <div className="cif-field-row">
                   <div className="cif-field">
                     <label htmlFor="cif-phone">Telefone para contato <span className="cif-required">*</span></label>
                     <input
@@ -248,6 +427,7 @@ export default function ClientIntakeForm() {
                     />
                     {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
                   </div>
+                  <div className="cif-field" /> {/* Empty spacer for grid alignment */}
                 </div>
 
                 <div className="cif-field">
