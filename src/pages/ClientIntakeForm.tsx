@@ -113,7 +113,7 @@ export default function ClientIntakeForm() {
     if (!form.country) return
 
     const sanitized = sanitizePostalCode(form.country, form.postalCode)
-    const expectedLength = getPostalCodeLength(form.country)
+    const expectedLength = getPostalCodeLength(form.country, form.postalCode)
 
     // Clear city/state if postal code is incomplete
     if (sanitized.length < expectedLength) {
@@ -157,9 +157,17 @@ export default function ClientIntakeForm() {
     // Validate postal code format per country
     if (form.country && form.postalCode.trim()) {
       const sanitized = sanitizePostalCode(form.country, form.postalCode)
-      const expectedLength = getPostalCodeLength(form.country)
-      if (sanitized.length !== expectedLength) {
-        errs.postalCode = `Código postal deve conter ${expectedLength} dígitos.`
+      if (form.country === 'AR') {
+        const isNumeric = /^\d{4}$/.test(sanitized)
+        const isCPA = /^[A-Z]\d{4}[A-Z]{3}$/.test(sanitized)
+        if (!isNumeric && !isCPA) {
+          errs.postalCode = 'Informe um código postal argentino válido. Exemplos: 7600 ou C1043AAZ'
+        }
+      } else {
+        const expectedLength = getPostalCodeLength(form.country, form.postalCode)
+        if (sanitized.length !== expectedLength) {
+          errs.postalCode = `Código postal deve conter ${expectedLength} dígitos.`
+        }
       }
     }
 
@@ -365,7 +373,7 @@ export default function ClientIntakeForm() {
                         value={form.postalCode}
                         onChange={e => handlePostalCodeChange(e.target.value)}
                         className={errors.postalCode || postalMessage ? 'error' : ''}
-                        maxLength={form.country ? getPostalCodeMaxLength(form.country) : 20}
+                        maxLength={form.country ? getPostalCodeMaxLength(form.country, form.postalCode) : 20}
                       />
                       {postalLoading && (
                         <div className="cif-cep-loading">
@@ -373,6 +381,11 @@ export default function ClientIntakeForm() {
                         </div>
                       )}
                     </div>
+                    {form.country === 'AR' && !errors.postalCode && !postalMessage && (
+                      <span className="cif-help-msg">
+                        Informe um código postal argentino válido. Exemplos: 7600 ou C1043AAZ
+                      </span>
+                    )}
                     {errors.postalCode && <span className="cif-error-msg">{errors.postalCode}</span>}
                     {postalMessage && !errors.postalCode && <span className="cif-error-msg">{postalMessage}</span>}
                   </div>
