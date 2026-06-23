@@ -688,3 +688,12 @@
   .cif-emp-option { width: 100%; }
   .cif-trust { flex-wrap: wrap; justify-content: center; }
 }
+
+.cif-help-msg {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--verde-escuro, #0B3D2E);
+  opacity: 0.65;
+  margin-top: 4px;
+  display: block;
+}

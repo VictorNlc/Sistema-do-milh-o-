@@ -76,9 +76,20 @@ export function isPostalCodeComplete(countryCode: string, value: string): boolea
 /**
  * Retorna o número de dígitos esperados para o código postal do país.
  */
-export function getPostalCodeLength(countryCode: string): number {
+/**
+ * Retorna o número de dígitos esperados para o código postal do país.
+ */
+export function getPostalCodeLength(countryCode: string, value?: string): number {
   const provider = providers[countryCode]
-  return provider ? provider.postalCodeLength : 0
+  if (!provider) return 0
+  if (countryCode === 'AR' && value) {
+    const sanitized = provider.sanitize(value)
+    // Se começar com uma letra, esperamos CPA (8 caracteres)
+    if (/^[A-Z]/i.test(sanitized)) {
+      return 8
+    }
+  }
+  return provider.postalCodeLength
 }
 
 /**
@@ -93,10 +104,12 @@ export function getPostalCodePlaceholder(countryCode: string): string {
  * Retorna o maxLength do campo de input para o país.
  * Para o Brasil, inclui o caractere '-' na máscara.
  */
-export function getPostalCodeMaxLength(countryCode: string): number {
+export function getPostalCodeMaxLength(countryCode: string, value?: string): number {
   const provider = providers[countryCode]
   if (!provider) return 20
   // Brasil: 8 dígitos + 1 hífen = 9
   if (countryCode === 'BR') return 9
+  // Argentina: CPA tem no máximo 8 caracteres, numérico tem 4
+  if (countryCode === 'AR') return 8
   return provider.postalCodeLength
 }
