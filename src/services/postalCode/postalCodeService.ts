@@ -89,6 +89,12 @@ export function getPostalCodeLength(countryCode: string, value?: string): number
       return 8
     }
   }
+  if (countryCode === 'PY' && value) {
+    const sanitized = provider.sanitize(value)
+    if (sanitized.length >= 6) return 6
+    if (sanitized.length === 5) return 5
+    return 4
+  }
   return provider.postalCodeLength
 }
 
@@ -111,5 +117,7 @@ export function getPostalCodeMaxLength(countryCode: string, value?: string): num
   if (countryCode === 'BR') return 9
   // Argentina: CPA tem no máximo 8 caracteres, numérico tem 4
   if (countryCode === 'AR') return 8
+  // Paraguai: códigos de 4, 5 ou 6 dígitos
+  if (countryCode === 'PY') return 6
   return provider.postalCodeLength
 }

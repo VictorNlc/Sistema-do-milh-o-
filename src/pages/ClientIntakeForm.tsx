@@ -163,6 +163,11 @@ export default function ClientIntakeForm() {
         if (!isNumeric && !isCPA) {
           errs.postalCode = 'Informe um código postal argentino válido. Exemplos: 7600 ou C1043AAZ'
         }
+      } else if (form.country === 'PY') {
+        const isValid = /^\d{4,6}$/.test(sanitized)
+        if (!isValid) {
+          errs.postalCode = 'Informe um código postal paraguaio válido. Exemplos: 1000, 10001 ou 100001'
+        }
       } else {
         const expectedLength = getPostalCodeLength(form.country, form.postalCode)
         if (sanitized.length !== expectedLength) {
@@ -384,6 +389,11 @@ export default function ClientIntakeForm() {
                     {form.country === 'AR' && !errors.postalCode && !postalMessage && (
                       <span className="cif-help-msg">
                         Informe um código postal argentino válido. Exemplos: 7600 ou C1043AAZ
+                      </span>
+                    )}
+                    {form.country === 'PY' && !errors.postalCode && !postalMessage && (
+                      <span className="cif-help-msg">
+                        Informe um código postal paraguaio válido. Exemplos: 1000, 10001 ou 100001
                       </span>
                     )}
                     {errors.postalCode && <span className="cif-error-msg">{errors.postalCode}</span>}
