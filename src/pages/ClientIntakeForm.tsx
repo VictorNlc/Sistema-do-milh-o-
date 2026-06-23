@@ -10,6 +10,8 @@ import {
   getPostalCodeMaxLength,
   getPostalCodeLength,
 } from '../services/postalCode'
+import { getCoordinates } from '../services/geocodingService'
+import { calculateDistance } from '../services/distanceService'
 import './ClientIntakeForm.css'
 
 interface FormData {
@@ -102,6 +104,13 @@ export default function ClientIntakeForm() {
         state: result.data!.state,
       }))
       setPostalMessage(null)
+
+      // Pipeline: Geocoding → Distância → Frete (tudo em console)
+      const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
+
+      if (geoResult.success && geoResult.data) {
+        calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+      }
     } else {
       setForm(prev => ({ ...prev, city: '', state: '' }))
       setPostalMessage(result.error || 'Código postal inválido.')
