@@ -1,11 +1,21 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  MERCOSUL_COUNTRIES,
+  formatCepMask,
+  sanitizeCep,
+  isValidBrazilianCep,
+  fetchAddressByCep,
+} from '../services/viaCep'
 import './ClientIntakeForm.css'
 
 interface FormData {
   clientName: string
   pharmacyName: string
-  cityState: string
+  country: string
+  postalCode: string
+  city: string
+  state: string
   phone: string
   employees: string
   spaceMode: 'dimensions' | 'floorplan'
@@ -35,12 +45,20 @@ export default function ClientIntakeForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general', string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general' | 'postalCode', string>>>({})
+
+  // CEP lookup state
+  const [cepLoading, setCepLoading] = useState(false)
+  const [cepMessage, setCepMessage] = useState<string | null>(null)
+  const [lastFetchedCep, setLastFetchedCep] = useState<string>('')
 
   const [form, setForm] = useState<FormData>({
     clientName: '',
     pharmacyName: '',
-    cityState: '',
+    country: '',
+    postalCode: '',
+    city: '',
+    state: '',
     phone: '',
     employees: '',
     spaceMode: 'dimensions',
@@ -55,12 +73,88 @@ export default function ClientIntakeForm() {
     setErrors(prev => ({ ...prev, [field]: undefined }))
   }
 
+  // ── CEP auto-lookup ─────────────────────────────────────────────────────
+  const lookupCep = useCallback(async (cep: string) => {
+    const digits = sanitizeCep(cep)
+
+    // Prevent duplicate calls for the same CEP
+    if (digits === lastFetchedCep) return
+
+    if (!isValidBrazilianCep(digits)) return
+
+    setLastFetchedCep(digits)
+    setCepLoading(true)
+    setCepMessage(null)
+    setErrors(prev => ({ ...prev, postalCode: undefined }))
+
+    const result = await fetchAddressByCep(digits)
+
+    setCepLoading(false)
+
+    if (result.success && result.city && result.state) {
+      setForm(prev => ({ ...prev, city: result.city!, state: result.state! }))
+      setCepMessage(null)
+    } else {
+      setForm(prev => ({ ...prev, city: '', state: '' }))
+      setCepMessage(result.error || 'CEP inválido.')
+    }
+  }, [lastFetchedCep])
+
+  // Auto-trigger CEP lookup when postal code changes and country is Brazil
+  useEffect(() => {
+    if (form.country !== 'BR') return
+
+    const digits = sanitizeCep(form.postalCode)
+
+    // Clear city/state if CEP is incomplete
+    if (digits.length < 8) {
+      if (form.city || form.state) {
+        setForm(prev => ({ ...prev, city: '', state: '' }))
+      }
+      setCepMessage(null)
+      return
+    }
+
+    // Auto-fetch when CEP is complete (8 digits)
+    if (digits.length === 8) {
+      lookupCep(form.postalCode)
+    }
+  }, [form.postalCode, form.country, lookupCep, form.city, form.state])
+
+  // Reset location fields when country changes
+  useEffect(() => {
+    setForm(prev => ({ ...prev, postalCode: '', city: '', state: '' }))
+    setCepMessage(null)
+    setLastFetchedCep('')
+  }, [form.country])
+
+  // ── Postal code input handler ───────────────────────────────────────────
+  const handlePostalCodeChange = (value: string) => {
+    if (form.country === 'BR') {
+      set('postalCode', formatCepMask(value))
+    } else {
+      set('postalCode', value)
+    }
+  }
+
   // ── Step 1 validation ──────────────────────────────────────────────────
   const validateStep1 = () => {
     const errs: typeof errors = {}
     if (!form.clientName.trim()) errs.clientName = 'Informe seu nome.'
     if (!form.pharmacyName.trim()) errs.pharmacyName = 'Informe o nome da farmácia.'
-    if (!form.cityState.trim()) errs.cityState = 'Informe a cidade e estado.'
+    if (!form.country) errs.country = 'Selecione o país.'
+    if (!form.postalCode.trim()) errs.postalCode = 'Informe o CEP / Código postal.'
+
+    // For Brazil, validate CEP format
+    if (form.country === 'BR' && form.postalCode.trim()) {
+      const digits = sanitizeCep(form.postalCode)
+      if (digits.length !== 8) {
+        errs.postalCode = 'CEP deve conter 8 dígitos.'
+      }
+    }
+
+    if (!form.city.trim()) errs.city = 'Cidade não preenchida. Verifique o CEP.'
+    if (!form.state.trim()) errs.state = 'Estado não preenchido. Verifique o CEP.'
     if (form.phone.replace(/\D/g, '').length < 10) errs.phone = 'Informe um telefone válido.'
     if (!form.employees) errs.employees = 'Selecione o número de funcionários.'
     setErrors(errs)
@@ -106,11 +200,17 @@ export default function ClientIntakeForm() {
     if (!validateStep2()) return
     setIsSubmitting(true)
 
+    const selectedCountry = MERCOSUL_COUNTRIES.find(c => c.code === form.country)
+
     // Save client data to sessionStorage so Editor can consume it
     const intakeData = {
       clientName: form.clientName.trim(),
       pharmacyName: form.pharmacyName.trim(),
-      cityState: form.cityState.trim(),
+      country: form.country,
+      countryName: selectedCountry?.name || form.country,
+      postalCode: form.postalCode.trim(),
+      city: form.city.trim(),
+      state: form.state.trim(),
       phone: form.phone,
       employees: form.employees,
       spaceMode: form.spaceMode,
@@ -223,19 +323,91 @@ export default function ClientIntakeForm() {
                   </div>
                 </div>
 
+                {/* Country + Postal Code row */}
                 <div className="cif-field-row">
                   <div className="cif-field">
-                    <label htmlFor="cif-cityState">Cidade / Estado <span className="cif-required">*</span></label>
-                    <input
-                      id="cif-cityState"
-                      type="text"
-                      placeholder="Ex: São Paulo / SP"
-                      value={form.cityState}
-                      onChange={e => set('cityState', e.target.value)}
-                      className={errors.cityState ? 'error' : ''}
-                    />
-                    {errors.cityState && <span className="cif-error-msg">{errors.cityState}</span>}
+                    <label htmlFor="cif-country">País <span className="cif-required">*</span></label>
+                    <select
+                      id="cif-country"
+                      value={form.country}
+                      onChange={e => set('country', e.target.value)}
+                      className={errors.country ? 'error' : ''}
+                    >
+                      <option value="" disabled>Selecione o país</option>
+                      {MERCOSUL_COUNTRIES.map(c => (
+                        <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                      ))}
+                    </select>
+                    {errors.country && <span className="cif-error-msg">{errors.country}</span>}
                   </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-postalCode">
+                      {form.country === 'BR' ? 'CEP' : 'CEP / Postal Code'} <span className="cif-required">*</span>
+                    </label>
+                    <div className="cif-input-cep-wrap">
+                      <input
+                        id="cif-postalCode"
+                        type="text"
+                        placeholder={form.country === 'BR' ? '00000-000' : 'Código postal'}
+                        value={form.postalCode}
+                        onChange={e => handlePostalCodeChange(e.target.value)}
+                        className={errors.postalCode || cepMessage ? 'error' : ''}
+                        maxLength={form.country === 'BR' ? 9 : 20}
+                      />
+                      {cepLoading && (
+                        <div className="cif-cep-loading">
+                          <span className="cif-spinner-sm" />
+                        </div>
+                      )}
+                    </div>
+                    {errors.postalCode && <span className="cif-error-msg">{errors.postalCode}</span>}
+                    {cepMessage && !errors.postalCode && <span className="cif-error-msg">{cepMessage}</span>}
+                  </div>
+                </div>
+
+                {/* City + State row (readonly, auto-filled) */}
+                <div className="cif-field-row">
+                  <div className="cif-field">
+                    <label htmlFor="cif-city">
+                      Cidade
+                      {form.country === 'BR' && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                    </label>
+                    <input
+                      id="cif-city"
+                      type="text"
+                      placeholder={form.country === 'BR' ? 'Preenchido pelo CEP' : 'Informe a cidade'}
+                      value={form.city}
+                      readOnly={form.country === 'BR'}
+                      onChange={e => {
+                        if (form.country !== 'BR') set('city', e.target.value)
+                      }}
+                      className={`${errors.city ? 'error' : ''} ${form.country === 'BR' ? 'cif-readonly' : ''}`}
+                      tabIndex={form.country === 'BR' ? -1 : 0}
+                    />
+                    {errors.city && <span className="cif-error-msg">{errors.city}</span>}
+                  </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-state">
+                      Estado / Província
+                      {form.country === 'BR' && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                    </label>
+                    <input
+                      id="cif-state"
+                      type="text"
+                      placeholder={form.country === 'BR' ? 'Preenchido pelo CEP' : 'Informe o estado'}
+                      value={form.state}
+                      readOnly={form.country === 'BR'}
+                      onChange={e => {
+                        if (form.country !== 'BR') set('state', e.target.value)
+                      }}
+                      className={`${errors.state ? 'error' : ''} ${form.country === 'BR' ? 'cif-readonly' : ''}`}
+                      tabIndex={form.country === 'BR' ? -1 : 0}
+                    />
+                    {errors.state && <span className="cif-error-msg">{errors.state}</span>}
+                  </div>
+                </div>
+
+                <div className="cif-field-row">
                   <div className="cif-field">
                     <label htmlFor="cif-phone">Telefone para contato <span className="cif-required">*</span></label>
                     <input
@@ -248,6 +420,7 @@ export default function ClientIntakeForm() {
                     />
                     {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
                   </div>
+                  <div className="cif-field" /> {/* Empty spacer for grid alignment */}
                 </div>
 
                 <div className="cif-field">
