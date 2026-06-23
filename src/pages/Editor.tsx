@@ -111,6 +111,7 @@ export default function Editor() {
     toggleSnapToGrid, toggleGrid, toggleMeasures,
     deleteSelected, undo, redo, canUndo, canRedo,
     getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas, loadLayout,
+    layoutName,
   } = useCanvasStore(
     useShallow(state => ({
       storeWidth: state.storeWidth,
@@ -293,7 +294,7 @@ export default function Editor() {
       downloadLayoutPNG(true)
 
       const { exportLayoutToPDF } = await import('../services/pdfExport')
-      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: store.layoutName || 'Meu Layout' }
+      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
       const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
         toast.success('Relatório PDF gerado!')
@@ -307,7 +308,7 @@ export default function Editor() {
   const handleExportCSV = () => {
     try {
       downloadLayoutPNG(true)
-      exportToCSV(items, store.layoutName || 'Meu Layout')
+      exportToCSV(items, layoutName || 'Meu Layout')
       toast.success('Orçamento CSV baixado!')
       setShowExportOptions(false)
     } catch { toast.error('Erro ao exportar CSV') }
@@ -316,7 +317,7 @@ export default function Editor() {
   const handleExportXLSX = async () => {
     try {
       downloadLayoutPNG(true)
-      await exportToXLSX(items, store.layoutName || 'Meu Layout', storeWidth, storeHeight)
+      await exportToXLSX(items, layoutName || 'Meu Layout', storeWidth, storeHeight)
       toast.success('Orçamento Excel gerado!')
       setShowExportOptions(false)
     } catch { toast.error('Erro ao exportar Excel') }
@@ -341,7 +342,7 @@ export default function Editor() {
 
 
         <div className="tb-title desktop-only" style={{ fontSize: '12px', fontWeight: 700, color: 'white', letterSpacing: '-0.01em' }}>
-          {store.layoutName || 'New Pharmacy Layout'}
+          {layoutName || 'New Pharmacy Layout'}
         </div>
 
         <div className="tb-sep desktop-only" />

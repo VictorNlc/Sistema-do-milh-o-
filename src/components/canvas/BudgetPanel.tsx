@@ -63,17 +63,12 @@ export default function BudgetPanel() {
       // Get reference to Konva stage
       // In Vite React, Konva stage is managed via standard references, we can pass null or find stage
       // exportLayoutToPDF is safe even if stageRef.current is missing
-      const stage = document.querySelector('.konvajs-content') as unknown as { toDataURL: () => string } | null
-      const fakeStageRef = {
-        current: stage ? {
-          toDataURL: (opts?: Record<string, unknown>) => {
-            // Find canvas
-            const canvas = document.querySelector('canvas')
-            return canvas ? canvas.toDataURL('image/png') : ''
-          }
-        } : null
-      }
-      const success = exportLayoutToPDF(layoutData, fakeStageRef)
+      const stage = document.querySelector('.konvajs-content')
+      const layoutImageDataUrl = stage ? (() => {
+        const canvas = document.querySelector('canvas')
+        return canvas ? canvas.toDataURL('image/png') : undefined
+      })() : undefined
+      const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
         alert('Relatório de Orçamento PDF gerado com sucesso!')
       } else {

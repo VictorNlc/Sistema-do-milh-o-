@@ -5,7 +5,7 @@ import { useCanvasStore } from '../../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
 import { toast } from '../../store/toastStore'
 import { generateAILayout } from '../../services/heuristicLayoutGenerator'
-import type { ItemCategory, PharmacyItemTemplate } from '../../types'
+import type { ItemCategory, PharmacyItemTemplate, CanvasItem } from '../../types'
 import './ItemLibrary.css'
 
 interface ItemLibraryProps {
@@ -253,7 +253,7 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
       const result = await generateAILayout(storeWidth, storeHeight, storeType, current, density)
       if (result.valid || result.items.length > 0) {
         const structural = current.filter(i => i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA')
-        useCanvasStore.setState({ items: [...structural, ...result.items], isDirty: true })
+        useCanvasStore.setState({ items: [...structural, ...result.items] as CanvasItem[], isDirty: true })
         toast.success('Layout otimizado gerado!')
       } else {
         toast.error('Dimensões insuficientes para gerar layout')
