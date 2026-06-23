@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getLayoutByToken } from '../services/storage'
+import { getLayoutByToken, saveLayout } from '../services/storage'
+import { supabase, isSupabaseConfigured } from '../services/supabase'
+import type { SavedLayout } from '../types'
 import './SharedLayout.css'
 
 const I = {
@@ -27,7 +30,73 @@ const getCategoryIcon = (category: string) => {
 export default function SharedLayout() {
   const { token } = useParams()
   const navigate = useNavigate()
-  const layout = token ? getLayoutByToken(token) : null
+
+  const [layout, setLayout] = useState<SavedLayout | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      // 1. Tenta carregar do localStorage local primeiro (rápido)
+      const local = getLayoutByToken(token)
+      if (local) {
+        setLayout(local)
+        setLoading(false)
+        return
+      }
+
+      // 2. Se não achou localmente, busca no Supabase
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data } = await supabase
+            .from('layouts')
+            .select('*')
+            .eq('shareToken', token)
+            .maybeSingle()
+
+          if (data) {
+            const formatted: SavedLayout = {
+              id: data.id,
+              layoutName: data.layoutName,
+              storeWidth: Number(data.storeWidth),
+              storeHeight: Number(data.storeHeight),
+              storeType: data.storeType,
+              layoutDensity: data.layoutDensity,
+              items: data.items,
+              shareToken: data.shareToken,
+              thumbnail: data.thumbnail,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
+              layoutId: data.layoutId
+            }
+            saveLayout(formatted)
+            setLayout(formatted)
+          }
+        } catch (e) {
+          console.warn('Erro ao carregar layout compartilhado do Supabase:', e)
+        }
+      }
+      setLoading(false)
+    }
+
+    load()
+  }, [token])
+
+  if (loading) {
+    return (
+      <div className="shared-not-found">
+        <div className="animate-scale-in">
+          <div className="shared-spinner" />
+          <h1>Carregando layout...</h1>
+          <p>Buscando as informações compartilhadas no banco de dados.</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!layout) {
     return (

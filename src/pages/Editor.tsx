@@ -1,13 +1,14 @@
 import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react'
 import type Konva from 'konva'
 import type { ItemCategory } from '../types'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import CanvasEditor from '../components/canvas/CanvasEditor'
 import ItemLibrary from '../components/canvas/ItemLibrary'
 import AiChat from '../components/ai/AiChat'
 import { useCanvasStore } from '../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
 import { saveLayout, getLayoutById } from '../services/storage'
+import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { toast } from '../store/toastStore'
 import TutorialOverlay from '../components/ui/TutorialOverlay'
 import BudgetPanel from '../components/canvas/BudgetPanel'
@@ -89,6 +90,7 @@ function MobileZoomControls() {
 }
 
 export default function Editor() {
+  const { id: routeId } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const stageRef = useRef<Konva.Stage | null>(null)
@@ -155,8 +157,12 @@ export default function Editor() {
   const totalPrice = items.reduce((sum, item) => sum + (item.price || 0), 0)
 
   useEffect(() => {
-    // Sempre garante tipo premium
-    setStoreType('premium')
+    const typeParam = searchParams.get('type')
+    if (typeParam === 'popular' || typeParam === 'smart' || typeParam === 'premium') {
+      setStoreType(typeParam)
+    } else {
+      setStoreType('premium')
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -164,65 +170,105 @@ export default function Editor() {
 
   // ── Inicialização de dados (dimensões, layout salvo, intake form) ──────
   useEffect(() => {
-    // 1. Verifica se há id de layout salvo na URL
-    const id = searchParams.get('id')
+    const id = searchParams.get('id') || routeId
     let loadedFromId = false
-    if (id) {
-      const saved = getLayoutById(id)
-      if (saved) {
-        loadLayout(saved)
-        toast.success(`Layout "${saved.layoutName || 'Salvo'}" carregado!`)
-        loadedFromId = true
-      } else {
-        toast.error('Layout não encontrado')
+
+    async function loadInitial() {
+      if (id) {
+        // Tenta localmente primeiro
+        const saved = getLayoutById(id)
+        if (saved) {
+          loadLayout(saved)
+          toast.success(`Layout "${saved.layoutName || 'Salvo'}" carregado!`)
+          loadedFromId = true
+        } else if (isSupabaseConfigured && supabase) {
+          // Se não achou localmente, busca no Supabase
+          try {
+            const { data } = await supabase
+              .from('layouts')
+              .select('*')
+              .eq('id', id)
+              .maybeSingle()
+            
+            if (data) {
+              const formatted = {
+                id: data.id,
+                layoutName: data.layoutName,
+                storeWidth: Number(data.storeWidth),
+                storeHeight: Number(data.storeHeight),
+                storeType: data.storeType,
+                layoutDensity: data.layoutDensity,
+                items: data.items,
+                shareToken: data.shareToken,
+                thumbnail: data.thumbnail,
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt,
+                layoutId: data.layoutId
+              }
+              saveLayout(formatted)
+              loadLayout(formatted)
+              toast.success(`Layout "${formatted.layoutName || 'Salvo'}" carregado!`)
+              loadedFromId = true
+            } else {
+              toast.error('Layout não encontrado')
+            }
+          } catch (e) {
+            console.warn('Erro ao carregar layout do Supabase:', e)
+            toast.error('Erro de conexão ao buscar layout')
+          }
+        } else {
+          toast.error('Layout não encontrado')
+        }
+      }
+
+      // 2. Se não carregou por ID, tenta carregar dados do formulário de intake
+      if (!loadedFromId) {
+        const raw = sessionStorage.getItem('projefarma_intake')
+        if (raw) {
+          try {
+            const intake = JSON.parse(raw)
+            sessionStorage.removeItem('projefarma_intake') // consome apenas uma vez
+
+            if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
+              setStoreDimensions(Number(intake.width), Number(intake.height))
+              toast.success(`Dimensões aplicadas: ${intake.width}×${intake.height}m`)
+            } else if (intake.spaceMode === 'floorplan' && intake.floorPlanDataUrl) {
+              // Injeta a imagem pendente para o FloorPlanReaderModal
+              sessionStorage.setItem('projefarma_floorplan_pending', intake.floorPlanDataUrl)
+              setShowFloorPlanReader(true)
+            }
+
+            if (intake.pharmacyName) {
+              useCanvasStore.getState().setLayoutName(intake.pharmacyName)
+            }
+          } catch (e) {
+            console.warn('Erro ao processar dados de intake:', e)
+          }
+        } else {
+          // 3. Fallback: verifica se há dimensões diretas na URL (?w=...&h=...)
+          const w = searchParams.get('w')
+          const h = searchParams.get('h')
+          if (w && h) {
+            const numW = Number(w)
+            const numH = Number(h)
+            if (!isNaN(numW) && !isNaN(numH) && numW >= 3 && numH >= 3) {
+              setStoreDimensions(numW, numH)
+              toast.success(`Dimensões da URL aplicadas: ${numW}×${numH}m`)
+            }
+          }
+        }
+      }
+
+      // 4. Controla a inicialização do tutorial (apenas se for primeira visita)
+      const seen = localStorage.getItem('projefarma_tutorial_seen')
+      if (!seen) {
+        setShowTutorial(true)
       }
     }
 
-    // 2. Se não carregou por ID, tenta carregar dados do formulário de intake
-    if (!loadedFromId) {
-      const raw = sessionStorage.getItem('projefarma_intake')
-      if (raw) {
-        try {
-          const intake = JSON.parse(raw)
-          sessionStorage.removeItem('projefarma_intake') // consome apenas uma vez
-
-          if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
-            setStoreDimensions(Number(intake.width), Number(intake.height))
-            toast.success(`Dimensões aplicadas: ${intake.width}×${intake.height}m`)
-          } else if (intake.spaceMode === 'floorplan' && intake.floorPlanDataUrl) {
-            // Injeta a imagem pendente para o FloorPlanReaderModal
-            sessionStorage.setItem('projefarma_floorplan_pending', intake.floorPlanDataUrl)
-            setShowFloorPlanReader(true)
-          }
-
-          if (intake.pharmacyName) {
-            useCanvasStore.getState().setLayoutName(intake.pharmacyName)
-          }
-        } catch (e) {
-          console.warn('Erro ao processar dados de intake:', e)
-        }
-      } else {
-        // 3. Fallback: verifica se há dimensões diretas na URL (?w=...&h=...)
-        const w = searchParams.get('w')
-        const h = searchParams.get('h')
-        if (w && h) {
-          const numW = Number(w)
-          const numH = Number(h)
-          if (!isNaN(numW) && !isNaN(numH) && numW >= 3 && numH >= 3) {
-            setStoreDimensions(numW, numH)
-            toast.success(`Dimensões da URL aplicadas: ${numW}×${numH}m`)
-          }
-        }
-      }
-    }
-
-    // 4. Controla a inicialização do tutorial (apenas se for primeira visita)
-    const seen = localStorage.getItem('projefarma_tutorial_seen')
-    if (!seen) {
-      setShowTutorial(true)
-    }
+    loadInitial()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [routeId])
 
   // Prefetch ThreeDViewer in the background when browser is idle to ensure instant opening
   useEffect(() => {
