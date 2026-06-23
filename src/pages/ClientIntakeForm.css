@@ -284,6 +284,86 @@
   color: #DC2626;
 }
 
+/* ── Select dropdown ── */
+.cif-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B3D2E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+.cif-field select:focus {
+  border-color: var(--verde-escuro, #0B3D2E);
+  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.1);
+  background-color: #fff;
+}
+.cif-field select.error {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+.cif-field select option[value=""][disabled] {
+  color: rgba(11, 61, 46, 0.3);
+}
+
+/* ── Readonly (auto-filled) inputs ── */
+.cif-field input.cif-readonly {
+  background: rgba(11, 61, 46, 0.04);
+  border-color: rgba(11, 61, 46, 0.1);
+  color: var(--verde-escuro, #0B3D2E);
+  cursor: not-allowed;
+  user-select: none;
+}
+.cif-field input.cif-readonly:focus {
+  box-shadow: none;
+  border-color: rgba(11, 61, 46, 0.1);
+  background: rgba(11, 61, 46, 0.04);
+}
+
+/* ── CEP input wrapper with loading ── */
+.cif-input-cep-wrap {
+  position: relative;
+}
+.cif-input-cep-wrap input {
+  padding-right: 40px;
+}
+.cif-cep-loading {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cif-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(11, 61, 46, 0.15);
+  border-top-color: var(--verde-escuro, #0B3D2E);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Autofill badge ── */
+.cif-autofill-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--dourado, #C5A028);
+  background: rgba(197, 160, 40, 0.1);
+  border: 1px solid rgba(197, 160, 40, 0.2);
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-left: 8px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
 /* ── Employee options grid ── */
 .cif-employee-grid {
   display: flex;

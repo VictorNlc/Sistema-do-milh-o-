@@ -5,6 +5,7 @@ import { readFloorPlanImage, fileToBase64, FloorPlanData } from '../../services/
 import { PHARMACY_ITEMS } from '../../data/items'
 import { v4 as uuidv4 } from 'uuid'
 import { generateAILayout } from '../../services/heuristicLayoutGenerator'
+import type { CanvasItem } from '../../types'
 import './FloorPlanReaderModal.css'
 
 interface FloorPlanReaderModalProps {
@@ -185,6 +186,10 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
           color: '#4B5563',
           fillColor: '#9CA3AF',
           strokeColor: '#374151',
+          minWidth: 0.1,
+          maxWidth: 20,
+          minHeight: 0.1,
+          maxHeight: 20,
           rotatable: true,
           isObstacle: true,
           price: 0,
@@ -215,7 +220,7 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
           const structural = currentItems.filter(i => 
             i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA'
           )
-          useCanvasStore.setState({ items: [...structural, ...result.items], isDirty: true })
+          useCanvasStore.setState({ items: [...structural, ...result.items] as CanvasItem[], isDirty: true })
           toast.success('Layout otimizado gerado automaticamente pela IA!')
         }
       } catch (err) {
