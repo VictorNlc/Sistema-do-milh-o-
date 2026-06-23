@@ -158,7 +158,7 @@ export default function Editor() {
 
   useEffect(() => {
     const typeParam = searchParams.get('type')
-    if (typeParam === 'popular' || typeParam === 'smart' || typeParam === 'premium') {
+    if (typeParam === 'popular' || typeParam === 'premium' || typeParam === 'manipulacao' || typeParam === 'completa') {
       setStoreType(typeParam)
     } else {
       setStoreType('premium')
