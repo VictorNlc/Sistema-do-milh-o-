@@ -305,9 +305,12 @@ export function syncAppointmentToSupabase(appointment: Appointment): void {
     updatedAt: appointment.updatedAt || null
   }
 
+  const isUpdate = !!appointment.updatedAt
+
   Promise.resolve(
-    supabase.from('appointments')
-      .upsert(dbData)
+    isUpdate
+      ? supabase.from('appointments').upsert(dbData)
+      : supabase.from('appointments').insert(dbData)
   )
     .then(({ error }) => {
       if (error) {
