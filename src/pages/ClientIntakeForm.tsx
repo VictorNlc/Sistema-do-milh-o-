@@ -21,6 +21,9 @@ interface FormData {
   postalCode: string
   city: string
   state: string
+  address: string
+  number: string
+  complement: string
   phone: string
   employees: string
   spaceMode: 'dimensions' | 'floorplan'
@@ -71,6 +74,9 @@ export default function ClientIntakeForm() {
     postalCode: '',
     city: '',
     state: '',
+    address: '',
+    number: '',
+    complement: '',
     phone: '',
     employees: '',
     spaceMode: 'dimensions',
@@ -107,6 +113,7 @@ export default function ClientIntakeForm() {
     }
     if (field === 'city' && !currentForm.city.trim()) return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
     if (field === 'state' && !currentForm.state.trim()) return 'Estado não preenchido. Verifique o código postal.'
+    if (field === 'address' && !currentForm.address.trim()) return 'Informe o endereço.'
     if (field === 'phone' && currentForm.phone.replace(/\D/g, '').length < 10) return 'Informe um telefone válido.'
     if (field === 'employees' && !currentForm.employees) return 'Selecione o número de funcionários.'
     return undefined
@@ -293,7 +300,7 @@ export default function ClientIntakeForm() {
   const validateStep1 = () => {
     const errs: typeof errors = {}
     const fieldsToValidate: (keyof FormData)[] = [
-      'clientName', 'pharmacyName', 'country', 'postalCode', 'city', 'state', 'phone', 'employees'
+      'clientName', 'pharmacyName', 'country', 'postalCode', 'city', 'state', 'address', 'phone', 'employees'
     ]
     
     fieldsToValidate.forEach(field => {
@@ -355,6 +362,9 @@ export default function ClientIntakeForm() {
       postalCode: form.postalCode.trim(),
       city: form.city.trim(),
       state: form.state.trim(),
+      address: form.address.trim(),
+      number: form.number.trim(),
+      complement: form.complement.trim(),
       phone: form.phone,
       employees: form.employees,
       spaceMode: form.spaceMode,
@@ -367,9 +377,15 @@ export default function ClientIntakeForm() {
     sessionStorage.setItem('projefarma_intake', JSON.stringify(intakeData))
     sessionStorage.setItem('projefarma_client_details', JSON.stringify({
       clientName: form.clientName.trim(),
+      pharmacyName: form.pharmacyName.trim(),
       phone: form.phone,
       city: form.city.trim(),
       state: form.state.trim(),
+      address: form.address.trim(),
+      number: form.number.trim(),
+      complement: form.complement.trim(),
+      postalCode: form.postalCode.trim(),
+      countryName: selectedCountry?.name || form.country,
     }))
 
     // Small delay for UX
@@ -586,6 +602,44 @@ export default function ClientIntakeForm() {
 
                 <div className="cif-field-row">
                   <div className="cif-field">
+                    <label htmlFor="cif-address">Endereço <span className="cif-required">*</span></label>
+                    <input
+                      id="cif-address"
+                      type="text"
+                      placeholder="Ex: Av. Brasil"
+                      value={form.address}
+                      onChange={e => set('address', e.target.value)}
+                      onBlur={() => handleBlur('address')}
+                      className={errors.address ? 'error' : ''}
+                    />
+                    {errors.address && <span className="cif-error-msg">{errors.address}</span>}
+                  </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-number">Número</label>
+                    <input
+                      id="cif-number"
+                      type="text"
+                      placeholder="Ex: 123"
+                      value={form.number}
+                      onChange={e => set('number', e.target.value)}
+                      onBlur={() => handleBlur('number')}
+                    />
+                  </div>
+                </div>
+
+                <div className="cif-field-row">
+                  <div className="cif-field">
+                    <label htmlFor="cif-complement">Complemento</label>
+                    <input
+                      id="cif-complement"
+                      type="text"
+                      placeholder="Ex: Bloco A, Sala 4"
+                      value={form.complement}
+                      onChange={e => set('complement', e.target.value)}
+                      onBlur={() => handleBlur('complement')}
+                    />
+                  </div>
+                  <div className="cif-field">
                     <label htmlFor="cif-phone">Telefone para contato <span className="cif-required">*</span></label>
                     <input
                       id="cif-phone"
@@ -598,7 +652,6 @@ export default function ClientIntakeForm() {
                     />
                     {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
                   </div>
-                  <div className="cif-field" /> {/* Empty spacer for grid alignment */}
                 </div>
 
                 <div className="cif-field">

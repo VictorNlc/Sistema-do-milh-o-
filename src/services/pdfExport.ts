@@ -216,6 +216,66 @@ export function exportLayoutToPDF(
     }
 
     y = 28
+
+    // Read client details from sessionStorage
+    let clientDetails: any = null
+    try {
+      const raw = sessionStorage.getItem('projefarma_client_details')
+      if (raw) clientDetails = JSON.parse(raw)
+    } catch (e) {
+      console.warn('Erro ao ler projefarma_client_details:', e)
+    }
+
+    if (clientDetails) {
+      doc.setFont('Helvetica', 'bold')
+      doc.setFontSize(12)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Informações do Cliente & Farmácia', margin, y)
+
+      y += 6
+      doc.setFillColor(...lightBg)
+      doc.roundedRect(margin, y, contentW, 28, 2, 2, 'F')
+      doc.setDrawColor(...borderGray)
+      doc.roundedRect(margin, y, contentW, 28, 2, 2, 'D')
+
+      // Left Column
+      doc.setFont('Helvetica', 'bold')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Cliente:', margin + 6, y + 7)
+      doc.text('Endereço:', margin + 6, y + 15)
+      doc.text('Localidade:', margin + 6, y + 23)
+
+      doc.setFont('Helvetica', 'normal')
+      doc.setTextColor(50, 50, 50)
+      doc.text(clientDetails.clientName || 'Não informado', margin + 24, y + 7)
+      
+      const street = clientDetails.address || 'Não informado'
+      const num = clientDetails.number ? `, ${clientDetails.number}` : ''
+      const comp = clientDetails.complement ? ` - ${clientDetails.complement}` : ''
+      doc.text(`${street}${num}${comp}`, margin + 24, y + 15)
+      
+      const city = clientDetails.city || ''
+      const state = clientDetails.state || ''
+      const pc = clientDetails.postalCode || ''
+      doc.text(`${city} - ${state} (CEP: ${pc})`, margin + 24, y + 23)
+
+      // Right Column
+      doc.setFont('Helvetica', 'bold')
+      doc.setTextColor(...secondaryColor)
+      doc.text('Farmácia:', margin + contentW / 2 + 6, y + 7)
+      doc.text('País:', margin + contentW / 2 + 6, y + 15)
+      doc.text('Telefone:', margin + contentW / 2 + 6, y + 23)
+
+      doc.setFont('Helvetica', 'normal')
+      doc.setTextColor(50, 50, 50)
+      doc.text(clientDetails.pharmacyName || 'Não informado', margin + contentW / 2 + 25, y + 7)
+      doc.text(clientDetails.countryName || 'Não informado', margin + contentW / 2 + 25, y + 15)
+      doc.text(clientDetails.phone || 'Não informado', margin + contentW / 2 + 25, y + 23)
+
+      y += 38
+    }
+
     doc.setFont('Helvetica', 'bold')
     doc.setFontSize(14)
     doc.setTextColor(...secondaryColor)
