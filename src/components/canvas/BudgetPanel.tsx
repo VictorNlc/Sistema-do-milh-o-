@@ -16,7 +16,7 @@ interface GroupedBudgetItem {
 }
 
 export default function BudgetPanel() {
-  const { items, storeWidth, storeHeight, storeType, layoutName, stageInstance } = useCanvasStore(
+  const { items, storeWidth, storeHeight, storeType, layoutName, stageInstance, freightData } = useCanvasStore(
     useShallow(state => ({
       items: state.items,
       storeWidth: state.storeWidth,
@@ -24,6 +24,7 @@ export default function BudgetPanel() {
       storeType: state.storeType,
       layoutName: state.layoutName,
       stageInstance: state.stageInstance,
+      freightData: state.freightData,
     }))
   )
 
@@ -61,6 +62,11 @@ export default function BudgetPanel() {
 
   const handleExportPDF = async () => {
     try {
+      if (freightData?.freightCost === undefined || freightData?.freightCost === null) {
+        toast.error('Não foi possível gerar o orçamento porque o frete ainda não foi calculado.')
+        return
+      }
+
       let layoutImageDataUrl: string | undefined
       try {
         if (stageInstance) {
@@ -71,7 +77,7 @@ export default function BudgetPanel() {
       }
 
       const { exportLayoutToPDF } = await import('../../services/pdfExport')
-      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
+      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout', freightData }
       // Fallback if stageInstance didn't generate image url
       if (!layoutImageDataUrl) {
         const stage = document.querySelector('.konvajs-content')
@@ -143,9 +149,21 @@ export default function BudgetPanel() {
 
       <div className="budget-footer">
         <div className="budget-total-row">
-          <span className="budget-total-label">Total Estimado</span>
+          <span className="budget-total-label">Total dos Móveis</span>
           <span className="budget-total-value">
-            R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPrice)}
+          </span>
+        </div>
+        <div className="budget-total-row">
+          <span className="budget-total-label">Total do Frete</span>
+          <span className="budget-total-value">
+            {freightData?.freightCost != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(freightData.freightCost) : 'Não calculado'}
+          </span>
+        </div>
+        <div className="budget-total-row budget-grand-total">
+          <span className="budget-total-label">Total do Orçamento</span>
+          <span className="budget-total-value">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPrice + (freightData?.freightCost || 0))}
           </span>
         </div>
         <button

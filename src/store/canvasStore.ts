@@ -50,10 +50,12 @@ interface CanvasState {
   layoutId: string | null
   shareToken: string | null
   isDirty: boolean
+  freightData?: { distanceKm: number; freightCost: number } | null
   // === ACTIONS ===
   setStoreDimensions: (width: number, height: number) => void
   setStoreType: (type: StoreType) => void
   setLayoutDensity: (density: LayoutDensity) => void
+  setFreightData: (data: { distanceKm: number; freightCost: number } | null) => void
   setPillars: (pillars: { x: number; y: number }[]) => void
   setEntrance: (entrance: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null) => void
   setEmergencyExit: (exit: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null) => void
@@ -78,7 +80,7 @@ interface CanvasState {
   bringToFront: (id: string) => void
   sendToBack: (id: string) => void
   clearCanvas: () => void
-  loadLayout: (layoutData: Partial<CanvasState> & { items?: CanvasItem[] }) => void
+  loadLayout: (layoutData: Partial<CanvasState> & { items?: CanvasItem[]; id?: string }) => void
   setLayoutName: (name: string) => void
   getSelectedItem: () => CanvasItem | null
   getPillars: () => CanvasItem[]
@@ -128,6 +130,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   layoutId: null,
   shareToken: null,
   isDirty: false,
+  freightData: null,
 
   // === ACTIONS ===
   setStoreDimensions: (width, height) => {
@@ -232,6 +235,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       isDirty: true
     })
     get().saveToHistory()
+  },
+  setFreightData: (data) => {
+    set(state => ({ ...state, freightData: data, isDirty: true }))
   },
   setPillars: (newPillars) => {
     set(state => ({ ...state, pillars: newPillars, isDirty: true }))

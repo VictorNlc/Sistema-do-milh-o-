@@ -5,7 +5,14 @@ import type { SavedLayout, CanvasItem } from '../types'
 type RgbTuple = [number, number, number]
 
 export function exportLayoutToPDF(
-  layout: { storeWidth: number; storeHeight: number; storeType: string; items: CanvasItem[]; layoutName?: string },
+  layout: { 
+    storeWidth: number; 
+    storeHeight: number; 
+    storeType: string; 
+    items: CanvasItem[]; 
+    layoutName?: string;
+    freightData?: { distanceKm: number; freightCost: number } | null 
+  },
   layoutImageDataUrl?: string
 ): boolean {
   try {
@@ -273,12 +280,39 @@ export function exportLayoutToPDF(
       doc.setDrawColor(...borderGray)
       doc.line(margin, y, margin + contentW, y)
       
-      const totalBudget = furniture.reduce((sum, item) => sum + (item.price || 0), 0)
-      y += 8
+      const totalMoveis = furniture.reduce((sum, item) => sum + (item.price || 0), 0)
+      const freightCost = layout.freightData?.freightCost || 0
+      const totalOrcamento = totalMoveis + freightCost
+
+      console.log('[PDF] Total dos móveis:', totalMoveis)
+      console.log('[PDF] Total do frete:', freightCost)
+      console.log('[PDF] Total do orçamento:', totalOrcamento)
+
+      y += 10
       doc.setFont('Helvetica', 'bold')
-      doc.setFontSize(10)
+      doc.setFontSize(14)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Resumo Financeiro', margin, y)
+
+      y += 8
+      doc.setFont('Helvetica', 'normal')
+      doc.setFontSize(11)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Total dos Móveis:', margin + 4, y)
+      doc.setFont('Helvetica', 'bold')
+      doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalMoveis), margin + 45, y)
+
+      y += 6
+      doc.setFont('Helvetica', 'normal')
+      doc.text('Total do Frete:', margin + 4, y)
+      doc.setFont('Helvetica', 'bold')
+      doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(freightCost), margin + 45, y)
+
+      y += 6
+      doc.setFont('Helvetica', 'bold')
       doc.setTextColor(...primaryColor)
-      doc.text(`Orçamento Total Estimado dos Móveis: R$ ${totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin + 4, y)
+      doc.text('Total do Orçamento:', margin + 4, y)
+      doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOrcamento), margin + 45, y)
     }
 
     y += 15
