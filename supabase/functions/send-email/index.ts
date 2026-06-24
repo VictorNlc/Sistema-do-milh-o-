@@ -15,6 +15,60 @@ Deno.serve(async (req) => {
   try {
     const { name, email, phone, city, date, time, storeType, notes } = await req.json()
 
+    // ── Input Validations ──────────────────────────────────────────────────
+    if (!name || typeof name !== 'string' || name.trim().length === 0 || name.length > 100) {
+      return new Response(JSON.stringify({ success: false, error: 'Nome inválido ou muito longo.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+    if (!email || typeof email !== 'string' || !emailRegex.test(email)) {
+      return new Response(JSON.stringify({ success: false, error: 'E-mail inválido.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    if (!phone || typeof phone !== 'string' || phone.trim().length === 0 || phone.length > 30) {
+      return new Response(JSON.stringify({ success: false, error: 'Telefone inválido.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    if (!city || typeof city !== 'string' || city.trim().length === 0 || city.length > 100) {
+      return new Response(JSON.stringify({ success: false, error: 'Cidade inválida.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!date || typeof date !== 'string' || !dateRegex.test(date) || isNaN(Date.parse(date))) {
+      return new Response(JSON.stringify({ success: false, error: 'Data inválida. Use o formato AAAA-MM-DD.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/
+    if (!time || typeof time !== 'string' || !timeRegex.test(time)) {
+      return new Response(JSON.stringify({ success: false, error: 'Horário inválido. Use o formato HH:MM.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    const validStoreTypes = ['Popular', 'Premium', 'Manipulação', 'Completa']
+    if (!storeType || typeof storeType !== 'string' || !validStoreTypes.includes(storeType)) {
+      return new Response(JSON.stringify({ success: false, error: 'Tipo de loja inválido.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
     // Obter credenciais do servidor SMTP enviadas como variáveis de ambiente no Supabase
     const smtpHost = Deno.env.get('SMTP_SERVER') || 'smtp.hostinger.com'
     const smtpPort = Number(Deno.env.get('SMTP_PORT')) || 465
