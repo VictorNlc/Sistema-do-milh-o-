@@ -108,7 +108,7 @@ export function exportLayoutToPDF(
     doc.text('Planta Baixa (Layout Visual)', margin, y)
 
     y += 6
-    const previewH = 95
+    const previewH = 155
     doc.setFillColor(232, 242, 236)
     doc.roundedRect(margin, y, contentW, previewH, 3, 3, 'F')
     doc.setDrawColor(...borderGray)
@@ -142,7 +142,7 @@ export function exportLayoutToPDF(
         doc.setFont('Helvetica', 'normal')
         doc.setFontSize(10)
         doc.setTextColor(...grayText)
-        doc.text('[Imagem n\u00e3o dispon\u00edvel]', margin + contentW / 2 - 15, y + previewH / 2)
+        doc.text('[Imagem não disponível]', margin + contentW / 2 - 15, y + previewH / 2)
       }
     } else {
       doc.setFont('Helvetica', 'normal')
@@ -150,31 +150,6 @@ export function exportLayoutToPDF(
       doc.setTextColor(...grayText)
       doc.text('[Sem imagem]', margin + contentW / 2 - 10, y + previewH / 2)
     }
-
-    // Stats Bar
-    y += previewH + 12
-    doc.setFont('Helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.setTextColor(...secondaryColor)
-    doc.text('Aproveitamento de Espaço', margin, y)
-
-    y += 6
-    doc.setFillColor(...lightBg)
-    doc.roundedRect(margin, y, contentW, 20, 2, 2, 'F')
-    doc.setDrawColor(...borderGray)
-    doc.roundedRect(margin, y, contentW, 20, 2, 2, 'D')
-
-    doc.setFont('Helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(...secondaryColor)
-    doc.text('Taxa de Ocupação:', margin + 6, y + 12)
-    doc.text('Espaço de Corredores:', margin + contentW / 2 + 6, y + 12)
-
-    doc.setFont('Helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.setTextColor(...primaryColor)
-    doc.text(`${stats.occupancyRate}%`, margin + 38, y + 12)
-    doc.text(`${stats.corridorArea} m² (${100 - Number(stats.occupancyRate)}%)`, margin + contentW / 2 + 45, y + 12)
 
     doc.setFont('Helvetica', 'normal')
     doc.setFontSize(8)
@@ -193,7 +168,7 @@ export function exportLayoutToPDF(
     doc.text('ProjeLayout by Projefarma', margin, 10)
 
     let pageCount = 2
-    const checkPageBreak = (requiredSpace: number) => {
+    const checkPageBreak = (requiredSpace: number): boolean => {
       if (y + requiredSpace > pdfH - margin - 10) {
         doc.setFont('Helvetica', 'normal')
         doc.setFontSize(8)
@@ -212,7 +187,9 @@ export function exportLayoutToPDF(
         doc.text('ProjeLayout by Projefarma', margin, 10)
         
         y = 25
+        return true
       }
+      return false
     }
 
     y = 28
@@ -232,49 +209,122 @@ export function exportLayoutToPDF(
       doc.setTextColor(...secondaryColor)
       doc.text('Informações do Cliente & Farmácia', margin, y)
 
-      y += 6
-      doc.setFillColor(...lightBg)
-      doc.roundedRect(margin, y, contentW, 28, 2, 2, 'F')
-      doc.setDrawColor(...borderGray)
-      doc.roundedRect(margin, y, contentW, 28, 2, 2, 'D')
+      // Dynamic layout helper functions
+      const getFieldHeight = (value: string, width: number, lineHeight: number = 4, spacing: number = 5.5): number => {
+        const lines = doc.splitTextToSize(value || 'Não informado', width)
+        return 4.5 + (lines.length * lineHeight) - lineHeight + spacing
+      }
 
-      // Left Column
-      doc.setFont('Helvetica', 'bold')
-      doc.setFontSize(8.5)
-      doc.setTextColor(...secondaryColor)
-      doc.text('Cliente:', margin + 6, y + 7)
-      doc.text('Endereço:', margin + 6, y + 15)
-      doc.text('Localidade:', margin + 6, y + 23)
+      const drawDynamicField = (
+        label: string,
+        value: string,
+        x: number,
+        startY: number,
+        width: number,
+        lineHeight: number = 4,
+        spacing: number = 5.5
+      ): number => {
+        let currentY = startY
 
-      doc.setFont('Helvetica', 'normal')
-      doc.setTextColor(50, 50, 50)
-      doc.text(clientDetails.clientName || 'Não informado', margin + 24, y + 7)
+        // Draw label (bold, smaller)
+        doc.setFont('Helvetica', 'bold')
+        doc.setFontSize(8.5)
+        doc.setTextColor(...secondaryColor)
+        doc.text(label, x, currentY)
+        currentY += 4
+
+        // Draw value (normal, darker gray, wraps automatically)
+        doc.setFont('Helvetica', 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(50, 50, 50)
+
+        const lines = doc.splitTextToSize(value || 'Não informado', width)
+        lines.forEach((line: string) => {
+          doc.text(line, x, currentY)
+          currentY += lineHeight
+        })
+
+        return currentY - lineHeight + spacing
+      }
+
+      const colW = contentW / 2 - 8
+
+      // Calculate left column height
+      let leftH = 6 // top padding
+      leftH += getFieldHeight(clientDetails.clientName, colW)
       
       const street = clientDetails.address || 'Não informado'
       const num = clientDetails.number ? `, ${clientDetails.number}` : ''
-      const comp = clientDetails.complement ? ` - ${clientDetails.complement}` : ''
-      doc.text(`${street}${num}${comp}`, margin + 24, y + 15)
+      leftH += getFieldHeight(`${street}${num}`, colW)
+      
+      if (clientDetails.complement) {
+        leftH += getFieldHeight(clientDetails.complement, colW)
+      }
       
       const city = clientDetails.city || ''
       const state = clientDetails.state || ''
       const pc = clientDetails.postalCode || ''
-      doc.text(`${city} - ${state} (CEP: ${pc})`, margin + 24, y + 23)
+      const localidade = `${city} - ${state}${pc ? ` (CEP: ${pc})` : ''}`
+      leftH += getFieldHeight(localidade, colW)
 
-      // Right Column
-      doc.setFont('Helvetica', 'bold')
-      doc.setTextColor(...secondaryColor)
-      doc.text('Farmácia:', margin + contentW / 2 + 6, y + 7)
-      doc.text('País:', margin + contentW / 2 + 6, y + 15)
-      doc.text('Telefone:', margin + contentW / 2 + 6, y + 23)
+      leftH += getFieldHeight(clientDetails.phone || 'Não informado', colW)
 
-      doc.setFont('Helvetica', 'normal')
-      doc.setTextColor(50, 50, 50)
-      doc.text(clientDetails.pharmacyName || 'Não informado', margin + contentW / 2 + 25, y + 7)
-      doc.text(clientDetails.countryName || 'Não informado', margin + contentW / 2 + 25, y + 15)
-      doc.text(clientDetails.phone || 'Não informado', margin + contentW / 2 + 25, y + 23)
+      // Calculate right column height
+      let rightH = 6 // top padding
+      rightH += getFieldHeight(clientDetails.pharmacyName, colW)
+      rightH += getFieldHeight(clientDetails.countryName || 'Não informado', colW)
 
-      y += 38
+      const cardHeight = Math.max(leftH, rightH) + 2.5
+
+      y += 7
+      doc.setFillColor(...lightBg)
+      doc.roundedRect(margin, y, contentW, cardHeight, 2, 2, 'F')
+      doc.setDrawColor(...borderGray)
+      doc.roundedRect(margin, y, contentW, cardHeight, 2, 2, 'D')
+
+      // Draw Left Column fields
+      let leftY = y + 6
+      leftY = drawDynamicField('Nome do Cliente:', clientDetails.clientName, margin + 6, leftY, colW)
+      leftY = drawDynamicField('Endereço:', `${street}${num}`, margin + 6, leftY, colW)
+      if (clientDetails.complement) {
+        leftY = drawDynamicField('Complemento:', clientDetails.complement, margin + 6, leftY, colW)
+      }
+      leftY = drawDynamicField('Localidade:', localidade, margin + 6, leftY, colW)
+      leftY = drawDynamicField('Telefone:', clientDetails.phone || 'Não informado', margin + 6, leftY, colW)
+
+      // Draw Right Column fields
+      let rightY = y + 6
+      rightY = drawDynamicField('Farmácia:', clientDetails.pharmacyName, margin + contentW / 2 + 4, rightY, colW)
+      rightY = drawDynamicField('País:', clientDetails.countryName || 'Não informado', margin + contentW / 2 + 4, rightY, colW)
+
+      y += cardHeight + 10
     }
+
+    // Aproveitamento de Espaço
+    doc.setFont('Helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.setTextColor(...secondaryColor)
+    doc.text('Aproveitamento de Espaço', margin, y)
+
+    y += 5
+    doc.setFillColor(...lightBg)
+    doc.roundedRect(margin, y, contentW, 20, 2, 2, 'F')
+    doc.setDrawColor(...borderGray)
+    doc.roundedRect(margin, y, contentW, 20, 2, 2, 'D')
+
+    doc.setFont('Helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...secondaryColor)
+    doc.text('Taxa de Ocupação:', margin + 6, y + 12.5)
+    doc.text('Espaço de Corredores:', margin + contentW / 2 + 6, y + 12.5)
+
+    doc.setFont('Helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(...primaryColor)
+    doc.text(`${stats.occupancyRate}%`, margin + 36, y + 12.5)
+    doc.text(`${stats.corridorArea} m² (${100 - Number(stats.occupancyRate)}%)`, margin + contentW / 2 + 45, y + 12.5)
+
+    y += 30
 
     doc.setFont('Helvetica', 'bold')
     doc.setFontSize(14)
@@ -373,38 +423,41 @@ export function exportLayoutToPDF(
       console.log('[PDF] Total do frete:', freightCost)
       console.log('[PDF] Total do orçamento:', totalOrcamento)
 
-      checkPageBreak(40)
+      const didBreak = checkPageBreak(22)
+      if (!didBreak) {
+        y += 6
+      }
 
-      y += 10
       doc.setFont('Helvetica', 'bold')
-      doc.setFontSize(14)
+      doc.setFontSize(13)
       doc.setTextColor(...secondaryColor)
       doc.text('Resumo Financeiro', margin, y)
 
-      y += 8
+      y += 6
       doc.setFont('Helvetica', 'normal')
-      doc.setFontSize(11)
+      doc.setFontSize(10.5)
       doc.setTextColor(...secondaryColor)
       doc.text('Total dos Móveis:', margin + 4, y)
       doc.setFont('Helvetica', 'bold')
       doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalMoveis), margin + 45, y)
 
-      y += 6
+      y += 5
       doc.setFont('Helvetica', 'normal')
       doc.text('Total do Frete:', margin + 4, y)
       doc.setFont('Helvetica', 'bold')
       doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(freightCost), margin + 45, y)
 
-      y += 6
+      y += 5
       doc.setFont('Helvetica', 'bold')
       doc.setTextColor(...primaryColor)
       doc.text('Total do Orçamento:', margin + 4, y)
       doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOrcamento), margin + 45, y)
     }
 
-    checkPageBreak(65)
-
-    y += 15
+    const didBreakPassos = checkPageBreak(45)
+    if (!didBreakPassos) {
+      y += 10
+    }
     doc.setFillColor(...lightBg)
     doc.roundedRect(margin, y, contentW, 40, 2, 2, 'F')
     doc.setDrawColor(...primaryColor)

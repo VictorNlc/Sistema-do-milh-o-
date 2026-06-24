@@ -467,15 +467,16 @@ export default function ClientIntakeForm() {
               <div className="cif-fields">
                 <div className="cif-field-row">
                   <div className="cif-field">
-                    <label htmlFor="cif-clientName">Seu nome <span className="cif-required">*</span></label>
+                    <label htmlFor="cif-clientName">Seu nome completo <span className="cif-required">*</span></label>
                     <input
                       id="cif-clientName"
                       type="text"
                       placeholder="Ex: João da Silva"
                       value={form.clientName}
-                      onChange={e => set('clientName', e.target.value)}
+                      onChange={e => set('clientName', e.target.value.slice(0, 40))}
                       onBlur={() => handleBlur('clientName')}
                       className={errors.clientName ? 'error' : ''}
+                      maxLength={40}
                     />
                     {errors.clientName && <span className="cif-error-msg">{errors.clientName}</span>}
                   </div>
@@ -486,9 +487,10 @@ export default function ClientIntakeForm() {
                       type="text"
                       placeholder="Ex: Farmácia Saúde & Vida"
                       value={form.pharmacyName}
-                      onChange={e => set('pharmacyName', e.target.value)}
+                      onChange={e => set('pharmacyName', e.target.value.slice(0, 40))}
                       onBlur={() => handleBlur('pharmacyName')}
                       className={errors.pharmacyName ? 'error' : ''}
+                      maxLength={40}
                     />
                     {errors.pharmacyName && <span className="cif-error-msg">{errors.pharmacyName}</span>}
                   </div>
@@ -608,9 +610,10 @@ export default function ClientIntakeForm() {
                       type="text"
                       placeholder="Ex: Av. Brasil"
                       value={form.address}
-                      onChange={e => set('address', e.target.value)}
+                      onChange={e => set('address', e.target.value.slice(0, 120))}
                       onBlur={() => handleBlur('address')}
                       className={errors.address ? 'error' : ''}
+                      maxLength={120}
                     />
                     {errors.address && <span className="cif-error-msg">{errors.address}</span>}
                   </div>
@@ -621,8 +624,9 @@ export default function ClientIntakeForm() {
                       type="text"
                       placeholder="Ex: 123"
                       value={form.number}
-                      onChange={e => set('number', e.target.value)}
+                      onChange={e => set('number', e.target.value.slice(0, 15))}
                       onBlur={() => handleBlur('number')}
+                      maxLength={15}
                     />
                   </div>
                 </div>
@@ -635,8 +639,9 @@ export default function ClientIntakeForm() {
                       type="text"
                       placeholder="Ex: Bloco A, Sala 4"
                       value={form.complement}
-                      onChange={e => set('complement', e.target.value)}
+                      onChange={e => set('complement', e.target.value.slice(0, 60))}
                       onBlur={() => handleBlur('complement')}
+                      maxLength={60}
                     />
                   </div>
                   <div className="cif-field">
@@ -646,9 +651,10 @@ export default function ClientIntakeForm() {
                       type="tel"
                       placeholder="(11) 99999-9999"
                       value={form.phone}
-                      onChange={e => set('phone', formatPhone(e.target.value))}
+                      onChange={e => set('phone', formatPhone(e.target.value).slice(0, 25))}
                       onBlur={() => handleBlur('phone')}
                       className={errors.phone ? 'error' : ''}
+                      maxLength={25}
                     />
                     {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
                   </div>
