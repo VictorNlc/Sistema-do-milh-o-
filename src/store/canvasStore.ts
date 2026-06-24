@@ -461,7 +461,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       entrance: layoutData.entrance ?? null,
       emergencyExit: layoutData.emergencyExit ?? null,
       layoutName: layoutData.layoutName ?? 'Layout',
-      layoutId: layoutData.layoutId ?? null,
+      layoutId: layoutData.id || layoutData.layoutId || null,
       shareToken: layoutData.shareToken ?? null,
       selectedItemId: null,
       isDirty: false,

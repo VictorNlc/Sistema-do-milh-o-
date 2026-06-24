@@ -198,8 +198,25 @@ export function getLayoutStats(layout: { storeWidth: number; storeHeight: number
 
 // ─── Supabase Background Sync Helpers ──────────────────────────────────────────
 
+function getValidUuid(id: string): string {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (uuidRegex.test(id)) {
+    return id
+  }
+  return uuidv4()
+}
+
 export function syncLayoutToSupabase(layout: SavedLayout): void {
   if (!supabase || !isSupabaseConfigured) return
+  
+  const validId = getValidUuid(layout.id)
+  if (validId !== layout.id) {
+    const layouts = getLayouts()
+    delete layouts[layout.id]
+    layout.id = validId
+    layouts[validId] = layout
+    localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
+  }
   
   const dbData = {
     id: layout.id,
@@ -212,8 +229,7 @@ export function syncLayoutToSupabase(layout: SavedLayout): void {
     shareToken: layout.shareToken,
     thumbnail: layout.thumbnail,
     createdAt: layout.createdAt,
-    updatedAt: layout.updatedAt,
-    layoutId: layout.layoutId || null
+    updatedAt: layout.updatedAt
   }
 
   Promise.resolve(
@@ -255,6 +271,23 @@ export function deleteLayoutFromSupabase(id: string): void {
 export function syncAppointmentToSupabase(appointment: Appointment): void {
   if (!supabase || !isSupabaseConfigured) return
 
+  const validId = getValidUuid(appointment.id)
+  if (validId !== appointment.id) {
+    const appointments = getAppointments()
+    delete appointments[appointment.id]
+    appointment.id = validId
+    appointments[validId] = appointment
+    localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(appointments))
+  }
+
+  let dbLayoutId = null
+  if (appointment.layoutId) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (uuidRegex.test(appointment.layoutId)) {
+      dbLayoutId = appointment.layoutId
+    }
+  }
+
   const dbData = {
     id: appointment.id,
     name: appointment.name,
@@ -266,7 +299,7 @@ export function syncAppointmentToSupabase(appointment: Appointment): void {
     date: appointment.date,
     time: appointment.time,
     notes: appointment.notes || null,
-    layoutId: appointment.layoutId || null,
+    layoutId: dbLayoutId,
     status: appointment.status,
     createdAt: appointment.createdAt,
     updatedAt: appointment.updatedAt || null
