@@ -476,7 +476,7 @@ export async function syncAllWithSupabase(): Promise<void> {
             createdAt: local.createdAt,
             updatedAt: local.updatedAt,
           }
-          supabase.from('reference_layouts').upsert(dbData).then(({ error }) => {
+          supabase!.from('reference_layouts').upsert(dbData).then(({ error }) => {
             if (error) console.warn('⚠️ Erro ao sincronizar local → remoto de referência:', error.message)
           })
         }
