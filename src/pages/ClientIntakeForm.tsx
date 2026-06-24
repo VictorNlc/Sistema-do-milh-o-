@@ -59,6 +59,7 @@ export default function ClientIntakeForm() {
 
   // Freight / geocoding message
   const [freightMessage, setFreightMessage] = useState<string | null>(null)
+  const [freightData, setFreightData] = useState<{ distanceKm: number; freightCost: number } | null>(null)
 
   // Flag for manual city entry (when API returns only province)
   const [isCityManual, setIsCityManual] = useState(false)
@@ -189,7 +190,13 @@ export default function ClientIntakeForm() {
         const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
 
         if (geoResult.success && geoResult.data) {
-          calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+          const freightRes = await calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+          if (freightRes.success && freightRes.data) {
+            setFreightData({
+              distanceKm: freightRes.data.distanceKm,
+              freightCost: freightRes.data.shippingCost
+            })
+          }
         }
       }
     } else {
@@ -261,7 +268,13 @@ export default function ClientIntakeForm() {
       }
 
       setFreightMessage(null)
-      calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+      const freightRes = await calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+      if (freightRes.success && freightRes.data) {
+        setFreightData({
+          distanceKm: freightRes.data.distanceKm,
+          freightCost: freightRes.data.shippingCost
+        })
+      }
     }, 1500) // debounce de 1.5s para aguardar digitação
 
     return () => clearTimeout(timer)
@@ -349,6 +362,7 @@ export default function ClientIntakeForm() {
       height: form.spaceMode === 'dimensions' ? parseFloat(form.height) : null,
       hasFloorPlan: form.spaceMode === 'floorplan',
       floorPlanDataUrl: form.spaceMode === 'floorplan' ? form.floorPlanPreview : null,
+      freightData,
     }
     sessionStorage.setItem('projefarma_intake', JSON.stringify(intakeData))
     sessionStorage.setItem('projefarma_client_details', JSON.stringify({
