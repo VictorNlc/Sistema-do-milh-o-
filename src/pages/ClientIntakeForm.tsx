@@ -81,8 +81,63 @@ export default function ClientIntakeForm() {
 
   const set = (field: keyof FormData, value: unknown) => {
     setForm(prev => ({ ...prev, [field]: value }))
-    setErrors(prev => ({ ...prev, [field]: undefined }))
   }
+
+  // ── Validation Logic ────────────────────────────────────────────────────
+  const validateField = useCallback((field: keyof FormData, currentForm: FormData): string | undefined => {
+    if (field === 'clientName' && !currentForm.clientName.trim()) return 'Informe seu nome.'
+    if (field === 'pharmacyName' && !currentForm.pharmacyName.trim()) return 'Informe o nome da farmácia.'
+    if (field === 'country' && !currentForm.country) return 'Selecione o país.'
+    if (field === 'postalCode') {
+      if (!currentForm.postalCode.trim()) return 'Informe o CEP / Código postal.'
+      if (currentForm.country) {
+        const sanitized = sanitizePostalCode(currentForm.country, currentForm.postalCode)
+        if (currentForm.country === 'AR' && !/^[A-Z]\d{4}[A-Z]{3}$/.test(sanitized)) {
+          return 'Informe um código postal argentino válido. Exemplo: C1043AAZ'
+        }
+        if (currentForm.country === 'PY' && !/^\d{4,6}$/.test(sanitized)) {
+          return 'Informe um código postal paraguaio válido. Exemplos: 1000, 10001 ou 100001'
+        }
+        const expected = getPostalCodeLength(currentForm.country, currentForm.postalCode)
+        if (sanitized.length !== expected) {
+          return `Código postal deve conter ${expected} dígitos.`
+        }
+      }
+    }
+    if (field === 'city' && !currentForm.city.trim()) return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
+    if (field === 'state' && !currentForm.state.trim()) return 'Estado não preenchido. Verifique o código postal.'
+    if (field === 'phone' && currentForm.phone.replace(/\D/g, '').length < 10) return 'Informe um telefone válido.'
+    if (field === 'employees' && !currentForm.employees) return 'Selecione o número de funcionários.'
+    return undefined
+  }, [])
+
+  const handleBlur = (field: keyof FormData) => {
+    const error = validateField(field, form)
+    if (error) {
+      setErrors(prev => ({ ...prev, [field]: error }))
+    }
+  }
+
+  // Reactive error clearance
+  useEffect(() => {
+    setErrors(prev => {
+      const next = { ...prev }
+      let changed = false
+      Object.keys(next).forEach(key => {
+        if (key === 'general') return
+        const field = key as keyof FormData
+        const error = validateField(field, form)
+        if (!error && next[field]) {
+          delete next[field]
+          changed = true
+        } else if (error && next[field] && next[field] !== error) {
+          next[field] = error
+          changed = true
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [form, validateField])
 
   // ── Postal code auto-lookup ─────────────────────────────────────────────
   const performLookup = useCallback(async (country: string, postalCode: string) => {
@@ -224,36 +279,15 @@ export default function ClientIntakeForm() {
   // ── Step 1 validation ──────────────────────────────────────────────────
   const validateStep1 = () => {
     const errs: typeof errors = {}
-    if (!form.clientName.trim()) errs.clientName = 'Informe seu nome.'
-    if (!form.pharmacyName.trim()) errs.pharmacyName = 'Informe o nome da farmácia.'
-    if (!form.country) errs.country = 'Selecione o país.'
-    if (!form.postalCode.trim()) errs.postalCode = 'Informe o CEP / Código postal.'
+    const fieldsToValidate: (keyof FormData)[] = [
+      'clientName', 'pharmacyName', 'country', 'postalCode', 'city', 'state', 'phone', 'employees'
+    ]
+    
+    fieldsToValidate.forEach(field => {
+      const error = validateField(field, form)
+      if (error) errs[field] = error
+    })
 
-    // Validate postal code format per country
-    if (form.country && form.postalCode.trim()) {
-      const sanitized = sanitizePostalCode(form.country, form.postalCode)
-      if (form.country === 'AR') {
-        const isCPA = /^[A-Z]\d{4}[A-Z]{3}$/.test(sanitized)
-        if (!isCPA) {
-          errs.postalCode = 'Informe um código postal argentino válido. Exemplo: C1043AAZ'
-        }
-      } else if (form.country === 'PY') {
-        const isValid = /^\d{4,6}$/.test(sanitized)
-        if (!isValid) {
-          errs.postalCode = 'Informe um código postal paraguaio válido. Exemplos: 1000, 10001 ou 100001'
-        }
-      } else {
-        const expectedLength = getPostalCodeLength(form.country, form.postalCode)
-        if (sanitized.length !== expectedLength) {
-          errs.postalCode = `Código postal deve conter ${expectedLength} dígitos.`
-        }
-      }
-    }
-
-    if (!form.city.trim()) errs.city = 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
-    if (!form.state.trim()) errs.state = 'Estado não preenchido. Verifique o código postal.'
-    if (form.phone.replace(/\D/g, '').length < 10) errs.phone = 'Informe um telefone válido.'
-    if (!form.employees) errs.employees = 'Selecione o número de funcionários.'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -410,6 +444,7 @@ export default function ClientIntakeForm() {
                       placeholder="Ex: João da Silva"
                       value={form.clientName}
                       onChange={e => set('clientName', e.target.value)}
+                      onBlur={() => handleBlur('clientName')}
                       className={errors.clientName ? 'error' : ''}
                     />
                     {errors.clientName && <span className="cif-error-msg">{errors.clientName}</span>}
@@ -422,6 +457,7 @@ export default function ClientIntakeForm() {
                       placeholder="Ex: Farmácia Saúde & Vida"
                       value={form.pharmacyName}
                       onChange={e => set('pharmacyName', e.target.value)}
+                      onBlur={() => handleBlur('pharmacyName')}
                       className={errors.pharmacyName ? 'error' : ''}
                     />
                     {errors.pharmacyName && <span className="cif-error-msg">{errors.pharmacyName}</span>}
@@ -436,6 +472,7 @@ export default function ClientIntakeForm() {
                       id="cif-country"
                       value={form.country}
                       onChange={e => set('country', e.target.value)}
+                      onBlur={() => handleBlur('country')}
                       className={errors.country ? 'error' : ''}
                     >
                       <option value="" disabled>Selecione o país</option>
@@ -456,6 +493,7 @@ export default function ClientIntakeForm() {
                         placeholder={form.country ? getPostalCodePlaceholder(form.country) : 'Código postal'}
                         value={form.postalCode}
                         onChange={e => handlePostalCodeChange(e.target.value)}
+                        onBlur={() => handleBlur('postalCode')}
                         className={errors.postalCode || postalMessage ? 'error' : ''}
                         maxLength={form.country ? getPostalCodeMaxLength(form.country, form.postalCode) : 20}
                       />
@@ -491,6 +529,7 @@ export default function ClientIntakeForm() {
                       value={form.city}
                       readOnly={!isCityManual}
                       onChange={isCityManual ? e => set('city', e.target.value) : undefined}
+                      onBlur={() => handleBlur('city')}
                       className={`${errors.city ? 'error' : ''} ${!isCityManual ? 'cif-readonly' : ''}`}
                       tabIndex={isCityManual ? 0 : -1}
                     />
@@ -515,6 +554,7 @@ export default function ClientIntakeForm() {
                       value={form.state}
                       readOnly={form.country !== 'UY'}
                       onChange={form.country === 'UY' ? e => set('state', e.target.value) : undefined}
+                      onBlur={() => handleBlur('state')}
                       className={`${errors.state ? 'error' : ''} ${form.country !== 'UY' ? 'cif-readonly' : ''}`}
                       tabIndex={form.country === 'UY' ? 0 : -1}
                     />
@@ -539,6 +579,7 @@ export default function ClientIntakeForm() {
                       placeholder="(11) 99999-9999"
                       value={form.phone}
                       onChange={e => set('phone', formatPhone(e.target.value))}
+                      onBlur={() => handleBlur('phone')}
                       className={errors.phone ? 'error' : ''}
                     />
                     {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
