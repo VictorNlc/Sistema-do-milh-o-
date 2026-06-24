@@ -180,7 +180,7 @@ export function exportLayoutToPDF(
     doc.setFontSize(8)
     doc.setTextColor(...grayText)
     doc.text('Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.', margin, pdfH - margin)
-    doc.text('Página 1 de 2', pdfW - margin - 15, pdfH - margin)
+    doc.text('Página 1', pdfW - margin - 15, pdfH - margin)
 
     // ─── PAGE 2: INVENTORY & NEXT STEPS ───
     doc.addPage()
@@ -191,6 +191,29 @@ export function exportLayoutToPDF(
     doc.setFontSize(10)
     doc.setTextColor(255, 255, 255)
     doc.text('ProjeLayout by Projefarma', margin, 10)
+
+    let pageCount = 2
+    const checkPageBreak = (requiredSpace: number) => {
+      if (y + requiredSpace > pdfH - margin - 10) {
+        doc.setFont('Helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(...grayText)
+        doc.text('Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.', margin, pdfH - margin)
+        doc.text(`Página ${pageCount}`, pdfW - margin - 15, pdfH - margin)
+
+        doc.addPage()
+        pageCount++
+        
+        doc.setFillColor(...primaryColor)
+        doc.rect(0, 0, pdfW, 15, 'F')
+        doc.setFont('Helvetica', 'bold')
+        doc.setFontSize(10)
+        doc.setTextColor(255, 255, 255)
+        doc.text('ProjeLayout by Projefarma', margin, 10)
+        
+        y = 25
+      }
+    }
 
     y = 28
     doc.setFont('Helvetica', 'bold')
@@ -251,6 +274,8 @@ export function exportLayoutToPDF(
       y += 12
     } else {
       groupList.forEach(group => {
+        checkPageBreak(12)
+
         doc.setDrawColor(...borderGray)
         doc.line(margin, y, margin + contentW, y)
         
@@ -288,6 +313,8 @@ export function exportLayoutToPDF(
       console.log('[PDF] Total do frete:', freightCost)
       console.log('[PDF] Total do orçamento:', totalOrcamento)
 
+      checkPageBreak(40)
+
       y += 10
       doc.setFont('Helvetica', 'bold')
       doc.setFontSize(14)
@@ -315,6 +342,8 @@ export function exportLayoutToPDF(
       doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOrcamento), margin + 45, y)
     }
 
+    checkPageBreak(65)
+
     y += 15
     doc.setFillColor(...lightBg)
     doc.roundedRect(margin, y, contentW, 40, 2, 2, 'F')
@@ -337,7 +366,7 @@ export function exportLayoutToPDF(
     doc.setFontSize(8)
     doc.setTextColor(...grayText)
     doc.text('Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.', margin, pdfH - margin)
-    doc.text('Página 2 de 2', pdfW - margin - 15, pdfH - margin)
+    doc.text(`Página ${pageCount}`, pdfW - margin - 15, pdfH - margin)
 
     doc.save(`projelayout-${(layoutName ?? 'layout').toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`)
     return true
