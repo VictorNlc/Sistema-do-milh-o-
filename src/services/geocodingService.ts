@@ -61,6 +61,28 @@ function normalizeUruguayLocation(value: string): string {
 }
 
 /**
+ * Normaliza a cidade informada manualmente pelo usuário em caso de erro no OpenRouteService.
+ * - Remove espaços extras e do início/fim.
+ * - Converte para Title Case.
+ * - Preserva caracteres válidos e acentuação.
+ *
+ * @param value - Nome da cidade
+ * @returns Nome da cidade normalizado
+ */
+export function normalizeManualCity(value: string): string {
+  if (!value) return ''
+  return value
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map(word => {
+      if (!word) return ''
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
+/**
  * Obtém as coordenadas geográficas (latitude e longitude) de uma localidade
  * utilizando a API pública do Nominatim (OpenStreetMap).
  *
