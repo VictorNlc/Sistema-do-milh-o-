@@ -9,6 +9,7 @@ declare module '*.csv?raw' {
 interface ImportMetaEnv {
   readonly VITE_OPENAI_API_KEY: string
   readonly VITE_ORS_API_KEY: string
+  readonly VITE_ARGENTINA_CPA_API_KEY: string
 }
 
 interface ImportMeta {

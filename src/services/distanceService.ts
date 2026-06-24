@@ -95,6 +95,18 @@ export async function calculateDistance(
       const errorText = await response.text().catch(() => '')
       console.error(`[Freight] Erro HTTP: ${response.status}`, errorText)
 
+      // NOVO FLUXO: Detectar erro de coordenada não roteável
+      if (
+        response.status === 404 &&
+        (errorText.includes('Could not find routable point') || errorText.includes('2010'))
+      ) {
+        console.warn('[Freight] Coordenada não roteável detectada.')
+        return {
+          success: false,
+          error: 'unroutable',
+        }
+      }
+
       if (response.status === 401 || response.status === 403) {
         return {
           success: false,

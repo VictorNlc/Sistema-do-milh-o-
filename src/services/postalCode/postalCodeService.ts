@@ -123,12 +123,8 @@ export function isPostalCodeComplete(countryCode: string, value: string): boolea
 export function getPostalCodeLength(countryCode: string, value?: string): number {
   const provider = providers[countryCode]
   if (!provider) return 0
-  if (countryCode === 'AR' && value) {
-    const sanitized = provider.sanitize(value)
-    // Se começar com uma letra, esperamos CPA (8 caracteres)
-    if (/^[A-Z]/i.test(sanitized)) {
-      return 8
-    }
+  if (countryCode === 'AR') {
+    return 8
   }
   if (countryCode === 'PY' && value) {
     const sanitized = provider.sanitize(value)

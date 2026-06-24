@@ -10,7 +10,7 @@ import {
   getPostalCodeMaxLength,
   getPostalCodeLength,
 } from '../services/postalCode'
-import { getCoordinates } from '../services/geocodingService'
+import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
 import './ClientIntakeForm.css'
 
@@ -57,8 +57,11 @@ export default function ClientIntakeForm() {
   const [postalMessage, setPostalMessage] = useState<string | null>(null)
   const [lastFetchedKey, setLastFetchedKey] = useState<string>('')
 
-  // Freight / geocoding message (UY manual flow)
+  // Freight / geocoding message
   const [freightMessage, setFreightMessage] = useState<string | null>(null)
+
+  // Flag for manual city entry (when API returns only province)
+  const [isCityManual, setIsCityManual] = useState(false)
 
   const [form, setForm] = useState<FormData>({
     clientName: '',
@@ -104,6 +107,7 @@ export default function ClientIntakeForm() {
       // UY: não preencher cidade/estado automaticamente (múltiplas cidades por CEP)
       if (country === 'UY') {
         setPostalMessage(null)
+        setIsCityManual(true)
         console.log('[UY] Código postal válido. Cidade e departamento devem ser informados manualmente.')
         return
       }
@@ -114,15 +118,27 @@ export default function ClientIntakeForm() {
         state: result.data!.state,
       }))
       setPostalMessage(null)
-      setFreightMessage(null)
 
-      // Pipeline: Geocoding → Distância → Frete (tudo em console)
-      const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
+      if (!result.data!.city) {
+        console.warn('[Freight] Apenas província identificada.')
+        console.log('[Freight] Utilizando campo Cidade existente para preenchimento manual.')
+        setIsCityManual(true)
+        setFreightMessage(
+          'Não foi possível identificar sua cidade através do código postal.\n\nPara calcular o frete corretamente, informe a cidade onde você está localizado.'
+        )
+      } else {
+        setIsCityManual(false)
+        setFreightMessage(null)
 
-      if (geoResult.success && geoResult.data) {
-        calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+        // Pipeline: Geocoding → Distância → Frete (tudo em console)
+        const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
+
+        if (geoResult.success && geoResult.data) {
+          calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+        }
       }
     } else {
+      setIsCityManual(false)
       setForm(prev => ({ ...prev, city: '', state: '' }))
       setPostalMessage(result.error || 'Código postal inválido.')
     }
@@ -168,22 +184,23 @@ export default function ClientIntakeForm() {
     setLastFetchedKey('')
   }, [form.country])
 
-  // ── UY: Geocoding + Frete com cidade/estado manuais ─────────────────────
+  // ── Geocoding + Frete com cidade/estado manuais ─────────────────────────
   useEffect(() => {
-    if (form.country !== 'UY') return
+    if (!isCityManual) return
     if (!form.city.trim() || form.city.trim().length < 2) return
     if (!form.state.trim() || form.state.trim().length < 2) return
 
     setFreightMessage(null)
 
     const timer = setTimeout(async () => {
-      console.log('[UY] Utilizando cidade e departamento informados manualmente pelo usuário.')
-      console.log({ city: form.city, state: form.state, country: 'UY' })
+      const normalizedCity = normalizeManualCity(form.city)
+      console.log('[Freight] Utilizando cidade e estado informados manualmente pelo usuário.')
+      console.log('[Freight] Cidade informada:', normalizedCity)
 
-      const geoResult = await getCoordinates('UY', form.state.trim(), form.city.trim())
+      const geoResult = await getCoordinates(form.country, form.state.trim(), normalizedCity)
 
       if (!geoResult.success || !geoResult.data) {
-        console.warn('[UY] Cidade não localizada no Nominatim.')
+        console.warn('[Freight] Cidade não localizada no Nominatim.')
         setFreightMessage('Não foi possível localizar a cidade, precisa calcular manualmente.')
         return
       }
@@ -193,7 +210,7 @@ export default function ClientIntakeForm() {
     }, 1500) // debounce de 1.5s para aguardar digitação
 
     return () => clearTimeout(timer)
-  }, [form.country, form.city, form.state])
+  }, [isCityManual, form.country, form.city, form.state])
 
   // ── Postal code input handler ───────────────────────────────────────────
   const handlePostalCodeChange = (value: string) => {
@@ -216,10 +233,9 @@ export default function ClientIntakeForm() {
     if (form.country && form.postalCode.trim()) {
       const sanitized = sanitizePostalCode(form.country, form.postalCode)
       if (form.country === 'AR') {
-        const isNumeric = /^\d{4}$/.test(sanitized)
         const isCPA = /^[A-Z]\d{4}[A-Z]{3}$/.test(sanitized)
-        if (!isNumeric && !isCPA) {
-          errs.postalCode = 'Informe um código postal argentino válido. Exemplos: 7600 ou C1043AAZ'
+        if (!isCPA) {
+          errs.postalCode = 'Informe um código postal argentino válido. Exemplo: C1043AAZ'
         }
       } else if (form.country === 'PY') {
         const isValid = /^\d{4,6}$/.test(sanitized)
@@ -234,7 +250,7 @@ export default function ClientIntakeForm() {
       }
     }
 
-    if (!form.city.trim()) errs.city = 'Cidade não preenchida. Verifique o código postal.'
+    if (!form.city.trim()) errs.city = 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
     if (!form.state.trim()) errs.state = 'Estado não preenchido. Verifique o código postal.'
     if (form.phone.replace(/\D/g, '').length < 10) errs.phone = 'Informe um telefone válido.'
     if (!form.employees) errs.employees = 'Selecione o número de funcionários.'
@@ -317,8 +333,7 @@ export default function ClientIntakeForm() {
     navigate(`/editor?${params.toString()}`)
   }
 
-  // ── Postal code label per country ───────────────────────────────────────
-  const postalCodeLabel = form.country === 'BR' ? 'CEP' : 'CEP / Postal Code'
+  // ── Render ───────────────────────────────────────
 
   return (
     <div className="cif-root">
@@ -426,7 +441,7 @@ export default function ClientIntakeForm() {
                   </div>
                   <div className="cif-field">
                     <label htmlFor="cif-postalCode">
-                      {postalCodeLabel} <span className="cif-required">*</span>
+                      Código Postal (alfanumérico) <span className="cif-required">*</span>
                     </label>
                     <div className="cif-input-cep-wrap">
                       <input
@@ -444,16 +459,6 @@ export default function ClientIntakeForm() {
                         </div>
                       )}
                     </div>
-                    {form.country === 'AR' && !errors.postalCode && !postalMessage && (
-                      <span className="cif-help-msg">
-                        Informe um código postal argentino válido. Exemplos: 7600 ou C1043AAZ
-                      </span>
-                    )}
-                    {form.country === 'PY' && !errors.postalCode && !postalMessage && (
-                      <span className="cif-help-msg">
-                        Informe um código postal paraguaio válido. Exemplos: 1000, 10001 ou 100001
-                      </span>
-                    )}
                     {errors.postalCode && <span className="cif-error-msg">{errors.postalCode}</span>}
                     {postalMessage && !errors.postalCode && <span className="cif-error-msg">{postalMessage}</span>}
                   </div>
@@ -464,8 +469,8 @@ export default function ClientIntakeForm() {
                   <div className="cif-field">
                     <label htmlFor="cif-city">
                       Cidade
-                      {form.country && form.country !== 'UY' && <span className="cif-autofill-badge">Preenchimento automático</span>}
-                      {form.country === 'UY' && <span className="cif-required">*</span>}
+                      {form.country && !isCityManual && <span className="cif-autofill-badge">Preenchimento automático</span>}
+                      {isCityManual && <span className="cif-required">*</span>}
                     </label>
                     <input
                       id="cif-city"
@@ -473,15 +478,15 @@ export default function ClientIntakeForm() {
                       placeholder={
                         !form.country
                           ? 'Selecione o país primeiro'
-                          : form.country === 'UY'
+                          : isCityManual
                             ? 'Informe a cidade'
                             : 'Preenchido pelo código postal'
                       }
                       value={form.city}
-                      readOnly={form.country !== 'UY'}
-                      onChange={form.country === 'UY' ? e => set('city', e.target.value) : undefined}
-                      className={`${errors.city ? 'error' : ''} ${form.country !== 'UY' ? 'cif-readonly' : ''}`}
-                      tabIndex={form.country === 'UY' ? 0 : -1}
+                      readOnly={!isCityManual}
+                      onChange={isCityManual ? e => set('city', e.target.value) : undefined}
+                      className={`${errors.city ? 'error' : ''} ${!isCityManual ? 'cif-readonly' : ''}`}
+                      tabIndex={isCityManual ? 0 : -1}
                     />
                     {errors.city && <span className="cif-error-msg">{errors.city}</span>}
                   </div>
@@ -511,9 +516,9 @@ export default function ClientIntakeForm() {
                   </div>
                 </div>
 
-                {/* UY: Mensagem de geocoding/frete */}
-                {form.country === 'UY' && freightMessage && (
-                  <div className="cif-freight-msg">
+                {/* Mensagem de geocoding/frete/manual city */}
+                {freightMessage && (
+                  <div className="cif-freight-msg" style={{ whiteSpace: 'pre-line' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
                     {freightMessage}
                   </div>
