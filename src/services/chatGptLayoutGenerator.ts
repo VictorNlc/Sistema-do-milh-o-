@@ -1,14 +1,11 @@
 import type { StoreType, CanvasItem } from '../types'
+import { supabase } from './supabase'
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
-
-function getApiKey(): string {
-  return import.meta.env.VITE_OPENAI_API_KEY || ''
-}
-
+// Se houver chave local para desenvolvimento, podemos checar,
+// mas em produção a chave estará na nuvem (Edge Function).
 export function isApiKeyConfigured(): boolean {
-  const key = getApiKey()
-  return !!key && key !== 'sua-chave-api-aqui' && key.length > 10
+  // Retornamos true assumindo que a edge function está configurada com o VITE_OPENAI_API_KEY
+  return true
 }
 
 // ─── System Prompt especializado em layout de farmácias ──────────────────────
@@ -101,16 +98,6 @@ export async function sendChatGPTMessage(
   conversationHistory: ChatGPTMessage[],
   context: ChatGPTContext,
 ): Promise<ChatGPTResponse> {
-  const apiKey = getApiKey()
-
-  if (!apiKey || apiKey === 'sua-chave-api-aqui') {
-    return {
-      success: false,
-      message: '',
-      error: 'Chave API não configurada. Adicione sua chave no arquivo .env (VITE_OPENAI_API_KEY=sk-...)',
-    }
-  }
-
   const systemMessage: ChatGPTMessage = {
     role: 'system',
     content: buildSystemPrompt(context),
@@ -126,57 +113,23 @@ export async function sendChatGPTMessage(
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
+    if (!supabase) throw new Error("Supabase não está configurado.")
+    const { data: responseData, error: edgeError } = await supabase.functions.invoke('openai-proxy', {
+      body: {
         model: 'gpt-4o-mini',
         messages,
         temperature: 0.7,
         max_tokens: 512,
         presence_penalty: 0.1,
         frequency_penalty: 0.1,
-      }),
-      signal: controller.signal,
+      },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMsg = (errorData as { error?: { message?: string } })?.error?.message || response.statusText
-
-      if (response.status === 401) {
-        return {
-          success: false,
-          message: '',
-          error: 'Chave API inválida. Verifique sua chave no arquivo .env',
-        }
-      }
-      if (response.status === 429) {
-        return {
-          success: false,
-          message: '',
-          error: 'Limite de requisições atingido. Aguarde um momento e tente novamente.',
-        }
-      }
-      if (response.status === 402 || response.status === 403) {
-        return {
-          success: false,
-          message: '',
-          error: 'Sem créditos na conta OpenAI. Verifique seu billing em platform.openai.com',
-        }
-      }
-
-      return {
-        success: false,
-        message: '',
-        error: `Erro da API: ${errorMsg}`,
-      }
+    if (edgeError) {
+      throw edgeError
     }
 
-    const data = await response.json() as {
+    const data = responseData as {
       choices?: { message?: { content?: string } }[]
     }
     const reply = data?.choices?.[0]?.message?.content
@@ -482,16 +435,6 @@ export async function generateLayoutWithGPT(
   storeType: StoreType,
   obstacles: { itemId: string; x: number; y: number; width: number; height: number; rotation: number }[],
 ): Promise<GPTLayoutResult> {
-  const apiKey = getApiKey()
-
-  if (!apiKey || apiKey === 'sua-chave-api-aqui') {
-    return {
-      success: false,
-      items: [],
-      error: '🔑 Chave API não configurada. Adicione no arquivo .env: VITE_OPENAI_API_KEY=sk-...',
-    }
-  }
-
   const area = storeWidth * storeHeight
   const systemPrompt = buildLayoutSystemPrompt(storeWidth, storeHeight, storeType, area, obstacles)
 
@@ -499,13 +442,9 @@ export async function generateLayoutWithGPT(
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
+    if (!supabase) throw new Error("Supabase não está configurado.")
+    const { data: responseData, error: edgeError } = await supabase.functions.invoke('openai-proxy', {
+      body: {
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -513,21 +452,14 @@ export async function generateLayoutWithGPT(
         ],
         temperature: 0,
         max_tokens: 4096,
-      }),
-      signal: controller.signal,
+      },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMsg = (errorData as { error?: { message?: string } })?.error?.message || response.statusText
-
-      if (response.status === 401) return { success: false, items: [], error: ' Chave API inválida.' }
-      if (response.status === 429) return { success: false, items: [], error: ' Limite de requisições. Aguarde.' }
-      if (response.status === 402 || response.status === 403) return { success: false, items: [], error: ' Sem créditos OpenAI.' }
-      return { success: false, items: [], error: `Erro API: ${errorMsg}` }
+    if (edgeError) {
+      throw edgeError
     }
 
-    const data = await response.json() as {
+    const data = responseData as {
       choices?: { message?: { content?: string } }[]
     }
     const content = data?.choices?.[0]?.message?.content?.trim()

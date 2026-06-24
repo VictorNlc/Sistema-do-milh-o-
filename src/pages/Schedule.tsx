@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { saveAppointment, getLayoutById } from '../services/storage'
+import { supabase } from '../services/supabase'
 import { toast } from '../store/toastStore'
 import type { Appointment } from '../types'
 import './Schedule.css'
@@ -31,16 +32,45 @@ export default function Schedule() {
 
   const [step, setStep] = useState(0)
   const [saved, setSaved] = useState<Appointment | null>(null)
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    city: '',
-    storeType: 'Popular',
-    storeArea: layout ? `${layout.storeWidth}m × ${layout.storeHeight}m` : '',
-    date: '',
-    time: '',
-    notes: '',
+  const [form, setForm] = useState(() => {
+    let clientName = ''
+    let clientPhone = ''
+    let clientCity = ''
+    try {
+      const rawDetails = sessionStorage.getItem('projefarma_client_details')
+      if (rawDetails) {
+        const details = JSON.parse(rawDetails)
+        clientName = details.clientName || ''
+        clientPhone = details.phone || ''
+        if (details.city && details.state) {
+          clientCity = `${details.city}, ${details.state}`
+        } else {
+          clientCity = details.city || ''
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao ler detalhes do cliente:', e)
+    }
+
+    let typeFromLayout = 'Popular'
+    if (layout?.storeType) {
+      if (layout.storeType === 'popular') typeFromLayout = 'Popular'
+      else if (layout.storeType === 'premium') typeFromLayout = 'Premium'
+      else if (layout.storeType === 'manipulacao') typeFromLayout = 'Manipulação'
+      else if (layout.storeType === 'completa') typeFromLayout = 'Completa'
+    }
+
+    return {
+      name: clientName,
+      email: '',
+      phone: clientPhone,
+      city: clientCity,
+      storeType: typeFromLayout,
+      storeArea: layout ? `${layout.storeWidth}m × ${layout.storeHeight}m` : '',
+      date: '',
+      time: '',
+      notes: '',
+    }
   })
 
   const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
@@ -62,6 +92,30 @@ export default function Schedule() {
       setSaved(appt)
       setStep(4) // success
       toast.success('Reunião agendada com sucesso!')
+
+      // Disparar envio de e-mails de confirmação e alerta
+      if (supabase) {
+        supabase.functions.invoke('send-email', {
+          body: {
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            city: form.city,
+            storeType: form.storeType,
+            date: form.date,
+            time: form.time,
+            notes: form.notes
+          }
+        }).then(({ error }) => {
+          if (error) {
+            console.warn('⚠️ Erro ao disparar e-mail de confirmação:', error.message)
+          } else {
+            console.log('✅ E-mail de confirmação disparado com sucesso.')
+          }
+        }).catch(err => {
+          console.warn('⚠️ Falha ao se conectar à função de e-mail:', err)
+        })
+      }
     } else {
       toast.error('Erro ao agendar. Tente novamente.')
     }

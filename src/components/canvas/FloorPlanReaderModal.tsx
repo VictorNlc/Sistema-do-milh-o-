@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
 import { toast } from '../../store/toastStore'
 import { readFloorPlanImage, fileToBase64, FloorPlanData } from '../../services/floorPlanReader'
-import { PHARMACY_ITEMS } from '../../data/items'
+import { getPharmacyCatalog } from '../../services/catalogService'
+import type { PharmacyItemTemplate } from '../../types'
 import { v4 as uuidv4 } from 'uuid'
 import { generateAILayout } from '../../services/heuristicLayoutGenerator'
 import type { CanvasItem } from '../../types'
@@ -23,7 +24,12 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
   const [pendingBase64, setPendingBase64] = useState<string | null>(null)
   const [pendingMimeType, setPendingMimeType] = useState<string>('image/jpeg')
   
+  const [catalogItems, setCatalogItems] = useState<PharmacyItemTemplate[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    getPharmacyCatalog().then(setCatalogItems)
+  }, [])
 
   const store = useCanvasStore()
   const { setStoreDimensions, setEntrance, setPillars, clearCanvas, addItem, rotateItem } = store
@@ -131,7 +137,7 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
 
     // 3. Adicionar porta de entrada principal
     if (resultData.entrance) {
-      const doorTemplate = PHARMACY_ITEMS.find(i => i.id === 'porta-entrada')
+      const doorTemplate = catalogItems.find(i => i.id === 'porta-entrada')
       if (doorTemplate) {
         // Mapeia orientação para rotação correspondente
         let rotation = 0
@@ -162,7 +168,7 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
       // Sincroniza no array do store
       setPillars(resultData.pillars)
 
-      const pilarTemplate = PHARMACY_ITEMS.find(i => i.id === 'pilar')
+      const pilarTemplate = catalogItems.find(i => i.id === 'pilar')
       if (pilarTemplate) {
         resultData.pillars.forEach(p => {
           const px = Math.max(0, p.x - pilarTemplate.width / 2)

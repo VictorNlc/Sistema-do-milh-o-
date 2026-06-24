@@ -4,7 +4,7 @@
 // ============================================
 
 import { v4 as uuidv4 } from 'uuid'
-import type { SavedLayout, Appointment, AppointmentStatus, CanvasItem } from '../types'
+import type { SavedLayout, Appointment, AppointmentStatus, CanvasItem, ReferenceLayout } from '../types'
 import { supabase, isSupabaseConfigured } from './supabase'
 
 const LAYOUTS_KEY = 'projelayout_layouts'
@@ -121,7 +121,7 @@ type AppointmentInput = Omit<Appointment, 'id' | 'status' | 'createdAt'>
 export function saveAppointment(appointmentData: AppointmentInput): Appointment | null {
   try {
     const appointments = getAppointments()
-    const id = `appt_${Date.now()}`
+    const id = uuidv4()
     const saved: Appointment = {
       ...appointmentData,
       id,
@@ -376,6 +376,84 @@ export async function syncAllWithSupabase(): Promise<void> {
         localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(localAppts))
       }
     }
+    // 3. Sincronizar Layouts de Referência
+    const { data: remoteRefLayouts, error: refLayoutsErr } = await supabase.from('reference_layouts').select('*')
+    if (refLayoutsErr) {
+      console.warn('⚠️ Não foi possível carregar os layouts de referência do Supabase:', refLayoutsErr.message)
+    } else if (remoteRefLayouts) {
+      let localRefLayouts: ReferenceLayout[] = []
+      const REFERENCE_LAYOUTS_KEY = 'projefarma_reference_layouts'
+      try {
+        const raw = localStorage.getItem(REFERENCE_LAYOUTS_KEY)
+        localRefLayouts = raw ? (JSON.parse(raw) as ReferenceLayout[]) : []
+      } catch {
+        localRefLayouts = []
+      }
+
+      let hasRefUpdates = false
+
+      remoteRefLayouts.forEach((rl: any) => {
+        const localIndex = localRefLayouts.findIndex(l => l.id === rl.id)
+        if (localIndex === -1) {
+          localRefLayouts.push({
+            id: rl.id,
+            name: rl.name,
+            storeType: rl.storeType,
+            storeWidth: Number(rl.storeWidth),
+            storeHeight: Number(rl.storeHeight),
+            items: rl.items,
+            sourceImageBase64: rl.sourceImageBase64 || undefined,
+            approved: rl.approved,
+            createdAt: rl.createdAt,
+            updatedAt: rl.updatedAt,
+          })
+          hasRefUpdates = true
+        } else {
+          const local = localRefLayouts[localIndex]
+          if (new Date(rl.updatedAt).getTime() > new Date(local.updatedAt).getTime()) {
+            localRefLayouts[localIndex] = {
+              id: rl.id,
+              name: rl.name,
+              storeType: rl.storeType,
+              storeWidth: Number(rl.storeWidth),
+              storeHeight: Number(rl.storeHeight),
+              items: rl.items,
+              sourceImageBase64: rl.sourceImageBase64 || undefined,
+              approved: rl.approved,
+              createdAt: rl.createdAt,
+              updatedAt: rl.updatedAt,
+            }
+            hasRefUpdates = true
+          }
+        }
+      })
+
+      localRefLayouts.forEach(local => {
+        const remote = remoteRefLayouts.find((r: any) => r.id === local.id)
+        if (!remote || new Date(local.updatedAt).getTime() > new Date(remote.updatedAt).getTime()) {
+          const dbData = {
+            id: local.id,
+            name: local.name,
+            storeType: local.storeType,
+            storeWidth: local.storeWidth,
+            storeHeight: local.storeHeight,
+            items: local.items,
+            sourceImageBase64: local.sourceImageBase64 || null,
+            approved: local.approved,
+            createdAt: local.createdAt,
+            updatedAt: local.updatedAt,
+          }
+          supabase.from('reference_layouts').upsert(dbData).then(({ error }) => {
+            if (error) console.warn('⚠️ Erro ao sincronizar local → remoto de referência:', error.message)
+          })
+        }
+      })
+
+      if (hasRefUpdates) {
+        localStorage.setItem(REFERENCE_LAYOUTS_KEY, JSON.stringify(localRefLayouts))
+      }
+    }
+
     console.log('✅ Sincronização com o Supabase concluída.')
   } catch (err) {
     console.warn('⚠️ Falha crítica ao rodar sincronização com o Supabase:', err)

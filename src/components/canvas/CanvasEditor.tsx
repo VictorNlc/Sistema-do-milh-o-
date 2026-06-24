@@ -55,25 +55,6 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const containerRef = useRef<HTMLDivElement>(null)
   const internalRef = useRef<Konva.Stage | null>(null)
   const stageRef = externalStageRef ?? internalRef
-  // Per-instance handle to THIS editor's Konva stage. The app keeps a hidden
-  // desktop + mobile copy mounted at all times sharing a single stageRef, so
-  // stageRef.current is ambiguous (resolves to whichever mounted last). We use
-  // this dedicated ref to know which stage actually belongs to this instance.
-  const myStageRef = useRef<Konva.Stage | null>(null)
-  const assignStageRef = useCallback((node: Konva.Stage | null) => {
-    myStageRef.current = node
-    // Keep the shared/internal RefObject in sync for existing consumers.
-    ;(stageRef as React.MutableRefObject<Konva.Stage | null>).current = node
-  }, [stageRef])
-  const [containerSize, setContainerSize] = useState({ width: 600, height: 500 })
-  const [isDraggingOver, setIsDraggingOver] = useState(false)
-  const [editingCorridor, setEditingCorridor] = useState<EditingCorridor | null>(null)
-  const corridorCommittedRef = useRef(false)
-  const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 767 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
-
-  // Pinch-to-zoom state
-  const lastDist = useRef(0)
-  const lastCenter = useRef<Point | null>(null)
 
   // Specific state selectors to prevent unnecessary re-renders
   const storeWidth = useCanvasStore(state => state.storeWidth)
@@ -95,6 +76,34 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const deleteSelected = useCanvasStore(state => state.deleteSelected)
   const addItem = useCanvasStore(state => state.addItem)
   const setStageInstance = useCanvasStore(state => state.setStageInstance)
+
+  // Per-instance handle to THIS editor's Konva stage. The app keeps a hidden
+  // desktop + mobile copy mounted at all times sharing a single stageRef, so
+  // stageRef.current is ambiguous (resolves to whichever mounted last). We use
+  // this dedicated ref to know which stage actually belongs to this instance.
+  const myStageRef = useRef<Konva.Stage | null>(null)
+  const assignStageRef = useCallback((node: Konva.Stage | null) => {
+    myStageRef.current = node
+    // Keep the shared/internal RefObject in sync for existing consumers.
+    ;(stageRef as React.MutableRefObject<Konva.Stage | null>).current = node
+
+    // Also update stageInstance in the store when the stage mounts and is visible
+    if (node && containerRef.current) {
+      const r = containerRef.current.getBoundingClientRect()
+      if (r.width > 0 && r.height > 0) {
+        setStageInstance(node)
+      }
+    }
+  }, [stageRef, setStageInstance])
+  const [containerSize, setContainerSize] = useState({ width: 600, height: 500 })
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [editingCorridor, setEditingCorridor] = useState<EditingCorridor | null>(null)
+  const corridorCommittedRef = useRef(false)
+  const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 767 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
+
+  // Pinch-to-zoom state
+  const lastDist = useRef(0)
+  const lastCenter = useRef<Point | null>(null)
 
   const handleItemSelect = useCallback((id: string | null) => {
     setSelectedItem(id)
@@ -674,6 +683,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   // Unused but left for future: activeTool reference
   void activeTool
 
+  const shouldRenderStage = containerSize.width > 0 && containerSize.height > 0
+
   return (
     <div
       ref={containerRef}
@@ -688,120 +699,126 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
         </div>
       )}
 
-      <Stage
-        ref={assignStageRef}
-        width={containerSize.width}
-        height={containerSize.height}
-        x={stageX}
-        y={stageY}
-        scaleX={scale}
-        scaleY={scale}
-        draggable={!selectedItemId}
-        onMouseDown={handleStagePointerDown}
-        onTouchStart={handleStagePointerDown}
-        onDragEnd={handleStageDragEnd}
-        onWheel={handleWheel}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClick={handleStageClick}
-        onTap={handleStageClick}
-      >
-        <Layer name="background">
-          {/* Stage Background (Sketchup style cream backdrop) */}
-          <Rect
-            x={-1000} y={-1000} width={canvasW + 2000} height={canvasH + 2000}
-            fill="#FCF9F2"
-            listening={false}
-          />
-          {/* Floor */}
-          <Rect
-            name="floor"
-            x={0} y={0} width={canvasW} height={canvasH}
-            fill={FLOOR_COLOR}
-            shadowBlur={20} shadowColor={FLOOR_SHADOW}
-            shadowOffsetX={4} shadowOffsetY={8}
-          />
-
-          {/* Grid lines (memoized and listening=false) */}
-          {gridLines}
-        </Layer>
-
-        <Layer name="walls_and_measures" listening={false}>
-          {/* Ruler marks */}
-          {rulerMarks}
-
-          {/* Walls and COTAs */}
-          {outerWallsAndDimensions}
-        </Layer>
-
-        <Layer name="corridor_measures">
-          {/* Corridor Measures */}
-          {corridorMeasures}
-        </Layer>
-
-        {/* Heatmap overlay — only rendered when showHeatmap is true */}
-        {showHeatmap && (() => {
-          const heatPoints = generateHeatmap(items, storeWidth, storeHeight)
-          return (
-            <Layer listening={false} opacity={1}>
-              {heatPoints.map((pt, idx) => {
-                const px = pt.x * PIXELS_PER_METER
-                const py = pt.y * PIXELS_PER_METER
-                const pr = pt.radius * PIXELS_PER_METER
-                const { r, g, b, a } = heatColor(pt.intensity)
-                return (
-                  <Rect
-                    key={`hp-${idx}`}
-                    x={px - pr}
-                    y={py - pr}
-                    width={pr * 2}
-                    height={pr * 2}
-                    fillRadialGradientStartPoint={{ x: pr, y: pr }}
-                    fillRadialGradientStartRadius={0}
-                    fillRadialGradientEndPoint={{ x: pr, y: pr }}
-                    fillRadialGradientEndRadius={pr}
-                    fillRadialGradientColorStops={[
-                      0, `rgba(${r},${g},${b},${(a / 255).toFixed(2)})`,
-                      1, 'rgba(0,0,0,0)'
-                    ]}
-                    listening={false}
-                  />
-                )
-              })}
-              {/* Legend */}
-              <Rect x={8} y={canvasH - 68} width={130} height={60} fill="rgba(0,0,0,0.75)" cornerRadius={6} />
-              <Text x={14} y={canvasH - 62} text="Mapa de Calor" fontSize={8} fontStyle="bold" fill="rgba(255,255,255,0.8)" />
-              <Rect x={14} y={canvasH - 50} width={60} height={6} fillLinearGradientStartPoint={{ x: 0, y: 0 }} fillLinearGradientEndPoint={{ x: 60, y: 0 }} fillLinearGradientColorStops={[0,'rgba(30,80,200,0.9)',0.5,'rgba(255,200,10,0.9)',1,'rgba(255,20,10,0.9)']} cornerRadius={3} />
-              <Text x={14} y={canvasH - 40} text="Frio" fontSize={7} fill="rgba(255,255,255,0.45)" />
-              <Text x={54} y={canvasH - 40} text="Quente" fontSize={7} fill="rgba(255,255,255,0.45)" />
-              <Text x={14} y={canvasH - 28} text="Simulação de fluxo de clientes" fontSize={7} fill="rgba(255,255,255,0.3)" />
-            </Layer>
-          )
-        })()}
-
-        <Layer name="items_layer">
-          {items.map((item) => (
-            <CanvasItem
-              key={item.id}
-              item={item}
-              isSelected={selectedItemId === item.id}
-              isDraggable={isMobileDevice ? true : selectedItemId === item.id}
-              onSelect={handleItemSelect}
-              onDragEnd={handleItemDragEnd}
+      {shouldRenderStage ? (
+        <Stage
+          ref={assignStageRef}
+          width={containerSize.width}
+          height={containerSize.height}
+          x={stageX}
+          y={stageY}
+          scaleX={scale}
+          scaleY={scale}
+          draggable={!selectedItemId}
+          onMouseDown={handleStagePointerDown}
+          onTouchStart={handleStagePointerDown}
+          onDragEnd={handleStageDragEnd}
+          onWheel={handleWheel}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={handleStageClick}
+          onTap={handleStageClick}
+        >
+          <Layer name="background">
+            {/* Stage Background (Sketchup style cream backdrop) */}
+            <Rect
+              x={-1000} y={-1000} width={canvasW + 2000} height={canvasH + 2000}
+              fill="#FCF9F2"
+              listening={false}
             />
-          ))}
-        </Layer>
+            {/* Floor */}
+            <Rect
+              name="floor"
+              x={0} y={0} width={canvasW} height={canvasH}
+              fill={FLOOR_COLOR}
+              shadowBlur={20} shadowColor={FLOOR_SHADOW}
+              shadowOffsetX={4} shadowOffsetY={8}
+            />
 
-        {/* Customer Flow Simulation Layer */}
-        {showSimulation && (
-          <CustomerSimulationLayer 
-            items={items} 
-            storeWidth={storeWidth} 
-            storeHeight={storeHeight} 
-            pixelsPerMeter={PIXELS_PER_METER} 
-          />
-        )}
-      </Stage>
+            {/* Grid lines (memoized and listening=false) */}
+            {gridLines}
+          </Layer>
+
+          <Layer name="walls_and_measures" listening={false}>
+            {/* Ruler marks */}
+            {rulerMarks}
+
+            {/* Walls and COTAs */}
+            {outerWallsAndDimensions}
+          </Layer>
+
+          <Layer name="corridor_measures">
+            {/* Corridor Measures */}
+            {corridorMeasures}
+          </Layer>
+
+          {/* Heatmap overlay — only rendered when showHeatmap is true */}
+          {showHeatmap && (() => {
+            const heatPoints = generateHeatmap(items, storeWidth, storeHeight)
+            return (
+              <Layer listening={false} opacity={1}>
+                {heatPoints.map((pt, idx) => {
+                  const px = pt.x * PIXELS_PER_METER
+                  const py = pt.y * PIXELS_PER_METER
+                  const pr = pt.radius * PIXELS_PER_METER
+                  const { r, g, b, a } = heatColor(pt.intensity)
+                  return (
+                    <Rect
+                      key={`hp-${idx}`}
+                      x={px - pr}
+                      y={py - pr}
+                      width={pr * 2}
+                      height={pr * 2}
+                      fillRadialGradientStartPoint={{ x: pr, y: pr }}
+                      fillRadialGradientStartRadius={0}
+                      fillRadialGradientEndPoint={{ x: pr, y: pr }}
+                      fillRadialGradientEndRadius={pr}
+                      fillRadialGradientColorStops={[
+                        0, `rgba(${r},${g},${b},${(a / 255).toFixed(2)})`,
+                        1, 'rgba(0,0,0,0)'
+                      ]}
+                      listening={false}
+                    />
+                  )
+                })}
+                {/* Legend */}
+                <Rect x={8} y={canvasH - 68} width={130} height={60} fill="rgba(0,0,0,0.75)" cornerRadius={6} />
+                <Text x={14} y={canvasH - 62} text="Mapa de Calor" fontSize={8} fontStyle="bold" fill="rgba(255,255,255,0.8)" />
+                <Rect x={14} y={canvasH - 50} width={60} height={6} fillLinearGradientStartPoint={{ x: 0, y: 0 }} fillLinearGradientEndPoint={{ x: 60, y: 0 }} fillLinearGradientColorStops={[0,'rgba(30,80,200,0.9)',0.5,'rgba(255,200,10,0.9)',1,'rgba(255,20,10,0.9)']} cornerRadius={3} />
+                <Text x={14} y={canvasH - 40} text="Frio" fontSize={7} fill="rgba(255,255,255,0.45)" />
+                <Text x={54} y={canvasH - 40} text="Quente" fontSize={7} fill="rgba(255,255,255,0.45)" />
+                <Text x={14} y={canvasH - 28} text="Simulação de fluxo de clientes" fontSize={7} fill="rgba(255,255,255,0.3)" />
+              </Layer>
+            )
+          })()}
+
+          <Layer name="items_layer">
+            {items.map((item) => (
+              <CanvasItem
+                key={item.id}
+                item={item}
+                isSelected={selectedItemId === item.id}
+                isDraggable={isMobileDevice ? true : selectedItemId === item.id}
+                onSelect={handleItemSelect}
+                onDragEnd={handleItemDragEnd}
+              />
+            ))}
+          </Layer>
+
+          {/* Customer Flow Simulation Layer */}
+          {showSimulation && (
+            <CustomerSimulationLayer 
+              items={items} 
+              storeWidth={storeWidth} 
+              storeHeight={storeHeight} 
+              pixelsPerMeter={PIXELS_PER_METER} 
+            />
+          )}
+        </Stage>
+      ) : (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Invisible placeholder for hidden desktop/mobile copy */}
+        </div>
+      )}
 
       {editingCorridor && (
         <input

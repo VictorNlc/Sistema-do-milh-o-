@@ -1,12 +1,8 @@
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
-
-function getApiKey(): string {
-  return import.meta.env.VITE_OPENAI_API_KEY || ''
-}
+import { supabase } from './supabase'
 
 export function isApiKeyConfigured(): boolean {
-  const key = getApiKey()
-  return !!key && key !== 'sua-chave-api-aqui' && key.length > 10
+  // Retornamos true assumindo que a edge function está configurada com a chave
+  return true
 }
 
 export interface FloorPlanData {
@@ -55,15 +51,6 @@ export function fileToBase64(file: File): Promise<string> {
  * A IA identifica a largura, comprimento, portas, pilares e salas internas.
  */
 export async function readFloorPlanImage(base64Image: string, mimeType: string = 'image/jpeg'): Promise<FloorPlanResult> {
-  const apiKey = getApiKey()
-
-  if (!apiKey || apiKey === 'sua-chave-api-aqui') {
-    return {
-      success: false,
-      error: 'Chave API da OpenAI não configurada. Configure a variável VITE_OPENAI_API_KEY no arquivo .env.',
-    }
-  }
-
   const prompt = `Você é um Engenheiro e Arquiteto de Layout especialista em leitura de plantas baixas físicas de farmácias comerciais.
 Sua tarefa é analisar o arquivo de imagem enviado (que pode ser um desenho à mão livre/croqui ou uma planta técnica feita por engenheiro) e extrair os dados estruturais e as dimensões reais do local para que possamos representá-lo no nosso editor digital 2D.
 
@@ -103,13 +90,9 @@ Tenha extrema cautela para garantir que as coordenadas fiquem consistentes e den
   const timeoutId = setTimeout(() => controller.abort(), 40000) // 40 segundos de timeout para visão
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
+    if (!supabase) throw new Error("Supabase não está configurado.")
+    const { data: responseData, error: edgeError } = await supabase.functions.invoke('openai-proxy', {
+      body: {
         model: 'gpt-4o-mini',
         messages: [
           {
@@ -131,20 +114,14 @@ Tenha extrema cautela para garantir que as coordenadas fiquem consistentes e den
         response_format: { type: 'json_object' },
         temperature: 0.0, // temperatura 0 para máxima consistência e determinação
         max_tokens: 1500,
-      }),
-      signal: controller.signal,
+      },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMsg = errorData?.error?.message || response.statusText
-      return {
-        success: false,
-        error: `Erro ao processar imagem na API da OpenAI: ${errorMsg}`,
-      }
+    if (edgeError) {
+      throw edgeError
     }
 
-    const data = await response.json()
+    const data = responseData as any
     const content = data?.choices?.[0]?.message?.content?.trim()
 
     if (!content) {

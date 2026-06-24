@@ -183,6 +183,12 @@ export default function SketchupImporter() {
   // Carregar layouts de referência salvos
   useEffect(() => {
     setReferenceLayouts(getReferenceLayouts())
+    // Sincronizar em segundo plano com o Supabase e atualizar a lista
+    import('../../services/storage').then(({ syncAllWithSupabase }) => {
+      syncAllWithSupabase().then(() => {
+        setReferenceLayouts(getReferenceLayouts())
+      }).catch(err => console.warn('Erro ao sincronizar referências:', err))
+    })
   }, [])
 
   const handleFile = useCallback((file: File) => {

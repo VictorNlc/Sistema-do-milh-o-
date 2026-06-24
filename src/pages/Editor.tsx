@@ -311,11 +311,27 @@ export default function Editor() {
         })
       }
     } catch {}
-    const saved = saveLayout({ storeWidth, storeHeight, storeType, items, thumbnail })
-    if (saved) toast.success('Layout salvo')
-    else toast.error('Erro ao salvar')
+    const currentId = useCanvasStore.getState().layoutId || routeId || undefined
+    const nameToSave = useCanvasStore.getState().layoutName || 'Layout'
+    const saved = saveLayout({
+      id: currentId,
+      layoutName: nameToSave,
+      storeWidth,
+      storeHeight,
+      storeType,
+      items,
+      thumbnail
+    })
+    if (saved) {
+      toast.success('Layout salvo')
+      if (saved.id && saved.id !== currentId) {
+        useCanvasStore.setState({ layoutId: saved.id, shareToken: saved.shareToken })
+      }
+    } else {
+      toast.error('Erro ao salvar')
+    }
     return saved
-  }, [storeWidth, storeHeight, storeType, items, getActiveStage])
+  }, [storeWidth, storeHeight, storeType, items, getActiveStage, routeId])
 
   const handleSchedule = () => {
     const saved = handleSave()

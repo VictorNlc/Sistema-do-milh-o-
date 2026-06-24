@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react'
-import { PHARMACY_ITEMS } from '../../data/items'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { getPharmacyCatalog } from '../../services/catalogService'
 import { cleanItemName } from '../../utils/labels'
 import { useCanvasStore } from '../../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -226,6 +226,12 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('shelving')
   const [subFilter, setSubFilter] = useState<'all' | 'shelves' | 'counters' | 'displays' | 'furniture'>('all')
+  const [catalogItems, setCatalogItems] = useState<PharmacyItemTemplate[]>([])
+
+  useEffect(() => {
+    getPharmacyCatalog().then(setCatalogItems)
+  }, [])
+
   const { addItem, storeWidth, storeHeight, storeType } = useCanvasStore(
     useShallow(state => ({
       addItem: state.addItem,
@@ -263,7 +269,7 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
     }
   }
 
-  const filteredItems = useMemo(() => PHARMACY_ITEMS.filter(item => {
+  const filteredItems = useMemo(() => catalogItems.filter(item => {
     const matchSearch = !search || item.name.toLowerCase().includes(search.toLowerCase())
     
     let matchCat = true

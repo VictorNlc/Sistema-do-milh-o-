@@ -7,11 +7,12 @@ import { v4 as uuidv4 } from 'uuid'
 import type { DetectedItem, VisionAnalysisResult, StoreType, CanvasItem, ReferenceLayout } from '../types'
 import staticReferenceLayouts from '../data/referenceLayouts.json'
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
+import { supabase, isSupabaseConfigured } from './supabase'
+
 const REFERENCE_LAYOUTS_KEY = 'projefarma_reference_layouts'
 
-function getApiKey(): string {
-  return import.meta.env.VITE_OPENAI_API_KEY || ''
+export function isApiKeyConfigured(): boolean {
+  return true
 }
 
 // ─── Catálogo de itens para contexto da IA ─────────────────────────────────
@@ -108,17 +109,6 @@ export async function analyzeSketchupImage(
   storeHeight: number,
   storeType: StoreType,
 ): Promise<VisionAnalysisResult> {
-  const apiKey = getApiKey()
-
-  if (!apiKey || apiKey === 'sua-chave-api-aqui') {
-    return {
-      success: false,
-      items: [],
-      storeWidth,
-      storeHeight,
-      error: '🔑 Chave API não configurada. Verifique o arquivo .env (VITE_OPENAI_API_KEY)',
-    }
-  }
 
   // Garantir que está no formato correto para a API
   const imageUrl = imageBase64.startsWith('data:image')
@@ -128,13 +118,9 @@ export async function analyzeSketchupImage(
   const prompt = buildVisionPrompt(storeWidth, storeHeight, storeType)
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
+    if (!supabase) throw new Error("Supabase não está configurado.")
+    const { data: responseData, error: edgeError } = await supabase.functions.invoke('openai-proxy', {
+      body: {
         model: 'gpt-4o',
         messages: [
           {
@@ -156,20 +142,14 @@ export async function analyzeSketchupImage(
         ],
         temperature: 0.1,
         max_tokens: 4096,
-      }),
+      },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMsg = (errorData as { error?: { message?: string } })?.error?.message || response.statusText
-
-      if (response.status === 401) return { success: false, items: [], storeWidth, storeHeight, error: '🔑 Chave API inválida.' }
-      if (response.status === 429) return { success: false, items: [], storeWidth, storeHeight, error: '⏳ Limite de requisições. Aguarde um momento.' }
-      if (response.status === 402 || response.status === 403) return { success: false, items: [], storeWidth, storeHeight, error: '💳 Sem créditos na conta OpenAI.' }
-      return { success: false, items: [], storeWidth, storeHeight, error: `Erro da API: ${errorMsg}` }
+    if (edgeError) {
+      throw edgeError
     }
 
-    const data = await response.json() as {
+    const data = responseData as {
       choices?: { message?: { content?: string } }[]
     }
     const content = data?.choices?.[0]?.message?.content?.trim()
@@ -353,6 +333,59 @@ export function getReferenceLayouts(): ReferenceLayout[] {
   return merged
 }
 
+export function syncReferenceLayoutToSupabase(layout: ReferenceLayout): void {
+  if (!supabase || !isSupabaseConfigured) return
+
+  const dbData = {
+    id: layout.id,
+    name: layout.name,
+    storeType: layout.storeType,
+    storeWidth: layout.storeWidth,
+    storeHeight: layout.storeHeight,
+    items: layout.items,
+    sourceImageBase64: layout.sourceImageBase64 || null,
+    notes: layout.notes || null,
+    approved: layout.approved,
+    createdAt: layout.createdAt,
+    updatedAt: layout.updatedAt,
+  }
+
+  Promise.resolve(
+    supabase.from('reference_layouts')
+      .upsert(dbData)
+  )
+    .then(({ error }) => {
+      if (error) {
+        console.warn('⚠️ Erro ao sincronizar layout de referência com o Supabase:', error.message)
+      } else {
+        console.log('✅ Layout de referência sincronizado com o Supabase:', layout.id)
+      }
+    })
+    .catch(err => {
+      console.warn('⚠️ Falha de rede ao sincronizar layout de referência:', err)
+    })
+}
+
+export function deleteReferenceLayoutFromSupabase(id: string): void {
+  if (!supabase || !isSupabaseConfigured) return
+
+  Promise.resolve(
+    supabase.from('reference_layouts')
+      .delete()
+      .eq('id', id)
+  )
+    .then(({ error }) => {
+      if (error) {
+        console.warn('⚠️ Erro ao deletar layout de referência no Supabase:', error.message)
+      } else {
+        console.log('✅ Layout de referência deletado no Supabase:', id)
+      }
+    })
+    .catch(err => {
+      console.warn('⚠️ Falha de rede ao deletar layout de referência no Supabase:', err)
+    })
+}
+
 export function saveReferenceLayout(layout: Omit<ReferenceLayout, 'id' | 'createdAt' | 'updatedAt'>): ReferenceLayout {
   const layouts = getReferenceLayouts()
   const now = new Date().toISOString()
@@ -364,6 +397,7 @@ export function saveReferenceLayout(layout: Omit<ReferenceLayout, 'id' | 'create
   }
   layouts.push(newLayout)
   localStorage.setItem(REFERENCE_LAYOUTS_KEY, JSON.stringify(layouts))
+  syncReferenceLayoutToSupabase(newLayout)
   return newLayout
 }
 
@@ -371,14 +405,17 @@ export function updateReferenceLayout(id: string, updates: Partial<ReferenceLayo
   const layouts = getReferenceLayouts()
   const index = layouts.findIndex(l => l.id === id)
   if (index === -1) return null
-  layouts[index] = { ...layouts[index], ...updates, updatedAt: new Date().toISOString() }
+  const updated = { ...layouts[index], ...updates, updatedAt: new Date().toISOString() }
+  layouts[index] = updated
   localStorage.setItem(REFERENCE_LAYOUTS_KEY, JSON.stringify(layouts))
-  return layouts[index]
+  syncReferenceLayoutToSupabase(updated)
+  return updated
 }
 
 export function deleteReferenceLayout(id: string): void {
   const layouts = getReferenceLayouts().filter(l => l.id !== id)
   localStorage.setItem(REFERENCE_LAYOUTS_KEY, JSON.stringify(layouts))
+  deleteReferenceLayoutFromSupabase(id)
 }
 
 /** Busca layouts de referência compatíveis para uso como template de IA */

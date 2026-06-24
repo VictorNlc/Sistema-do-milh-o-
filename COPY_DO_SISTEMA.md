@@ -14,7 +14,6 @@ Este documento reúne todas as copies (títulos, botões, descrições, labels, 
 - Falha na sincronização inicial:
 - react
 - react-router-dom
-
 ---
 
 ## 📄 Arquivo: `src\components\StoreConfigModal.tsx`

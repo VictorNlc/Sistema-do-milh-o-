@@ -317,6 +317,12 @@ export default function ClientIntakeForm() {
       floorPlanDataUrl: form.spaceMode === 'floorplan' ? form.floorPlanPreview : null,
     }
     sessionStorage.setItem('projefarma_intake', JSON.stringify(intakeData))
+    sessionStorage.setItem('projefarma_client_details', JSON.stringify({
+      clientName: form.clientName.trim(),
+      phone: form.phone,
+      city: form.city.trim(),
+      state: form.state.trim(),
+    }))
 
     // Small delay for UX
     await new Promise(r => setTimeout(r, 700))
