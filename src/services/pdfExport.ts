@@ -5,7 +5,14 @@ import type { SavedLayout, CanvasItem } from '../types'
 type RgbTuple = [number, number, number]
 
 export function exportLayoutToPDF(
-  layout: { storeWidth: number; storeHeight: number; storeType: string; items: CanvasItem[]; layoutName?: string },
+  layout: { 
+    storeWidth: number; 
+    storeHeight: number; 
+    storeType: string; 
+    items: CanvasItem[]; 
+    layoutName?: string;
+    freightData?: { distanceKm: number; freightCost: number } | null 
+  },
   layoutImageDataUrl?: string
 ): boolean {
   try {
@@ -173,7 +180,7 @@ export function exportLayoutToPDF(
     doc.setFontSize(8)
     doc.setTextColor(...grayText)
     doc.text('Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.', margin, pdfH - margin)
-    doc.text('Página 1 de 2', pdfW - margin - 15, pdfH - margin)
+    doc.text('Página 1', pdfW - margin - 15, pdfH - margin)
 
     // ─── PAGE 2: INVENTORY & NEXT STEPS ───
     doc.addPage()
@@ -185,7 +192,90 @@ export function exportLayoutToPDF(
     doc.setTextColor(255, 255, 255)
     doc.text('ProjeLayout by Projefarma', margin, 10)
 
+    let pageCount = 2
+    const checkPageBreak = (requiredSpace: number) => {
+      if (y + requiredSpace > pdfH - margin - 10) {
+        doc.setFont('Helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(...grayText)
+        doc.text('Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.', margin, pdfH - margin)
+        doc.text(`Página ${pageCount}`, pdfW - margin - 15, pdfH - margin)
+
+        doc.addPage()
+        pageCount++
+        
+        doc.setFillColor(...primaryColor)
+        doc.rect(0, 0, pdfW, 15, 'F')
+        doc.setFont('Helvetica', 'bold')
+        doc.setFontSize(10)
+        doc.setTextColor(255, 255, 255)
+        doc.text('ProjeLayout by Projefarma', margin, 10)
+        
+        y = 25
+      }
+    }
+
     y = 28
+
+    // Read client details from sessionStorage
+    let clientDetails: any = null
+    try {
+      const raw = sessionStorage.getItem('projefarma_client_details')
+      if (raw) clientDetails = JSON.parse(raw)
+    } catch (e) {
+      console.warn('Erro ao ler projefarma_client_details:', e)
+    }
+
+    if (clientDetails) {
+      doc.setFont('Helvetica', 'bold')
+      doc.setFontSize(12)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Informações do Cliente & Farmácia', margin, y)
+
+      y += 6
+      doc.setFillColor(...lightBg)
+      doc.roundedRect(margin, y, contentW, 28, 2, 2, 'F')
+      doc.setDrawColor(...borderGray)
+      doc.roundedRect(margin, y, contentW, 28, 2, 2, 'D')
+
+      // Left Column
+      doc.setFont('Helvetica', 'bold')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Cliente:', margin + 6, y + 7)
+      doc.text('Endereço:', margin + 6, y + 15)
+      doc.text('Localidade:', margin + 6, y + 23)
+
+      doc.setFont('Helvetica', 'normal')
+      doc.setTextColor(50, 50, 50)
+      doc.text(clientDetails.clientName || 'Não informado', margin + 24, y + 7)
+      
+      const street = clientDetails.address || 'Não informado'
+      const num = clientDetails.number ? `, ${clientDetails.number}` : ''
+      const comp = clientDetails.complement ? ` - ${clientDetails.complement}` : ''
+      doc.text(`${street}${num}${comp}`, margin + 24, y + 15)
+      
+      const city = clientDetails.city || ''
+      const state = clientDetails.state || ''
+      const pc = clientDetails.postalCode || ''
+      doc.text(`${city} - ${state} (CEP: ${pc})`, margin + 24, y + 23)
+
+      // Right Column
+      doc.setFont('Helvetica', 'bold')
+      doc.setTextColor(...secondaryColor)
+      doc.text('Farmácia:', margin + contentW / 2 + 6, y + 7)
+      doc.text('País:', margin + contentW / 2 + 6, y + 15)
+      doc.text('Telefone:', margin + contentW / 2 + 6, y + 23)
+
+      doc.setFont('Helvetica', 'normal')
+      doc.setTextColor(50, 50, 50)
+      doc.text(clientDetails.pharmacyName || 'Não informado', margin + contentW / 2 + 25, y + 7)
+      doc.text(clientDetails.countryName || 'Não informado', margin + contentW / 2 + 25, y + 15)
+      doc.text(clientDetails.phone || 'Não informado', margin + contentW / 2 + 25, y + 23)
+
+      y += 38
+    }
+
     doc.setFont('Helvetica', 'bold')
     doc.setFontSize(14)
     doc.setTextColor(...secondaryColor)
@@ -244,6 +334,8 @@ export function exportLayoutToPDF(
       y += 12
     } else {
       groupList.forEach(group => {
+        checkPageBreak(12)
+
         doc.setDrawColor(...borderGray)
         doc.line(margin, y, margin + contentW, y)
         
@@ -273,13 +365,44 @@ export function exportLayoutToPDF(
       doc.setDrawColor(...borderGray)
       doc.line(margin, y, margin + contentW, y)
       
-      const totalBudget = furniture.reduce((sum, item) => sum + (item.price || 0), 0)
-      y += 8
+      const totalMoveis = furniture.reduce((sum, item) => sum + (item.price || 0), 0)
+      const freightCost = layout.freightData?.freightCost || 0
+      const totalOrcamento = totalMoveis + freightCost
+
+      console.log('[PDF] Total dos móveis:', totalMoveis)
+      console.log('[PDF] Total do frete:', freightCost)
+      console.log('[PDF] Total do orçamento:', totalOrcamento)
+
+      checkPageBreak(40)
+
+      y += 10
       doc.setFont('Helvetica', 'bold')
-      doc.setFontSize(10)
+      doc.setFontSize(14)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Resumo Financeiro', margin, y)
+
+      y += 8
+      doc.setFont('Helvetica', 'normal')
+      doc.setFontSize(11)
+      doc.setTextColor(...secondaryColor)
+      doc.text('Total dos Móveis:', margin + 4, y)
+      doc.setFont('Helvetica', 'bold')
+      doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalMoveis), margin + 45, y)
+
+      y += 6
+      doc.setFont('Helvetica', 'normal')
+      doc.text('Total do Frete:', margin + 4, y)
+      doc.setFont('Helvetica', 'bold')
+      doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(freightCost), margin + 45, y)
+
+      y += 6
+      doc.setFont('Helvetica', 'bold')
       doc.setTextColor(...primaryColor)
-      doc.text(`Orçamento Total Estimado dos Móveis: R$ ${totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin + 4, y)
+      doc.text('Total do Orçamento:', margin + 4, y)
+      doc.text(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOrcamento), margin + 45, y)
     }
+
+    checkPageBreak(65)
 
     y += 15
     doc.setFillColor(...lightBg)
@@ -303,7 +426,7 @@ export function exportLayoutToPDF(
     doc.setFontSize(8)
     doc.setTextColor(...grayText)
     doc.text('Gerado pelo ProjeLayout — Projefarma. Todos os direitos reservados.', margin, pdfH - margin)
-    doc.text('Página 2 de 2', pdfW - margin - 15, pdfH - margin)
+    doc.text(`Página ${pageCount}`, pdfW - margin - 15, pdfH - margin)
 
     doc.save(`projelayout-${(layoutName ?? 'layout').toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`)
     return true

@@ -114,6 +114,7 @@ export default function Editor() {
     toggleSnapToGrid, toggleGrid, toggleMeasures,
     deleteSelected, undo, redo, canUndo, canRedo,
     getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas, loadLayout,
+    freightData,
   } = useCanvasStore(
     useShallow(state => ({
       storeWidth: state.storeWidth,
@@ -149,6 +150,8 @@ export default function Editor() {
       clearCanvas: state.clearCanvas,
       loadLayout: state.loadLayout,
       layoutName: state.layoutName,
+      setFreightData: state.setFreightData,
+      freightData: state.freightData,
     }))
   )
 
@@ -240,6 +243,9 @@ export default function Editor() {
 
             if (intake.pharmacyName) {
               useCanvasStore.getState().setLayoutName(intake.pharmacyName)
+            }
+            if (intake.freightData) {
+              useCanvasStore.getState().setFreightData(intake.freightData)
             }
           } catch (e) {
             console.warn('Erro ao processar dados de intake:', e)
@@ -378,8 +384,14 @@ export default function Editor() {
       // Also download the PNG file separately
       downloadLayoutPNG(true)
 
+      if (freightData?.freightCost === undefined || freightData?.freightCost === null) {
+        toast.error('Não foi possível gerar o orçamento porque o frete ainda não foi calculado.')
+        setShowExportOptions(false)
+        return
+      }
+
       const { exportLayoutToPDF } = await import('../services/pdfExport')
-      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout' }
+      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout', freightData }
       const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
       if (success) {
         toast.success('Relatório PDF gerado!')

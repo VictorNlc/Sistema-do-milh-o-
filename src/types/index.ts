@@ -107,6 +107,10 @@ export interface SavedLayout {
   createdAt: string
   updatedAt: string
   layoutId?: string | null
+  freightData?: {
+    distanceKm: number
+    freightCost: number
+  } | null
 }
 
 // ─── Agendamento ──────────────────────────────────────────────────────────────
