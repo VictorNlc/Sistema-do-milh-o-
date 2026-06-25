@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   SUPPORTED_COUNTRIES,
@@ -13,6 +13,7 @@ import {
 } from '../services/postalCode'
 import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
+import UY_CITIES_BY_DEPT from '../data/uyCitiesByDept.json'
 import './ClientIntakeForm.css'
 const URUGUAY_DEPARTMENTS = [
   'Artigas',
@@ -88,6 +89,11 @@ export default function ClientIntakeForm() {
 
   // Flag for manual city entry (when API returns only province)
   const [isCityManual, setIsCityManual] = useState(false)
+
+  // Autocomplete state for Uruguay cities
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState<FormData>({
     clientName: '',
@@ -289,6 +295,7 @@ export default function ClientIntakeForm() {
     setFreightMessage(null)
     setLastFetchedKey('')
     setIsCityManual(form.country === 'UY')
+    setShowSuggestions(false)
   }, [form.country])
 
   // ── Geocoding + Frete com cidade/estado manuais ─────────────────────────
@@ -332,6 +339,63 @@ export default function ClientIntakeForm() {
     return () => clearTimeout(timer)
   }, [isCityManual, form.country, form.city, form.state])
 
+  // ── Autocomplete Logic for Uruguay ───────────────────────────────────────
+  const citiesInDept = useMemo(() => {
+    if (form.country !== 'UY' || !form.state) return []
+    return (UY_CITIES_BY_DEPT as Record<string, string[]>)[form.state] || []
+  }, [form.country, form.state])
+
+  const filteredCities = useMemo(() => {
+    if (form.country !== 'UY' || !form.city || form.city.trim().length < 2) return []
+
+    const normalize = (s: string) =>
+      s.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim()
+
+    const query = normalize(form.city)
+    return citiesInDept.filter(city => normalize(city).includes(query))
+  }, [form.country, form.city, citiesInDept])
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  const handleSelectSuggestion = (city: string) => {
+    set('city', city)
+    setShowSuggestions(false)
+  }
+
+  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (form.country !== 'UY' || !showSuggestions || filteredCities.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestionIndex(prev => (prev + 1) % filteredCities.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestionIndex(prev => (prev - 1 + filteredCities.length) % filteredCities.length)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (activeSuggestionIndex >= 0 && activeSuggestionIndex < filteredCities.length) {
+        handleSelectSuggestion(filteredCities[activeSuggestionIndex])
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false)
+    }
+  }
+
   // ── Postal code input handler ───────────────────────────────────────────
   const handlePostalCodeChange = (value: string) => {
     if (form.country) {
@@ -342,11 +406,13 @@ export default function ClientIntakeForm() {
   }
 
   const handleUruguayDepartmentChange = (department: string) => {
-    set('state', department)
-    const postcode = getReferencePostcodeForUruguay(department)
-    if (postcode) {
-      set('postalCode', postcode)
-    }
+    setForm(prev => ({
+      ...prev,
+      state: department,
+      city: '',
+      postalCode: getReferencePostcodeForUruguay(department) || prev.postalCode
+    }))
+    setShowSuggestions(false)
   }
 
   // ── Step 1 validation ──────────────────────────────────────────────────
@@ -601,23 +667,60 @@ export default function ClientIntakeForm() {
                       {form.country && !isCityManual && <span className="cif-autofill-badge">Preenchimento automático</span>}
                       {isCityManual && <span className="cif-required">*</span>}
                     </label>
-                    <input
-                      id="cif-city"
-                      type="text"
-                      placeholder={
-                        !form.country
-                          ? 'Selecione o país primeiro'
-                          : isCityManual
-                            ? 'Informe a cidade'
-                            : 'Preenchido pelo código postal'
-                      }
-                      value={form.city}
-                      readOnly={!isCityManual}
-                      onChange={isCityManual ? e => set('city', e.target.value) : undefined}
-                      onBlur={() => handleBlur('city')}
-                      className={`${errors.city ? 'error' : ''} ${!isCityManual ? 'cif-readonly' : ''}`}
-                      tabIndex={isCityManual ? 0 : -1}
-                    />
+                    {form.country === 'UY' ? (
+                      <div className="cif-autocomplete-wrap" ref={suggestionsRef}>
+                        <input
+                          id="cif-city"
+                          type="text"
+                          placeholder="Informe a cidade"
+                          value={form.city}
+                          readOnly={false}
+                          onChange={e => {
+                            set('city', e.target.value)
+                            setShowSuggestions(true)
+                            setActiveSuggestionIndex(0)
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          onBlur={() => handleBlur('city')}
+                          onKeyDown={handleCityKeyDown}
+                          className={errors.city ? 'error' : ''}
+                          tabIndex={0}
+                          autoComplete="off"
+                        />
+                        {showSuggestions && filteredCities.length > 0 && (
+                          <ul className="cif-autocomplete-dropdown">
+                            {filteredCities.map((city, idx) => (
+                              <li
+                                key={city}
+                                className={`cif-autocomplete-item ${idx === activeSuggestionIndex ? 'active' : ''}`}
+                                onMouseDown={() => handleSelectSuggestion(city)}
+                                onMouseEnter={() => setActiveSuggestionIndex(idx)}
+                              >
+                                {city}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        id="cif-city"
+                        type="text"
+                        placeholder={
+                          !form.country
+                            ? 'Selecione o país primeiro'
+                            : isCityManual
+                              ? 'Informe a cidade'
+                              : 'Preenchido pelo código postal'
+                        }
+                        value={form.city}
+                        readOnly={!isCityManual}
+                        onChange={isCityManual ? e => set('city', e.target.value) : undefined}
+                        onBlur={() => handleBlur('city')}
+                        className={`${errors.city ? 'error' : ''} ${!isCityManual ? 'cif-readonly' : ''}`}
+                        tabIndex={isCityManual ? 0 : -1}
+                      />
+                    )}
                     {errors.city && <span className="cif-error-msg">{errors.city}</span>}
                     {form.country === 'UY' && (
                       <span className="cif-info-msg" style={{ fontSize: '0.75rem', color: 'rgba(11, 61, 46, 0.6)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
