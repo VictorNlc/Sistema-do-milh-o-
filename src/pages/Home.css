@@ -262,17 +262,16 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
-  background: rgba(10, 24, 18, 0.65);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--green-400);
   border-radius: var(--r-pill);
   padding: var(--s2) var(--s4);
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: var(--text-2);
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+  color: var(--green-400);
+  box-shadow: var(--sh-xs);
   position: relative;
-  animation: borderPulse 4s ease-in-out infinite alternate;
 }
 
 .hero-title {
