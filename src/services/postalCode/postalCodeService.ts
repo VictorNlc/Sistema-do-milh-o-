@@ -4,7 +4,11 @@
 
 import type { PostalCodeProvider, ProviderResult } from './types'
 import { brazilProvider } from './providers/brazilProvider'
-import { argentinaProvider } from './providers/argentinaProvider'
+import {
+  argentinaProvider,
+  getArgentinaProvinces,
+  getArgentinaCities,
+} from './providers/argentinaProvider'
 import { uruguayProvider } from './providers/uruguayProvider'
 import {
   paraguayProvider,
@@ -182,4 +186,6 @@ export {
   getParaguayDepartments,
   getParaguayCities,
   getParaguayPostcode,
+  getArgentinaProvinces,
+  getArgentinaCities,
 }
