@@ -32,6 +32,7 @@ export function saveLayout(layoutData: LayoutInput): SavedLayout | null {
     ...(layoutData as SavedLayout),
     id,
     shareToken,
+    layoutName: layoutData.layoutName || 'Layout sem nome',
     updatedAt: new Date().toISOString(),
     createdAt: layoutData.createdAt || new Date().toISOString(),
     thumbnail: layoutData.thumbnail ?? null,
@@ -220,7 +221,7 @@ export function syncLayoutToSupabase(layout: SavedLayout): void {
   
   const dbData = {
     id: layout.id,
-    layoutName: layout.layoutName,
+    layoutName: layout.layoutName || 'Layout sem nome',
     storeWidth: layout.storeWidth,
     storeHeight: layout.storeHeight,
     storeType: layout.storeType,
@@ -370,48 +371,62 @@ export async function syncAllWithSupabase(): Promise<void> {
       }
     }
 
-    // 2. Sincronizar Agendamentos
-    const { data: remoteAppts, error: apptsErr } = await supabase.from('appointments').select('*')
-    if (apptsErr) {
-      console.warn('⚠️ Não foi possível carregar os agendamentos do Supabase:', apptsErr.message)
-    } else if (remoteAppts) {
-      const localAppts = getAppointments()
-      let hasUpdates = false
+    // 2. Sincronizar Agendamentos (apenas se o usuário for administrador)
+    let isAdmin = false
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+        isAdmin = profile?.role === 'admin'
+      }
+    } catch (e) {
+      console.warn('Erro ao verificar permissão admin para sincronização de agendamentos:', e)
+    }
 
-      remoteAppts.forEach((ra: any) => {
-        const local = localAppts[ra.id]
-        if (!local || (ra.updatedAt && (!local.updatedAt || new Date(ra.updatedAt).getTime() > new Date(local.updatedAt).getTime()))) {
-          localAppts[ra.id] = {
-            id: ra.id,
-            name: ra.name,
-            email: ra.email,
-            phone: ra.phone,
-            city: ra.city,
-            storeType: ra.storeType,
-            storeArea: ra.storeArea,
-            date: ra.date,
-            time: ra.time,
-            notes: ra.notes,
-            layoutId: ra.layoutId,
-            status: ra.status,
-            createdAt: ra.createdAt,
-            updatedAt: ra.updatedAt
+    if (isAdmin) {
+      const { data: remoteAppts, error: apptsErr } = await supabase.from('appointments').select('*')
+      if (apptsErr) {
+        console.warn('⚠️ Não foi possível carregar os agendamentos do Supabase:', apptsErr.message)
+      } else if (remoteAppts) {
+        const localAppts = getAppointments()
+        let hasUpdates = false
+
+        remoteAppts.forEach((ra: any) => {
+          const local = localAppts[ra.id]
+          if (!local || (ra.updatedAt && (!local.updatedAt || new Date(ra.updatedAt).getTime() > new Date(local.updatedAt).getTime()))) {
+            localAppts[ra.id] = {
+              id: ra.id,
+              name: ra.name,
+              email: ra.email,
+              phone: ra.phone,
+              city: ra.city,
+              storeType: ra.storeType,
+              storeArea: ra.storeArea,
+              date: ra.date,
+              time: ra.time,
+              notes: ra.notes,
+              layoutId: ra.layoutId,
+              status: ra.status,
+              createdAt: ra.createdAt,
+              updatedAt: ra.updatedAt
+            }
+            hasUpdates = true
           }
-          hasUpdates = true
-        }
-      })
+        })
 
-      Object.values(localAppts).forEach(local => {
-        const remote = remoteAppts.find((r: any) => r.id === local.id)
-        if (!remote || (local.updatedAt && (!remote.updatedAt || new Date(local.updatedAt).getTime() > new Date(remote.updatedAt).getTime()))) {
-          syncAppointmentToSupabase(local)
-        }
-      })
+        Object.values(localAppts).forEach(local => {
+          const remote = remoteAppts.find((r: any) => r.id === local.id)
+          if (!remote || (local.updatedAt && (!remote.updatedAt || new Date(local.updatedAt).getTime() > new Date(remote.updatedAt).getTime()))) {
+            syncAppointmentToSupabase(local)
+          }
+        })
 
-      if (hasUpdates) {
-        localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(localAppts))
+        if (hasUpdates) {
+          localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(localAppts))
+        }
       }
     }
+
     // 3. Sincronizar Layouts de Referência
     const { data: remoteRefLayouts, error: refLayoutsErr } = await supabase.from('reference_layouts').select('*')
     if (refLayoutsErr) {

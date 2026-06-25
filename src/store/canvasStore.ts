@@ -11,6 +11,7 @@ import type {
 } from '../types'
 import { clampItemPosition, getRotatedBounds } from '../utils/geometry'
 import { cleanItemName } from '../utils/labels'
+import { toast } from './toastStore'
 
 // Pixels por metro no canvas (escala)
 export const PIXELS_PER_METER = 60
@@ -134,6 +135,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // === ACTIONS ===
   setStoreDimensions: (width, height) => {
+    if (width * height > 700) {
+      toast.error('A área total da farmácia não pode exceder 700m².')
+      return
+    }
     const oldW = get().storeWidth
     const oldH = get().storeHeight
 

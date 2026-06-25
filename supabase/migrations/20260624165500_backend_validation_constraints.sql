@@ -4,7 +4,7 @@
 ALTER TABLE public.appointments
   ADD CONSTRAINT chk_appointments_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') NOT VALID,
   ADD CONSTRAINT chk_appointments_status CHECK (status IN ('novo', 'em_analise', 'confirmado', 'proposta_enviada', 'concluido')) NOT VALID,
-  ADD CONSTRAINT chk_appointments_storeType CHECK ("storeType" IN ('Popular', 'Premium', 'Manipulação', 'Completa')) NOT VALID;
+  ADD CONSTRAINT chk_appointments_storeType CHECK ("storeType" IN ('Popular', 'Premium', 'Manipulação', 'Completa', 'Outro')) NOT VALID;
 
 -- 2. Validações na tabela layouts
 ALTER TABLE public.layouts

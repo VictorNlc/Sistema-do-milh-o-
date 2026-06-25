@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getAllLayoutsList, getAllAppointmentsList, updateAppointmentStatus } from '../services/storage'
+import { getAllLayoutsList, getAllAppointmentsList, updateAppointmentStatus, syncAllWithSupabase } from '../services/storage'
+import { supabase } from '../services/supabase'
 import { toast } from '../store/toastStore'
 import type { SavedLayout, Appointment, AppointmentStatus } from '../types'
 import SketchupImporter from '../components/admin/SketchupImporter'
 import './Admin.css'
-
-const ADMIN_PASSWORD = 'projefarma2025'
 
 const STATUS_OPTIONS: AppointmentStatus[] = ['novo', 'em_analise', 'confirmado', 'proposta_enviada', 'concluido']
 const STATUS_LABELS = {
@@ -32,24 +31,83 @@ export default function Admin() {
   const navigate = useNavigate()
   const [authed, setAuthed] = useState(false)
   const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('appointments')
   const [layouts, setLayouts] = useState<SavedLayout[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [filterStatus, setFilterStatus] = useState('')
 
   useEffect(() => {
+    const checkSession = async () => {
+      if (!supabase) {
+        setLoading(false)
+        return
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+          if (profile?.role === 'admin') {
+            setAuthed(true)
+          } else {
+            await supabase.auth.signOut()
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao checar sessão ativa:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkSession()
+  }, [])
+
+  useEffect(() => {
     if (authed) {
-      setLayouts(getAllLayoutsList())
-      setAppointments(getAllAppointmentsList())
+      setLoading(true)
+      syncAllWithSupabase().then(() => {
+        setLayouts(getAllLayoutsList())
+        setAppointments(getAllAppointmentsList())
+        setLoading(false)
+      }).catch((err) => {
+        console.warn('Erro ao sincronizar dados:', err)
+        setLayouts(getAllLayoutsList())
+        setAppointments(getAllAppointmentsList())
+        setLoading(false)
+      })
     }
   }, [authed])
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      setAuthed(true)
-      toast.success('Bem-vindo ao painel administrativo!')
-    } else {
-      toast.error('Senha incorreta.')
+  const handleLogin = async () => {
+    if (!supabase) {
+      toast.error('Erro: Supabase não está configurado.')
+      return
+    }
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'admin@projefarma.com.br',
+        password: password
+      })
+      if (error) {
+        toast.error('Senha incorreta ou erro de acesso.')
+        setLoading(false)
+        return
+      }
+      if (data?.user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
+        if (profile?.role === 'admin') {
+          setAuthed(true)
+          toast.success('Bem-vindo ao painel administrativo!')
+        } else {
+          await supabase.auth.signOut()
+          toast.error('Acesso negado. Apenas administradores.')
+        }
+      }
+    } catch (err) {
+      toast.error('Erro ao efetuar login.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -62,6 +120,20 @@ export default function Admin() {
   const filteredAppointments = filterStatus
     ? appointments.filter(a => a.status === filterStatus)
     : appointments
+
+  if (loading && !authed) {
+    return (
+      <div className="admin-login">
+        <div className="admin-login-card animate-scale-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+          <div className="admin-login-icon" style={{ animation: 'pulse 1.5s infinite' }}>
+            <I.Lock />
+          </div>
+          <h1 className="admin-login-title">Carregando...</h1>
+          <p className="admin-login-desc">Verificando sessão e sincronizando dados...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!authed) {
     return (
@@ -122,7 +194,14 @@ export default function Admin() {
               <div className="admin-stat-label">Novos</div>
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/')}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={async () => {
+              if (supabase) await supabase.auth.signOut()
+              setAuthed(false)
+              navigate('/')
+            }}
+          >
             Sair
           </button>
         </div>

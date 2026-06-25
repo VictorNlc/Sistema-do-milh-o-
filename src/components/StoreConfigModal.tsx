@@ -39,11 +39,17 @@ export default function StoreConfigModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleSave = () => {
+    const w = Number(width) || 10;
+    const h = Number(height) || 12;
+    if (w * h > 700) {
+      toast.error('A área total da farmácia não pode exceder 700m².');
+      return;
+    }
     const newPillars = parseJson<Pillar[]>(pillarsText, []);
     const newEntrance = parseJson<Door | null>(entranceText, null);
     const newExit = parseJson<Door | null>(exitText, null);
 
-    store.setStoreDimensions(Number(width) || 10, Number(height) || 12);
+    store.setStoreDimensions(w, h);
     store.setStoreType('premium'); // Linha única
     store.setLayoutDensity(density);
     store.setPillars(newPillars);

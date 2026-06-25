@@ -576,6 +576,10 @@ export default function ClientIntakeForm() {
       const h = parseFloat(form.height)
       if (!form.width || isNaN(w) || w < 3 || w > 100) errs.width = 'Largura deve ser entre 3m e 100m.'
       if (!form.height || isNaN(h) || h < 3 || h > 100) errs.height = 'Comprimento deve ser entre 3m e 100m.'
+      if (!errs.width && !errs.height && w * h > 700) {
+        errs.width = 'A área total não pode exceder 700m².'
+        errs.height = 'A área total não pode exceder 700m².'
+      }
     } else {
       if (!form.floorPlanFile) errs.floorPlanFile = 'Selecione uma imagem da planta baixa.'
     }
@@ -648,10 +652,6 @@ export default function ClientIntakeForm() {
     await new Promise(r => setTimeout(r, 700))
 
     const params = new URLSearchParams()
-    if (form.spaceMode === 'dimensions') {
-      params.set('w', String(parseFloat(form.width)))
-      params.set('h', String(parseFloat(form.height)))
-    }
     if (form.spaceMode === 'floorplan') {
       params.set('floorplan', '1')
     }

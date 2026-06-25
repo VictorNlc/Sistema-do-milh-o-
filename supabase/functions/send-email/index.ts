@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const validStoreTypes = ['Popular', 'Premium', 'Manipulação', 'Completa']
+    const validStoreTypes = ['Popular', 'Premium', 'Manipulação', 'Completa', 'Outro']
     if (!storeType || typeof storeType !== 'string' || !validStoreTypes.includes(storeType)) {
       return new Response(JSON.stringify({ success: false, error: 'Tipo de loja inválido.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

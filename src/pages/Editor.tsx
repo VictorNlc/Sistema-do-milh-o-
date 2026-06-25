@@ -258,8 +258,12 @@ export default function Editor() {
             const numW = Number(w)
             const numH = Number(h)
             if (!isNaN(numW) && !isNaN(numH) && numW >= 3 && numH >= 3) {
-              setStoreDimensions(numW, numH)
-              toast.success(`Dimensões da URL aplicadas: ${numW}×${numH}m`)
+              if (numW * numH <= 700) {
+                setStoreDimensions(numW, numH)
+                toast.success(`Dimensões da URL aplicadas: ${numW}×${numH}m`)
+              } else {
+                toast.error('As dimensões na URL excedem o limite permitido de 700m².')
+              }
             }
           }
         }

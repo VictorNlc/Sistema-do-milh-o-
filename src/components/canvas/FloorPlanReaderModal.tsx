@@ -129,6 +129,11 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
   const handleApply = () => {
     if (!resultData) return
 
+    if (resultData.storeWidth * resultData.storeHeight > 700) {
+      toast.error('A planta baixa analisada excede o limite permitido de 700m².')
+      return
+    }
+
     // 1. Limpar o canvas antes de aplicar as novas dimensões e obstáculos
     clearCanvas()
 
