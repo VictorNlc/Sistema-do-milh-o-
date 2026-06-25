@@ -92,6 +92,7 @@ export default function ClientIntakeForm() {
 
   // Flag for manual city entry (when API returns only province)
   const [isCityManual, setIsCityManual] = useState(false)
+  const [isStateManual, setIsStateManual] = useState(false)
 
   // Autocomplete state for Uruguay cities
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -147,17 +148,22 @@ export default function ClientIntakeForm() {
       }
     }
     if (field === 'city' && !currentForm.city.trim()) {
-      if (currentForm.country === 'UY' || currentForm.country === 'PY') {
+      if (currentForm.country === 'UY' || currentForm.country === 'PY' || currentForm.country === 'AR') {
         return 'Informe a cidade para continuar.'
       }
       return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
     }
-    if (field === 'state' && !currentForm.state.trim()) return 'Estado não preenchido. Verifique o código postal.'
+    if (field === 'state' && !currentForm.state.trim()) {
+      if (currentForm.country === 'AR' && isStateManual) {
+        return 'Informe o estado / província para continuar.'
+      }
+      return 'Estado não preenchido. Verifique o código postal.'
+    }
     if (field === 'address' && !currentForm.address.trim()) return 'Informe o endereço.'
     if (field === 'phone' && currentForm.phone.replace(/\D/g, '').length < 10) return 'Informe um telefone válido.'
     if (field === 'employees' && !currentForm.employees) return 'Selecione o número de funcionários.'
     return undefined
-  }, [])
+  }, [isCityManual, isStateManual])
 
   const handleBlur = (field: keyof FormData) => {
     const error = validateField(field, form)
@@ -230,11 +236,18 @@ export default function ClientIntakeForm() {
         console.warn('[Freight] Apenas província identificada.')
         console.log('[Freight] Utilizando campo Cidade existente para preenchimento manual.')
         setIsCityManual(true)
-        setFreightMessage(
-          'Não foi possível identificar sua cidade através do código postal.\n\nPara calcular o frete corretamente, informe a cidade onde você está localizado.'
-        )
+        if (country === 'AR') {
+          setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
+        } else {
+          setFreightMessage(
+            'Não foi possível identificar sua cidade através do código postal.\n\nPara calcular o frete corretamente, informe a cidade onde você está localizado.'
+          )
+        }
       } else {
         setIsCityManual(false)
+        if (country === 'AR') {
+          setIsStateManual(false)
+        }
         setFreightMessage(null)
 
         // Pipeline: Geocoding → Distância → Frete (tudo em console)
@@ -262,7 +275,15 @@ export default function ClientIntakeForm() {
         setPostalMessage('Código postal não encontrado na base do Paraguai.')
         return
       }
+      if (country === 'AR') {
+        setIsCityManual(true)
+        setIsStateManual(true)
+        setForm(prev => ({ ...prev, city: '', state: '' }))
+        setPostalMessage(result.error || 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.')
+        return
+      }
       setIsCityManual(false)
+      setIsStateManual(false)
       setForm(prev => ({ ...prev, city: '', state: '' }))
       setPostalMessage(result.error || 'Código postal inválido.')
     }
@@ -327,6 +348,7 @@ export default function ClientIntakeForm() {
     setFreightMessage(null)
     setLastFetchedKey('')
     setIsCityManual(form.country === 'UY' || form.country === 'PY')
+    setIsStateManual(false)
     setShowSuggestions(false)
   }, [form.country])
 
@@ -364,6 +386,12 @@ export default function ClientIntakeForm() {
     // UY & PY: se a cidade estiver vazia, exibe mensagem informativa de obrigatoriedade e não consulta Nominatim
     if ((form.country === 'UY' || form.country === 'PY') && !form.city.trim()) {
       setFreightMessage('Cidade obrigatória para cálculo do frete.')
+      return
+    }
+
+    // AR: se a cidade estiver vazia, exibe a ajuda visual
+    if (form.country === 'AR' && !form.city.trim()) {
+      setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
       return
     }
 
@@ -898,10 +926,12 @@ export default function ClientIntakeForm() {
                   <div className="cif-field">
                     <label htmlFor="cif-state">
                       Estado / Província
-                      {form.country && form.country !== 'UY' && form.country !== 'PY' && (
+                      {form.country && form.country !== 'UY' && form.country !== 'PY' && !isStateManual && (
                         <span className="cif-autofill-badge">Preenchimento automático</span>
                       )}
-                      {(form.country === 'UY' || form.country === 'PY') && <span className="cif-required">*</span>}
+                      {(form.country === 'UY' || form.country === 'PY' || (form.country === 'AR' && isStateManual)) && (
+                        <span className="cif-required">*</span>
+                      )}
                     </label>
                     {form.country === 'UY' || form.country === 'PY' ? (
                       <select
@@ -932,12 +962,16 @@ export default function ClientIntakeForm() {
                         placeholder={
                           !form.country
                             ? 'Selecione o país primeiro'
-                            : 'Preenchido pelo código postal'
+                            : isStateManual
+                              ? 'Informe o estado / província'
+                              : 'Preenchido pelo código postal'
                         }
                         value={form.state}
-                        readOnly={true}
-                        className={`${errors.state ? 'error' : ''} cif-readonly`}
-                        tabIndex={-1}
+                        readOnly={!isStateManual}
+                        onChange={isStateManual ? e => set('state', e.target.value) : undefined}
+                        onBlur={() => handleBlur('state')}
+                        className={`${errors.state ? 'error' : ''} ${!isStateManual ? 'cif-readonly' : ''}`}
+                        tabIndex={isStateManual ? 0 : -1}
                       />
                     )}
                     {errors.state && <span className="cif-error-msg">{errors.state}</span>}
