@@ -9,6 +9,7 @@ export {
   getPostalCodeMaxLength,
   getProvider,
   SUPPORTED_COUNTRIES,
+  getReferencePostcodeForUruguay,
 } from './postalCodeService'
 
 export type {

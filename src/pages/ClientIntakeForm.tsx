@@ -9,10 +9,32 @@ import {
   getPostalCodePlaceholder,
   getPostalCodeMaxLength,
   getPostalCodeLength,
+  getReferencePostcodeForUruguay,
 } from '../services/postalCode'
 import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
 import './ClientIntakeForm.css'
+const URUGUAY_DEPARTMENTS = [
+  'Artigas',
+  'Canelones',
+  'Cerro Largo',
+  'Colonia',
+  'Durazno',
+  'Flores',
+  'Florida',
+  'Lavalleja',
+  'Maldonado',
+  'Montevideo',
+  'Paysandú',
+  'Río Negro',
+  'Rivera',
+  'Rocha',
+  'Salto',
+  'San José',
+  'Soriano',
+  'Tacuarembó',
+  'Treinta y Tres',
+]
 
 interface FormData {
   clientName: string
@@ -111,7 +133,12 @@ export default function ClientIntakeForm() {
         }
       }
     }
-    if (field === 'city' && !currentForm.city.trim()) return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
+    if (field === 'city' && !currentForm.city.trim()) {
+      if (currentForm.country === 'UY') {
+        return 'Informe a cidade para continuar.'
+      }
+      return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
+    }
     if (field === 'state' && !currentForm.state.trim()) return 'Estado não preenchido. Verifique o código postal.'
     if (field === 'address' && !currentForm.address.trim()) return 'Informe o endereço.'
     if (field === 'phone' && currentForm.phone.replace(/\D/g, '').length < 10) return 'Informe um telefone válido.'
@@ -167,11 +194,15 @@ export default function ClientIntakeForm() {
     setPostalLoading(false)
 
     if (result.success && result.data) {
-      // UY: não preencher cidade/estado automaticamente (múltiplas cidades por CEP)
       if (country === 'UY') {
+        setForm(prev => ({
+          ...prev,
+          city: '',
+          state: result.data!.state,
+        }))
         setPostalMessage(null)
         setIsCityManual(true)
-        console.log('[UY] Código postal válido. Cidade e departamento devem ser informados manualmente.')
+        console.log('[UY] Código postal válido. Departamento preenchido automaticamente.')
         return
       }
 
@@ -198,6 +229,7 @@ export default function ClientIntakeForm() {
 
         if (geoResult.success && geoResult.data) {
           const freightRes = await calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+
           if (freightRes.success && freightRes.data) {
             setFreightData({
               distanceKm: freightRes.data.distanceKm,
@@ -207,6 +239,11 @@ export default function ClientIntakeForm() {
         }
       }
     } else {
+      if (country === 'UY') {
+        setIsCityManual(true)
+        setPostalMessage('Código postal não encontrado na base do Uruguai.')
+        return
+      }
       setIsCityManual(false)
       setForm(prev => ({ ...prev, city: '', state: '' }))
       setPostalMessage(result.error || 'Código postal inválido.')
@@ -251,11 +288,19 @@ export default function ClientIntakeForm() {
     setPostalMessage(null)
     setFreightMessage(null)
     setLastFetchedKey('')
+    setIsCityManual(form.country === 'UY')
   }, [form.country])
 
   // ── Geocoding + Frete com cidade/estado manuais ─────────────────────────
   useEffect(() => {
     if (!isCityManual) return
+
+    // UY: se a cidade estiver vazia, exibe mensagem informativa de obrigatoriedade e não consulta Nominatim
+    if (form.country === 'UY' && !form.city.trim()) {
+      setFreightMessage('Cidade obrigatória para cálculo do frete.')
+      return
+    }
+
     if (!form.city.trim() || form.city.trim().length < 2) return
     if (!form.state.trim() || form.state.trim().length < 2) return
 
@@ -296,13 +341,21 @@ export default function ClientIntakeForm() {
     }
   }
 
+  const handleUruguayDepartmentChange = (department: string) => {
+    set('state', department)
+    const postcode = getReferencePostcodeForUruguay(department)
+    if (postcode) {
+      set('postalCode', postcode)
+    }
+  }
+
   // ── Step 1 validation ──────────────────────────────────────────────────
   const validateStep1 = () => {
     const errs: typeof errors = {}
     const fieldsToValidate: (keyof FormData)[] = [
       'clientName', 'pharmacyName', 'country', 'postalCode', 'city', 'state', 'address', 'phone', 'employees'
     ]
-    
+
     fieldsToValidate.forEach(field => {
       const error = validateField(field, form)
       if (error) errs[field] = error
@@ -423,7 +476,7 @@ export default function ClientIntakeForm() {
         </button>
         <button className="cif-back-btn" onClick={() => navigate('/')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
+            <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
           Voltar
         </button>
@@ -437,7 +490,7 @@ export default function ClientIntakeForm() {
           <div className="cif-progress-wrap">
             <div className={`cif-step-dot ${step >= 1 ? 'active' : ''}`}>
               {step > 1 ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
               ) : '1'}
             </div>
             <div className={`cif-progress-line ${step >= 2 ? 'filled' : ''}`} />
@@ -454,8 +507,8 @@ export default function ClientIntakeForm() {
               <div className="cif-step-header">
                 <div className="cif-step-icon">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
                   </svg>
                 </div>
                 <div>
@@ -516,7 +569,7 @@ export default function ClientIntakeForm() {
                   </div>
                   <div className="cif-field">
                     <label htmlFor="cif-postalCode">
-                      Código Postal (alfanumérico) <span className="cif-required">*</span>
+                      Código Postal <span className="cif-required">*</span>
                     </label>
                     <div className="cif-input-cep-wrap">
                       <input
@@ -566,6 +619,11 @@ export default function ClientIntakeForm() {
                       tabIndex={isCityManual ? 0 : -1}
                     />
                     {errors.city && <span className="cif-error-msg">{errors.city}</span>}
+                    {form.country === 'UY' && (
+                      <span className="cif-info-msg" style={{ fontSize: '0.75rem', color: 'rgba(11, 61, 46, 0.6)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
+                        Alguns códigos postais do Uruguai atendem várias cidades. Informe manualmente sua cidade para um cálculo de frete mais preciso.
+                      </span>
+                    )}
                   </div>
                   <div className="cif-field">
                     <label htmlFor="cif-state">
@@ -573,31 +631,47 @@ export default function ClientIntakeForm() {
                       {form.country && form.country !== 'UY' && <span className="cif-autofill-badge">Preenchimento automático</span>}
                       {form.country === 'UY' && <span className="cif-required">*</span>}
                     </label>
-                    <input
-                      id="cif-state"
-                      type="text"
-                      placeholder={
-                        !form.country
-                          ? 'Selecione o país primeiro'
-                          : form.country === 'UY'
-                            ? 'Informe o departamento'
+                    {form.country === 'UY' ? (
+                      <select
+                        id="cif-state"
+                        value={form.state}
+                        onChange={e => handleUruguayDepartmentChange(e.target.value)}
+                        onBlur={() => handleBlur('state')}
+                        className={errors.state ? 'error' : ''}
+                      >
+                        <option value="" disabled>Selecione o departamento</option>
+                        {URUGUAY_DEPARTMENTS.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="cif-state"
+                        type="text"
+                        placeholder={
+                          !form.country
+                            ? 'Selecione o país primeiro'
                             : 'Preenchido pelo código postal'
-                      }
-                      value={form.state}
-                      readOnly={form.country !== 'UY'}
-                      onChange={form.country === 'UY' ? e => set('state', e.target.value) : undefined}
-                      onBlur={() => handleBlur('state')}
-                      className={`${errors.state ? 'error' : ''} ${form.country !== 'UY' ? 'cif-readonly' : ''}`}
-                      tabIndex={form.country === 'UY' ? 0 : -1}
-                    />
+                        }
+                        value={form.state}
+                        readOnly={true}
+                        className={`${errors.state ? 'error' : ''} cif-readonly`}
+                        tabIndex={-1}
+                      />
+                    )}
                     {errors.state && <span className="cif-error-msg">{errors.state}</span>}
+                    {form.country === 'UY' && (
+                      <span className="cif-info-msg" style={{ fontSize: '0.75rem', color: 'rgba(11, 61, 46, 0.6)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
+                        Não sabe seu código postal? Selecione seu Departamento e o sistema preencherá automaticamente um código postal de referência.
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Mensagem de geocoding/frete/manual city */}
                 {freightMessage && (
                   <div className="cif-freight-msg" style={{ whiteSpace: 'pre-line' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
                     {freightMessage}
                   </div>
                 )}
@@ -671,9 +745,9 @@ export default function ClientIntakeForm() {
                         onClick={() => set('employees', opt)}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                          <circle cx="9" cy="7" r="4"/>
-                          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                          <circle cx="9" cy="7" r="4" />
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                         </svg>
                         {opt}
                       </button>
@@ -688,7 +762,7 @@ export default function ClientIntakeForm() {
                 <button className="cif-btn-primary" onClick={handleNext}>
                   Próximo
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                    <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
               </div>
@@ -701,8 +775,8 @@ export default function ClientIntakeForm() {
               <div className="cif-step-header">
                 <div className="cif-step-icon">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <path d="M3 9h18M9 21V9"/>
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M3 9h18M9 21V9" />
                   </svg>
                 </div>
                 <div>
@@ -719,10 +793,10 @@ export default function ClientIntakeForm() {
                   onClick={() => set('spaceMode', 'dimensions')}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="2" y1="12" x2="22" y2="12"/>
-                    <line x1="6" y1="7" x2="6" y2="17"/>
-                    <line x1="18" y1="7" x2="18" y2="17"/>
-                    <line x1="12" y1="9" x2="12" y2="15"/>
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <line x1="6" y1="7" x2="6" y2="17" />
+                    <line x1="18" y1="7" x2="18" y2="17" />
+                    <line x1="12" y1="9" x2="12" y2="15" />
                   </svg>
                   Informar dimensões
                 </button>
@@ -732,9 +806,9 @@ export default function ClientIntakeForm() {
                   onClick={() => set('spaceMode', 'floorplan')}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                   Enviar planta baixa
                 </button>
@@ -744,7 +818,7 @@ export default function ClientIntakeForm() {
               {form.spaceMode === 'dimensions' && (
                 <div className="cif-fields cif-fade-in">
                   <div className="cif-dim-hint">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
                     Informe as dimensões internas da loja em metros. Se não souber com exatidão, uma estimativa já ajuda muito.
                   </div>
                   <div className="cif-field-row">
@@ -787,7 +861,7 @@ export default function ClientIntakeForm() {
                   </div>
                   {form.width && form.height && !errors.width && !errors.height && (
                     <div className="cif-area-preview">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                       Área total: <strong>{(parseFloat(form.width) * parseFloat(form.height)).toFixed(1)} m²</strong>
                     </div>
                   )}
@@ -798,7 +872,7 @@ export default function ClientIntakeForm() {
               {form.spaceMode === 'floorplan' && (
                 <div className="cif-fields cif-fade-in">
                   <div className="cif-dim-hint">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
                     Nossa IA irá analisar sua planta baixa e configurar automaticamente as dimensões e paredes da loja.
                   </div>
                   <div
@@ -825,7 +899,7 @@ export default function ClientIntakeForm() {
                       <div className="cif-upload-preview">
                         {form.floorPlanFile?.type === 'application/pdf' ? (
                           <div className="cif-pdf-badge">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                             <span>{form.floorPlanFile?.name}</span>
                           </div>
                         ) : (
@@ -836,7 +910,7 @@ export default function ClientIntakeForm() {
                           className="cif-remove-file"
                           onClick={e => { e.stopPropagation(); set('floorPlanFile', null); set('floorPlanPreview', null) }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                           Remover
                         </button>
                       </div>
@@ -844,9 +918,9 @@ export default function ClientIntakeForm() {
                       <div className="cif-upload-empty">
                         <div className="cif-upload-icon">
                           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
                           </svg>
                         </div>
                         <p className="cif-upload-title">Clique ou arraste a planta baixa aqui</p>
@@ -860,7 +934,7 @@ export default function ClientIntakeForm() {
 
               <div className="cif-actions">
                 <button className="cif-btn-secondary" onClick={() => setStep(1)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
                   Voltar
                 </button>
                 <button
@@ -876,8 +950,8 @@ export default function ClientIntakeForm() {
                   ) : (
                     <>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <path d="M3 9h18M9 21V9"/>
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M3 9h18M9 21V9" />
                       </svg>
                       Criar Meu Layout
                     </>
@@ -891,15 +965,15 @@ export default function ClientIntakeForm() {
         {/* Trust badges */}
         <div className="cif-trust">
           <span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
             Gratuito
           </span>
           <span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
             Sem cadastro
           </span>
           <span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
             Dados protegidos
           </span>
         </div>
