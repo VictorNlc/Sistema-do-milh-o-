@@ -17,7 +17,7 @@ SELECT
   gen_random_uuid(),
   '00000000-0000-0000-0000-000000000000',
   'admin@projefarma.com.br',
-  crypt('projefarma2025', gen_salt('bf')),
+  crypt('T20252050t@@', gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
   '{"name":"Admin Projefarma"}',

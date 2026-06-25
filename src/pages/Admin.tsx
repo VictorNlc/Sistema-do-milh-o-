@@ -162,7 +162,7 @@ export default function Admin() {
           <button className="btn btn-ghost btn-sm btn-full" onClick={() => navigate('/')}>
             ← Voltar ao site
           </button>
-          <p className="admin-hint">Senha padrão: projefarma2025</p>
+          <p className="admin-hint">Senha padrão: T20252050t@@</p>
         </div>
       </div>
     )

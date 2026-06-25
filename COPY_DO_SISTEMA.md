@@ -1487,7 +1487,7 @@ Este documento reúne todas as copies (títulos, botões, descrições, labels, 
 - Proposta enviada
 - Senha de acesso
 - Senha incorreta.
-- Senha padrão: projefarma2025
+- Senha padrão: T20252050t@@
 - Status atualizado!
 - admin-content
 - admin-empty
@@ -1560,7 +1560,7 @@ Este documento reúne todas as copies (títulos, botões, descrições, labels, 
 - layouts-grid
 - novo
 - password
-- projefarma2025
+- T20252050t@@
 - proposta_enviada
 - pt-BR
 - react
