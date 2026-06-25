@@ -18,48 +18,39 @@ interface ParaguayPostalEntry {
 /** Cache em memória: código postal → entrada */
 let postalCodeMap: Map<string, ParaguayPostalEntry> | null = null
 
-/**
- * Normaliza o código postal do Paraguai.
- * Remove espaços, caracteres não numéricos e valida tamanho entre 4 e 6 dígitos.
- */
-export function normalizeParaguayPostalCode(code: string): string {
-  const normalized = code.replace(/\D/g, '')
-  const isValid = /^\d{4,6}$/.test(normalized)
-  if (!isValid) {
-    throw new Error('Formato de código postal paraguaio inválido.')
-  }
-  return normalized
+export interface ParaguayLocation {
+  department: string
+  city: string
+  postalCode: string
 }
 
-/**
- * Carrega e parseia o CSV do Paraguai.
- * O CSV é carregado via import dinâmico com ?raw do Vite (bundled no build).
- * Executado apenas uma vez; cache em memória evita re-processamento.
- */
-async function loadParaguayCsv(): Promise<Map<string, ParaguayPostalEntry>> {
-  if (postalCodeMap) return postalCodeMap
+let paraguayLocations: ParaguayLocation[] | null = null
 
+async function loadParaguayLocations(): Promise<ParaguayLocation[]> {
+  if (paraguayLocations) return paraguayLocations
+
+  const map = new Map<string, ParaguayLocation>()
   try {
-    // Import dinâmico com ?raw — Vite retorna o conteúdo como string
     const csvModule = await import('../../../data/ZONA_POSTAL_PARAGUAY.csv?raw')
     const csvText: string = csvModule.default
-
-    // Logs temporários para identificar o encoding detectado
-    const hasReplacementChar = csvText.includes('\uFFFD')
-    const hasSpanishChars = /[ÁÉÍÓÚÑÜáéíóúñü]/.test(csvText)
-    console.info('[PY Provider] Leitura do CSV iniciada.')
-    console.info(`[PY Provider] Presença de caracteres especiais espanhóis (Á, É, Í, Ó, Ú, Ñ, Ü): ${hasSpanishChars ? 'Sim' : 'Não'}`)
-    console.info(`[PY Provider] Presença de caracteres corrompidos (\\uFFFD): ${hasReplacementChar ? 'Sim' : 'Não'}`)
-    if (!hasReplacementChar && hasSpanishChars) {
-      console.info('[PY Provider] UTF-8 detectado e validado com sucesso (sem corrupção de caracteres).')
-    } else if (hasReplacementChar) {
-      console.warn('[PY Provider] Caracteres corrompidos detectados! O arquivo original pode estar usando um encoding diferente ou a conversão falhou.')
-    }
-
-    const map = new Map<string, ParaguayPostalEntry>()
     const lines = csvText.split('\n')
 
-    // Pula a linha de cabeçalho
+    const capitalize = (str: string) => {
+      if (!str) return ''
+      const words = str.toLowerCase().split(/\s+/)
+      const lowercaseWords = new Set([
+        'de', 'del', 'la', 'las', 'el', 'los', 'y', 'al', 'o', 'e', 'en',
+        'do', 'da', 'dos', 'das', 'de', 'e', 'em'
+      ])
+      return words.map((word, index) => {
+        if (word === '') return ''
+        if (lowercaseWords.has(word) && index > 0 && index < words.length - 1) {
+          return word
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1)
+      }).join(' ')
+    }
+
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim()
       if (!line) continue
@@ -73,16 +64,46 @@ async function loadParaguayCsv(): Promise<Map<string, ParaguayPostalEntry>> {
 
       if (!cod_post || !dpto_desc) continue
 
-      // Normaliza o código postal (remove espaços extras)
+      const deptCap = capitalize(dpto_desc)
+      const distCap = capitalize(dist_desc || dpto_desc)
       const normalizedCode = cod_post.replace(/\s+/g, '').trim()
 
-      // Usa o primeiro registro encontrado para cada código postal
-      // (geralmente o distrito principal)
-      if (!map.has(normalizedCode)) {
-        map.set(normalizedCode, {
-          postalCode: normalizedCode,
-          city: dist_desc || dpto_desc,
-          state: dpto_desc,
+      const key = `${deptCap}|${distCap}`
+      if (!map.has(key)) {
+        map.set(key, {
+          department: deptCap,
+          city: distCap,
+          postalCode: normalizedCode
+        })
+      }
+    }
+
+    paraguayLocations = Array.from(map.values())
+    return paraguayLocations
+  } catch (err) {
+    console.error('[PY Provider] Erro ao carregar locais:', err)
+    return []
+  }
+}
+
+/**
+ * Carrega e parseia o CSV do Paraguai.
+ * O CSV é carregado via import dinâmico com ?raw do Vite (bundled no build).
+ * Executado apenas uma vez; cache em memória evita re-processamento.
+ */
+async function loadParaguayCsv(): Promise<Map<string, ParaguayPostalEntry>> {
+  if (postalCodeMap) return postalCodeMap
+
+  try {
+    const locs = await loadParaguayLocations()
+    const map = new Map<string, ParaguayPostalEntry>()
+
+    for (const l of locs) {
+      if (!map.has(l.postalCode)) {
+        map.set(l.postalCode, {
+          postalCode: l.postalCode,
+          city: l.city,
+          state: l.department,
         })
       }
     }
@@ -94,6 +115,42 @@ async function loadParaguayCsv(): Promise<Map<string, ParaguayPostalEntry>> {
     console.error('[PY Provider] Erro ao carregar CSV:', err)
     throw new Error('Falha ao carregar dados de códigos postais do Paraguai.')
   }
+}
+
+export async function getParaguayDepartments(): Promise<string[]> {
+  const locs = await loadParaguayLocations()
+  const depts = new Set(locs.map(l => l.department))
+  return Array.from(depts).sort((a, b) => a.localeCompare(b))
+}
+
+export async function getParaguayCities(department: string): Promise<string[]> {
+  const locs = await loadParaguayLocations()
+  const targetDept = department.toLowerCase().trim()
+  const cities = new Set(
+    locs
+      .filter(l => l.department.toLowerCase().trim() === targetDept)
+      .map(l => l.city)
+  )
+  return Array.from(cities).sort((a, b) => a.localeCompare(b))
+}
+
+export async function getParaguayPostcode(department: string, city: string): Promise<string | null> {
+  const locs = await loadParaguayLocations()
+  const targetDept = department.toLowerCase().trim()
+  const targetCity = city.toLowerCase().trim()
+  const found = locs.find(
+    l => l.department.toLowerCase().trim() === targetDept && l.city.toLowerCase().trim() === targetCity
+  )
+  return found ? found.postalCode : null
+}
+
+export function normalizeParaguayPostalCode(code: string): string {
+  const normalized = code.replace(/\D/g, '')
+  const isValid = /^\d{4,6}$/.test(normalized)
+  if (!isValid) {
+    throw new Error('Formato de código postal paraguaio inválido.')
+  }
+  return normalized
 }
 
 export const paraguayProvider: PostalCodeProvider = {

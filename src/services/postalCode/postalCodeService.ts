@@ -6,7 +6,12 @@ import type { PostalCodeProvider, ProviderResult } from './types'
 import { brazilProvider } from './providers/brazilProvider'
 import { argentinaProvider } from './providers/argentinaProvider'
 import { uruguayProvider } from './providers/uruguayProvider'
-import { paraguayProvider } from './providers/paraguayProvider'
+import {
+  paraguayProvider,
+  getParaguayDepartments,
+  getParaguayCities,
+  getParaguayPostcode,
+} from './providers/paraguayProvider'
 import { URUGUAY_POSTCODES } from '../../data/uyPostcodes'
 
 export type { PostalLookupResult, ProviderResult, SupportedCountry } from './types'
@@ -171,4 +176,10 @@ export function getReferencePostcodeForUruguay(department: string): string | nul
     }
   }
   return null
+}
+
+export {
+  getParaguayDepartments,
+  getParaguayCities,
+  getParaguayPostcode,
 }

@@ -9,6 +9,9 @@ import {
   getPostalCodePlaceholder,
   getPostalCodeMaxLength,
   getPostalCodeLength,
+  getParaguayDepartments,
+  getParaguayCities,
+  getParaguayPostcode,
 } from '../services/postalCode'
 import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
@@ -95,6 +98,10 @@ export default function ClientIntakeForm() {
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0)
   const suggestionsRef = useRef<HTMLDivElement>(null)
 
+  // Paraguay departments and cities states
+  const [paraguayDepartments, setParaguayDepartments] = useState<string[]>([])
+  const [pyCitiesInDept, setPyCitiesInDept] = useState<string[]>([])
+
   const [form, setForm] = useState<FormData>({
     clientName: '',
     pharmacyName: '',
@@ -140,7 +147,7 @@ export default function ClientIntakeForm() {
       }
     }
     if (field === 'city' && !currentForm.city.trim()) {
-      if (currentForm.country === 'UY') {
+      if (currentForm.country === 'UY' || currentForm.country === 'PY') {
         return 'Informe a cidade para continuar.'
       }
       return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
@@ -250,6 +257,11 @@ export default function ClientIntakeForm() {
         setPostalMessage('Código postal não encontrado na base do Uruguai.')
         return
       }
+      if (country === 'PY') {
+        setIsCityManual(true)
+        setPostalMessage('Código postal não encontrado na base do Paraguai.')
+        return
+      }
       setIsCityManual(false)
       setForm(prev => ({ ...prev, city: '', state: '' }))
       setPostalMessage(result.error || 'Código postal inválido.')
@@ -271,6 +283,21 @@ export default function ClientIntakeForm() {
           return
         }
         performLookup(form.country, form.postalCode)
+      }
+      return
+    }
+
+    // PY: não auto-preencher se selecionados via autocomplete
+    if (form.country === 'PY') {
+      const sanitized = sanitizePostalCode(form.country, form.postalCode)
+      const expectedLength = getPostalCodeLength(form.country, form.postalCode)
+      if (sanitized.length === expectedLength) {
+        getParaguayPostcode(form.state, form.city).then(matchedPostcode => {
+          if (matchedPostcode === sanitized) {
+            return
+          }
+          performLookup(form.country, form.postalCode)
+        })
       }
       return
     }
@@ -299,16 +326,43 @@ export default function ClientIntakeForm() {
     setPostalMessage(null)
     setFreightMessage(null)
     setLastFetchedKey('')
-    setIsCityManual(form.country === 'UY')
+    setIsCityManual(form.country === 'UY' || form.country === 'PY')
     setShowSuggestions(false)
   }, [form.country])
+
+  // Load Paraguay departments on demand when country is Paraguay
+  useEffect(() => {
+    if (form.country === 'PY' && paraguayDepartments.length === 0) {
+      getParaguayDepartments().then(depts => {
+        setParaguayDepartments(depts)
+      }).catch(err => {
+        console.error('[PY] Erro ao obter departamentos:', err)
+      })
+    }
+  }, [form.country, paraguayDepartments.length])
+
+  // Load cities of selected Paraguay department
+  useEffect(() => {
+    if (form.country === 'PY') {
+      if (form.state) {
+        getParaguayCities(form.state).then(cities => {
+          setPyCitiesInDept(cities)
+        }).catch(err => {
+          console.error('[PY] Erro ao obter cidades:', err)
+          setPyCitiesInDept([])
+        })
+      } else {
+        setPyCitiesInDept([])
+      }
+    }
+  }, [form.country, form.state])
 
   // ── Geocoding + Frete com cidade/estado manuais ─────────────────────────
   useEffect(() => {
     if (!isCityManual) return
 
-    // UY: se a cidade estiver vazia, exibe mensagem informativa de obrigatoriedade e não consulta Nominatim
-    if (form.country === 'UY' && !form.city.trim()) {
+    // UY & PY: se a cidade estiver vazia, exibe mensagem informativa de obrigatoriedade e não consulta Nominatim
+    if ((form.country === 'UY' || form.country === 'PY') && !form.city.trim()) {
       setFreightMessage('Cidade obrigatória para cálculo do frete.')
       return
     }
@@ -344,14 +398,19 @@ export default function ClientIntakeForm() {
     return () => clearTimeout(timer)
   }, [isCityManual, form.country, form.city, form.state])
 
-  // ── Autocomplete Logic for Uruguay ───────────────────────────────────────
+  // ── Autocomplete Logic for Uruguay & Paraguay ────────────────────────────
   const citiesInDept = useMemo(() => {
-    if (form.country !== 'UY' || !form.state) return []
-    return (UY_CITIES_BY_DEPT as Record<string, string[]>)[form.state] || []
-  }, [form.country, form.state])
+    if (form.country === 'UY') {
+      return (UY_CITIES_BY_DEPT as Record<string, string[]>)[form.state] || []
+    }
+    if (form.country === 'PY') {
+      return pyCitiesInDept
+    }
+    return []
+  }, [form.country, form.state, pyCitiesInDept])
 
   const filteredCities = useMemo(() => {
-    if (form.country !== 'UY' || !form.city || form.city.trim().length < 2) return []
+    if ((form.country !== 'UY' && form.country !== 'PY') || !form.city || form.city.trim().length < 2) return []
 
     const normalize = (s: string) =>
       s.normalize('NFD')
@@ -377,27 +436,47 @@ export default function ClientIntakeForm() {
     }
   }, [])
 
-  const handleSelectSuggestion = (city: string) => {
-    const key = `${form.state}|${city}`
-    const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key]
+  const handleSelectSuggestion = async (city: string) => {
+    if (form.country === 'UY') {
+      const key = `${form.state}|${city}`
+      const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key]
 
-    setForm(prev => ({
-      ...prev,
-      city,
-      postalCode: postcode || ''
-    }))
+      setForm(prev => ({
+        ...prev,
+        city,
+        postalCode: postcode || ''
+      }))
 
-    if (postcode) {
-      setPostalMessage(null)
-    } else {
-      setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+      if (postcode) {
+        setPostalMessage(null)
+      } else {
+        setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+      }
+    } else if (form.country === 'PY') {
+      try {
+        const postcode = await getParaguayPostcode(form.state, city)
+        setForm(prev => ({
+          ...prev,
+          city,
+          postalCode: postcode || ''
+        }))
+        if (postcode) {
+          setPostalMessage(null)
+        } else {
+          setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+        }
+      } catch (err) {
+        console.error('[PY] Erro ao obter código postal:', err)
+        setForm(prev => ({ ...prev, city, postalCode: '' }))
+        setPostalMessage('Erro ao obter o código postal.')
+      }
     }
 
     setShowSuggestions(false)
   }
 
   const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (form.country !== 'UY' || !showSuggestions || filteredCities.length === 0) return
+    if ((form.country !== 'UY' && form.country !== 'PY') || !showSuggestions || filteredCities.length === 0) return
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -425,6 +504,20 @@ export default function ClientIntakeForm() {
       } else {
         setPostalMessage(null)
       }
+    } else if (form.country === 'PY') {
+      if (form.city.trim()) {
+        getParaguayPostcode(form.state, form.city).then(postcode => {
+          if (!postcode) {
+            setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+          } else {
+            setPostalMessage(null)
+          }
+        }).catch(() => {
+          setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+        })
+      } else {
+        setPostalMessage(null)
+      }
     }
   }
 
@@ -438,6 +531,17 @@ export default function ClientIntakeForm() {
   }
 
   const handleUruguayDepartmentChange = (department: string) => {
+    setForm(prev => ({
+      ...prev,
+      state: department,
+      city: '',
+      postalCode: ''
+    }))
+    setPostalMessage(null)
+    setShowSuggestions(false)
+  }
+
+  const handleParaguayDepartmentChange = (department: string) => {
     setForm(prev => ({
       ...prev,
       state: department,
@@ -700,7 +804,7 @@ export default function ClientIntakeForm() {
                       {form.country && !isCityManual && <span className="cif-autofill-badge">Preenchimento automático</span>}
                       {isCityManual && <span className="cif-required">*</span>}
                     </label>
-                    {form.country === 'UY' ? (
+                    {form.country === 'UY' || form.country === 'PY' ? (
                       <div className="cif-autocomplete-wrap" ref={suggestionsRef}>
                         <input
                           id="cif-city"
@@ -710,16 +814,36 @@ export default function ClientIntakeForm() {
                           readOnly={false}
                           onChange={e => {
                             const val = e.target.value
-                            setForm(prev => {
-                              const key = `${prev.state}|${val}`
-                              const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key] || ''
-                              return {
+                            if (form.country === 'UY') {
+                              setForm(prev => {
+                                const key = `${prev.state}|${val}`
+                                const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key] || ''
+                                return {
+                                  ...prev,
+                                  city: val,
+                                  postalCode: postcode
+                                }
+                              })
+                              setPostalMessage(null)
+                            } else {
+                              // Paraguay
+                              setForm(prev => ({
                                 ...prev,
                                 city: val,
-                                postalCode: postcode
-                              }
-                            })
-                            setPostalMessage(null)
+                                postalCode: ''
+                              }))
+                              getParaguayPostcode(form.state, val).then(postcode => {
+                                if (postcode) {
+                                  setForm(prev => {
+                                    if (prev.city === val) {
+                                      return { ...prev, postalCode: postcode }
+                                    }
+                                    return prev
+                                  })
+                                  setPostalMessage(null)
+                                }
+                              }).catch(() => {})
+                            }
                             setShowSuggestions(true)
                             setActiveSuggestionIndex(0)
                           }}
@@ -774,21 +898,32 @@ export default function ClientIntakeForm() {
                   <div className="cif-field">
                     <label htmlFor="cif-state">
                       Estado / Província
-                      {form.country && form.country !== 'UY' && <span className="cif-autofill-badge">Preenchimento automático</span>}
-                      {form.country === 'UY' && <span className="cif-required">*</span>}
+                      {form.country && form.country !== 'UY' && form.country !== 'PY' && (
+                        <span className="cif-autofill-badge">Preenchimento automático</span>
+                      )}
+                      {(form.country === 'UY' || form.country === 'PY') && <span className="cif-required">*</span>}
                     </label>
-                    {form.country === 'UY' ? (
+                    {form.country === 'UY' || form.country === 'PY' ? (
                       <select
                         id="cif-state"
                         value={form.state}
-                        onChange={e => handleUruguayDepartmentChange(e.target.value)}
+                        onChange={e =>
+                          form.country === 'UY'
+                            ? handleUruguayDepartmentChange(e.target.value)
+                            : handleParaguayDepartmentChange(e.target.value)
+                        }
                         onBlur={() => handleBlur('state')}
                         className={errors.state ? 'error' : ''}
                       >
                         <option value="" disabled>Selecione o departamento</option>
-                        {URUGUAY_DEPARTMENTS.map(dept => (
-                          <option key={dept} value={dept}>{dept}</option>
-                        ))}
+                        {form.country === 'UY'
+                          ? URUGUAY_DEPARTMENTS.map(dept => (
+                              <option key={dept} value={dept}>{dept}</option>
+                            ))
+                          : paraguayDepartments.map(dept => (
+                              <option key={dept} value={dept}>{dept}</option>
+                            ))
+                        }
                       </select>
                     ) : (
                       <input
@@ -809,6 +944,11 @@ export default function ClientIntakeForm() {
                     {form.country === 'UY' && (
                       <span className="cif-info-msg" style={{ fontSize: '0.75rem', color: 'rgba(11, 61, 46, 0.6)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
                         Não sabe seu código postal? Selecione seu Departamento e o sistema preencherá automaticamente um código postal de referência.
+                      </span>
+                    )}
+                    {form.country === 'PY' && (
+                      <span className="cif-info-msg" style={{ fontSize: '0.75rem', color: 'rgba(11, 61, 46, 0.6)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
+                        Não sabe seu código postal? Selecione seu Departamento e escolha sua cidade para preencher automaticamente o código postal.
                       </span>
                     )}
                   </div>

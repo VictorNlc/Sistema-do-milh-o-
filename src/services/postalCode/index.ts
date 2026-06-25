@@ -10,6 +10,9 @@ export {
   getProvider,
   SUPPORTED_COUNTRIES,
   getReferencePostcodeForUruguay,
+  getParaguayDepartments,
+  getParaguayCities,
+  getParaguayPostcode,
 } from './postalCodeService'
 
 export type {
