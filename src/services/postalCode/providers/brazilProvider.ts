@@ -48,34 +48,120 @@ export const brazilProvider: PostalCodeProvider = {
       return { success: false, error: 'CEP deve conter 8 dígitos.' }
     }
 
+    // ── 1. ViaCEP ───────────────────────────────────────────────────────────
+    console.log('[CEP] Tentando ViaCEP...')
+    let viaCepFailed = false
+
     try {
       const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`, {
         signal: AbortSignal.timeout(8000),
       })
 
       if (!response.ok) {
-        return { success: false, error: 'Erro ao consultar o CEP. Tente novamente.' }
-      }
-
-      const data: ViaCepResponse = await response.json()
-
-      if (data.erro) {
-        return { success: false, error: 'CEP não encontrado.' }
-      }
-
-      return {
-        success: true,
-        data: {
-          country: 'BR',
-          city: data.localidade,
-          state: data.uf,
-        },
+        viaCepFailed = true
+      } else {
+        const data: ViaCepResponse = await response.json()
+        if (data.erro || !data.localidade || !data.uf) {
+          viaCepFailed = true
+        } else {
+          return {
+            success: true,
+            data: {
+              country: 'BR',
+              city: data.localidade,
+              state: data.uf,
+            },
+          }
+        }
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'TimeoutError') {
-        return { success: false, error: 'Tempo de resposta esgotado. Tente novamente.' }
-      }
-      return { success: false, error: 'Erro de conexão. Verifique sua internet e tente novamente.' }
+      viaCepFailed = true
     }
+
+    if (viaCepFailed) {
+      console.log('[CEP] ViaCEP falhou')
+
+      // ── 2. BrasilAPI ───────────────────────────────────────────────────────
+      console.log('[CEP] Tentando BrasilAPI...')
+      let brasilApiFailed = false
+
+      try {
+        const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${digits}`, {
+          signal: AbortSignal.timeout(8000),
+        })
+
+        if (!response.ok) {
+          brasilApiFailed = true
+        } else {
+          interface BrasilApiResponse {
+            cep: string
+            state: string
+            city: string
+            neighborhood?: string
+            street?: string
+          }
+
+          const data: BrasilApiResponse = await response.json()
+
+          if (!data.city || !data.state) {
+            brasilApiFailed = true
+          } else {
+            return {
+              success: true,
+              data: {
+                country: 'BR',
+                city: data.city,
+                state: data.state,
+              },
+            }
+          }
+        }
+      } catch (err) {
+        brasilApiFailed = true
+      }
+
+      if (brasilApiFailed) {
+        console.log('[CEP] BrasilAPI falhou')
+
+        // ── 3. OpenCEP ───────────────────────────────────────────────────────
+        console.log('[CEP] Tentando OpenCEP...')
+
+        try {
+          const response = await fetch(`https://opencep.com/v1/${digits}`, {
+            signal: AbortSignal.timeout(8000),
+          })
+
+          if (response.ok) {
+            interface OpenCepResponse {
+              cep: string
+              uf?: string
+              localidade?: string
+              state?: string
+              city?: string
+            }
+
+            const data: OpenCepResponse = await response.json()
+            const state = data.uf || data.state
+            const city = data.localidade || data.city
+
+            if (city && state) {
+              console.log('[CEP] CEP encontrado via OpenCEP')
+              return {
+                success: true,
+                data: {
+                  country: 'BR',
+                  city,
+                  state,
+                },
+              }
+            }
+          }
+        } catch (err) {
+          // ignore error to return standardized failure
+        }
+      }
+    }
+
+    return { success: false, error: 'Não foi possível localizar este CEP.' }
   },
 }
