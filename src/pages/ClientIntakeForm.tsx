@@ -12,6 +12,8 @@ import {
   getParaguayDepartments,
   getParaguayCities,
   getParaguayPostcode,
+  getArgentinaProvinces,
+  getArgentinaCities,
 } from '../services/postalCode'
 import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
@@ -59,6 +61,16 @@ interface FormData {
   floorPlanPreview: string | null
 }
 
+interface ArgentinaProvince {
+  id: string
+  nombre: string
+}
+
+interface ArgentinaMunicipio {
+  id: string
+  nombre: string
+}
+
 const EMPLOYEE_OPTIONS = [
   '1 a 3 funcionários',
   '4 a 7 funcionários',
@@ -92,6 +104,7 @@ export default function ClientIntakeForm() {
 
   // Flag for manual city entry (when API returns only province)
   const [isCityManual, setIsCityManual] = useState(false)
+  const [isStateManual, setIsStateManual] = useState(false)
 
   // Autocomplete state for Uruguay cities
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -101,6 +114,12 @@ export default function ClientIntakeForm() {
   // Paraguay departments and cities states
   const [paraguayDepartments, setParaguayDepartments] = useState<string[]>([])
   const [pyCitiesInDept, setPyCitiesInDept] = useState<string[]>([])
+
+  // Argentina provinces and cities states
+  const [argentinaProvinces, setArgentinaProvinces] = useState<ArgentinaProvince[]>([])
+  const [arCitiesInProvince, setArCitiesInProvince] = useState<ArgentinaMunicipio[]>([])
+  const [arSelectedProvinceId, setArSelectedProvinceId] = useState<string>('')
+  const [locationReady, setLocationReady] = useState(false)
 
   const [form, setForm] = useState<FormData>({
     clientName: '',
@@ -131,7 +150,13 @@ export default function ClientIntakeForm() {
     if (field === 'pharmacyName' && !currentForm.pharmacyName.trim()) return 'Informe o nome da farmácia.'
     if (field === 'country' && !currentForm.country) return 'Selecione o país.'
     if (field === 'postalCode') {
-      if (!currentForm.postalCode.trim()) return 'Informe o CEP / Código postal.'
+      if (currentForm.country === 'AR') {
+        // CPA is optional for Argentina
+        if (!currentForm.postalCode.trim()) return undefined
+      } else {
+        if (!currentForm.postalCode.trim()) return 'Informe o CEP / Código postal.'
+      }
+
       if (currentForm.country) {
         const sanitized = sanitizePostalCode(currentForm.country, currentForm.postalCode)
         if (currentForm.country === 'AR' && !/^[A-Z]\d{4}[A-Z]{3}$/.test(sanitized)) {
@@ -147,17 +172,22 @@ export default function ClientIntakeForm() {
       }
     }
     if (field === 'city' && !currentForm.city.trim()) {
-      if (currentForm.country === 'UY' || currentForm.country === 'PY') {
+      if (currentForm.country === 'UY' || currentForm.country === 'PY' || currentForm.country === 'AR') {
         return 'Informe a cidade para continuar.'
       }
       return 'Cidade não preenchida. Verifique o código postal ou informe manualmente.'
     }
-    if (field === 'state' && !currentForm.state.trim()) return 'Estado não preenchido. Verifique o código postal.'
+    if (field === 'state' && !currentForm.state.trim()) {
+      if (currentForm.country === 'AR' && isStateManual) {
+        return 'Informe o estado / província para continuar.'
+      }
+      return 'Estado não preenchido. Verifique o código postal.'
+    }
     if (field === 'address' && !currentForm.address.trim()) return 'Informe o endereço.'
     if (field === 'phone' && currentForm.phone.replace(/\D/g, '').length < 10) return 'Informe um telefone válido.'
     if (field === 'employees' && !currentForm.employees) return 'Selecione o número de funcionários.'
     return undefined
-  }, [])
+  }, [isCityManual, isStateManual])
 
   const handleBlur = (field: keyof FormData) => {
     const error = validateField(field, form)
@@ -219,6 +249,60 @@ export default function ClientIntakeForm() {
         return
       }
 
+      if (country === 'AR') {
+        setForm(prev => ({
+          ...prev,
+          city: result.data!.city || '',
+          state: result.data!.state || '',
+        }))
+        setPostalMessage(null)
+
+        if (!result.data!.city) {
+          console.warn('[Freight] Apenas província identificada.')
+          setIsCityManual(true)
+          setIsStateManual(true)
+          setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
+          setLocationReady(false)
+          setFreightData(null)
+          console.log('[Argentina] Aguardando cidade válida')
+          getArgentinaProvinces().then(provs => {
+            const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
+            if (found) {
+              setArSelectedProvinceId(found.id)
+            }
+          }).catch(() => { })
+        } else {
+          setIsCityManual(false)
+          setIsStateManual(false)
+          setFreightMessage(null)
+          setLocationReady(true)
+          console.log('[Argentina] Cidade selecionada')
+          getArgentinaProvinces().then(provs => {
+            const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
+            if (found) {
+              setArSelectedProvinceId(found.id)
+            }
+          }).catch(() => { })
+
+          // Pipeline: Geocoding → Distância → Frete
+          console.log('[Argentina] Iniciando geolocalização')
+          const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
+
+          if (geoResult.success && geoResult.data) {
+            console.log('[Argentina] Iniciando cálculo de frete')
+            const freightRes = await calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+
+            if (freightRes.success && freightRes.data) {
+              setFreightData({
+                distanceKm: freightRes.data.distanceKm,
+                freightCost: freightRes.data.shippingCost
+              })
+            }
+          }
+        }
+        return
+      }
+
       setForm(prev => ({
         ...prev,
         city: result.data!.city,
@@ -230,11 +314,30 @@ export default function ClientIntakeForm() {
         console.warn('[Freight] Apenas província identificada.')
         console.log('[Freight] Utilizando campo Cidade existente para preenchimento manual.')
         setIsCityManual(true)
-        setFreightMessage(
-          'Não foi possível identificar sua cidade através do código postal.\n\nPara calcular o frete corretamente, informe a cidade onde você está localizado.'
-        )
+        if (country === 'AR') {
+          setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
+          getArgentinaProvinces().then(provs => {
+            const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
+            if (found) {
+              setArSelectedProvinceId(found.id)
+            }
+          }).catch(() => { })
+        } else {
+          setFreightMessage(
+            'Não foi possível identificar sua cidade através do código postal.\n\nPara calcular o frete corretamente, informe a cidade onde você está localizado.'
+          )
+        }
       } else {
         setIsCityManual(false)
+        if (country === 'AR') {
+          setIsStateManual(false)
+          getArgentinaProvinces().then(provs => {
+            const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
+            if (found) {
+              setArSelectedProvinceId(found.id)
+            }
+          }).catch(() => { })
+        }
         setFreightMessage(null)
 
         // Pipeline: Geocoding → Distância → Frete (tudo em console)
@@ -262,7 +365,18 @@ export default function ClientIntakeForm() {
         setPostalMessage('Código postal não encontrado na base do Paraguai.')
         return
       }
+      if (country === 'AR') {
+        setIsCityManual(true)
+        setIsStateManual(true)
+        setForm(prev => ({ ...prev, city: '', state: '' }))
+        setPostalMessage(result.error || 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.')
+        setLocationReady(false)
+        setFreightData(null)
+        console.log('[Argentina] Aguardando cidade válida')
+        return
+      }
       setIsCityManual(false)
+      setIsStateManual(false)
       setForm(prev => ({ ...prev, city: '', state: '' }))
       setPostalMessage(result.error || 'Código postal inválido.')
     }
@@ -302,6 +416,16 @@ export default function ClientIntakeForm() {
       return
     }
 
+    // AR: não auto-preencher se selecionados via manual/autocomplete, e não limpar se incompleto
+    if (form.country === 'AR') {
+      const sanitized = sanitizePostalCode(form.country, form.postalCode)
+      const expectedLength = getPostalCodeLength(form.country, form.postalCode)
+      if (sanitized.length === expectedLength) {
+        performLookup(form.country, form.postalCode)
+      }
+      return
+    }
+
     const sanitized = sanitizePostalCode(form.country, form.postalCode)
     const expectedLength = getPostalCodeLength(form.country, form.postalCode)
 
@@ -325,9 +449,13 @@ export default function ClientIntakeForm() {
     setForm(prev => ({ ...prev, postalCode: '', city: '', state: '' }))
     setPostalMessage(null)
     setFreightMessage(null)
+    setFreightData(null)
     setLastFetchedKey('')
-    setIsCityManual(form.country === 'UY' || form.country === 'PY')
+    setIsCityManual(form.country === 'UY' || form.country === 'PY' || form.country === 'AR')
+    setIsStateManual(form.country === 'AR')
+    setArSelectedProvinceId('')
     setShowSuggestions(false)
+    setLocationReady(false)
   }, [form.country])
 
   // Load Paraguay departments on demand when country is Paraguay
@@ -340,6 +468,35 @@ export default function ClientIntakeForm() {
       })
     }
   }, [form.country, paraguayDepartments.length])
+
+  // Load Argentina provinces on demand when country is Argentina
+  useEffect(() => {
+    if (form.country === 'AR' && argentinaProvinces.length === 0) {
+      getArgentinaProvinces().then(provs => {
+        setArgentinaProvinces(provs)
+      }).catch(err => {
+        console.error('[AR] Erro ao obter províncias:', err)
+        setPostalMessage('Não foi possível carregar a lista de províncias.')
+      })
+    }
+  }, [form.country, argentinaProvinces.length])
+
+  // Load cities of selected Argentina province
+  useEffect(() => {
+    if (form.country === 'AR') {
+      if (arSelectedProvinceId) {
+        getArgentinaCities(arSelectedProvinceId).then(cities => {
+          setArCitiesInProvince(cities)
+        }).catch(err => {
+          console.error('[AR] Erro ao obter cidades:', err)
+          setPostalMessage('Não foi possível carregar as cidades desta província.')
+          setArCitiesInProvince([])
+        })
+      } else {
+        setArCitiesInProvince([])
+      }
+    }
+  }, [form.country, arSelectedProvinceId])
 
   // Load cities of selected Paraguay department
   useEffect(() => {
@@ -367,22 +524,44 @@ export default function ClientIntakeForm() {
       return
     }
 
+    // AR: se a cidade estiver vazia, ou a localização não estiver pronta
+    if (form.country === 'AR') {
+      if (!form.state.trim() || !form.city.trim() || !locationReady) {
+        console.log('[Argentina] Aguardando cidade válida')
+        setFreightData(null)
+        if (!form.city.trim()) {
+          setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
+        } else {
+          setFreightMessage('Cidade inválida ou não selecionada. Escolha uma cidade da lista.')
+        }
+        return
+      }
+    }
+
     if (!form.city.trim() || form.city.trim().length < 2) return
     if (!form.state.trim() || form.state.trim().length < 2) return
 
     setFreightMessage(null)
 
     const timer = setTimeout(async () => {
-      const normalizedCity = normalizeManualCity(form.city)
-      console.log('[Freight] Utilizando cidade e estado informados manualmente pelo usuário.')
-      console.log('[Freight] Cidade informada:', normalizedCity)
+      if (form.country === 'AR') {
+        console.log('[Argentina] Iniciando geolocalização')
+      } else {
+        console.log('[Freight] Utilizando cidade e estado informados manualmente pelo usuário.')
+        console.log('[Freight] Cidade informada:', normalizeManualCity(form.city))
+      }
 
+      const normalizedCity = normalizeManualCity(form.city)
       const geoResult = await getCoordinates(form.country, form.state.trim(), normalizedCity)
 
       if (!geoResult.success || !geoResult.data) {
         console.warn('[Freight] Cidade não localizada no Nominatim.')
         setFreightMessage('Não foi possível localizar a cidade, precisa calcular manualmente.')
         return
+      }
+
+      if (form.country === 'AR') {
+        console.log('[Argentina] Iniciando cálculo de frete')
       }
 
       setFreightMessage(null)
@@ -396,9 +575,9 @@ export default function ClientIntakeForm() {
     }, 1500) // debounce de 1.5s para aguardar digitação
 
     return () => clearTimeout(timer)
-  }, [isCityManual, form.country, form.city, form.state])
+  }, [isCityManual, form.country, form.city, form.state, locationReady])
 
-  // ── Autocomplete Logic for Uruguay & Paraguay ────────────────────────────
+  // ── Autocomplete Logic for Uruguay, Paraguay & Argentina ─────────────────
   const citiesInDept = useMemo(() => {
     if (form.country === 'UY') {
       return (UY_CITIES_BY_DEPT as Record<string, string[]>)[form.state] || []
@@ -406,11 +585,14 @@ export default function ClientIntakeForm() {
     if (form.country === 'PY') {
       return pyCitiesInDept
     }
+    if (form.country === 'AR') {
+      return arCitiesInProvince.map(c => c.nombre)
+    }
     return []
-  }, [form.country, form.state, pyCitiesInDept])
+  }, [form.country, form.state, pyCitiesInDept, arCitiesInProvince])
 
   const filteredCities = useMemo(() => {
-    if ((form.country !== 'UY' && form.country !== 'PY') || !form.city || form.city.trim().length < 2) return []
+    if ((form.country !== 'UY' && form.country !== 'PY' && form.country !== 'AR') || !form.city || form.city.trim().length < 2) return []
 
     const normalize = (s: string) =>
       s.normalize('NFD')
@@ -470,13 +652,21 @@ export default function ClientIntakeForm() {
         setForm(prev => ({ ...prev, city, postalCode: '' }))
         setPostalMessage('Erro ao obter o código postal.')
       }
+    } else if (form.country === 'AR') {
+      setForm(prev => ({
+        ...prev,
+        city
+      }))
+      setPostalMessage(null)
+      setLocationReady(true)
+      console.log('[Argentina] Cidade selecionada:', city)
     }
 
     setShowSuggestions(false)
   }
 
   const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if ((form.country !== 'UY' && form.country !== 'PY') || !showSuggestions || filteredCities.length === 0) return
+    if ((form.country !== 'UY' && form.country !== 'PY' && form.country !== 'AR') || !showSuggestions || filteredCities.length === 0) return
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -518,6 +708,18 @@ export default function ClientIntakeForm() {
       } else {
         setPostalMessage(null)
       }
+    } else if (form.country === 'AR') {
+      const trimmedCity = form.city.trim()
+      const match = citiesInDept.find(c => c.toLowerCase().trim() === trimmedCity.toLowerCase())
+      if (match) {
+        setForm(prev => ({ ...prev, city: match }))
+        setLocationReady(true)
+        console.log('[Argentina] Cidade selecionada (via blur):', match)
+      } else {
+        setLocationReady(false)
+        setFreightData(null)
+        console.log('[Argentina] Aguardando cidade válida')
+      }
     }
   }
 
@@ -525,6 +727,13 @@ export default function ClientIntakeForm() {
   const handlePostalCodeChange = (value: string) => {
     if (form.country) {
       set('postalCode', formatPostalCode(form.country, value))
+      if (form.country === 'AR') {
+        setLocationReady(false)
+        setFreightData(null)
+        setIsCityManual(true)
+        setIsStateManual(true)
+        console.log('[Argentina] Aguardando cidade válida (CPA modificado)')
+      }
     } else {
       set('postalCode', value)
     }
@@ -550,6 +759,24 @@ export default function ClientIntakeForm() {
     }))
     setPostalMessage(null)
     setShowSuggestions(false)
+  }
+
+  const handleArgentinaProvinceChange = (provinceName: string) => {
+    const found = argentinaProvinces.find(p => p.nombre === provinceName)
+    const provinceId = found ? found.id : ''
+
+    setArSelectedProvinceId(provinceId)
+    setForm(prev => ({
+      ...prev,
+      state: provinceName,
+      city: '',
+      postalCode: ''
+    }))
+    setPostalMessage(null)
+    setShowSuggestions(false)
+    setLocationReady(false)
+    setFreightData(null)
+    console.log('[Argentina] Aguardando cidade válida (província alterada)')
   }
 
   // ── Step 1 validation ──────────────────────────────────────────────────
@@ -772,7 +999,7 @@ export default function ClientIntakeForm() {
                   </div>
                   <div className="cif-field">
                     <label htmlFor="cif-postalCode">
-                      Código Postal <span className="cif-required">*</span>
+                      Código Postal {form.country !== 'AR' && <span className="cif-required">*</span>}
                     </label>
                     <div className="cif-input-cep-wrap">
                       <input
@@ -804,7 +1031,7 @@ export default function ClientIntakeForm() {
                       {form.country && !isCityManual && <span className="cif-autofill-badge">Preenchimento automático</span>}
                       {isCityManual && <span className="cif-required">*</span>}
                     </label>
-                    {form.country === 'UY' || form.country === 'PY' ? (
+                    {form.country === 'UY' || form.country === 'PY' || form.country === 'AR' ? (
                       <div className="cif-autocomplete-wrap" ref={suggestionsRef}>
                         <input
                           id="cif-city"
@@ -825,7 +1052,7 @@ export default function ClientIntakeForm() {
                                 }
                               })
                               setPostalMessage(null)
-                            } else {
+                            } else if (form.country === 'PY') {
                               // Paraguay
                               setForm(prev => ({
                                 ...prev,
@@ -842,7 +1069,16 @@ export default function ClientIntakeForm() {
                                   })
                                   setPostalMessage(null)
                                 }
-                              }).catch(() => {})
+                              }).catch(() => { })
+                            } else if (form.country === 'AR') {
+                              // Argentina
+                              setForm(prev => ({
+                                ...prev,
+                                city: val
+                              }))
+                              setLocationReady(false)
+                              setFreightData(null)
+                              console.log('[Argentina] Aguardando cidade válida (digitando...)')
                             }
                             setShowSuggestions(true)
                             setActiveSuggestionIndex(0)
@@ -898,31 +1134,46 @@ export default function ClientIntakeForm() {
                   <div className="cif-field">
                     <label htmlFor="cif-state">
                       Estado / Província
-                      {form.country && form.country !== 'UY' && form.country !== 'PY' && (
+                      {form.country && form.country !== 'UY' && form.country !== 'PY' && !isStateManual && (
                         <span className="cif-autofill-badge">Preenchimento automático</span>
                       )}
-                      {(form.country === 'UY' || form.country === 'PY') && <span className="cif-required">*</span>}
+                      {(form.country === 'UY' || form.country === 'PY' || (form.country === 'AR' && isStateManual)) && (
+                        <span className="cif-required">*</span>
+                      )}
                     </label>
-                    {form.country === 'UY' || form.country === 'PY' ? (
+                    {form.country === 'UY' || form.country === 'PY' || form.country === 'AR' ? (
                       <select
                         id="cif-state"
                         value={form.state}
-                        onChange={e =>
-                          form.country === 'UY'
-                            ? handleUruguayDepartmentChange(e.target.value)
-                            : handleParaguayDepartmentChange(e.target.value)
-                        }
+                        onChange={e => {
+                          if (form.country === 'UY') {
+                            handleUruguayDepartmentChange(e.target.value)
+                          } else if (form.country === 'PY') {
+                            handleParaguayDepartmentChange(e.target.value)
+                          } else if (form.country === 'AR') {
+                            handleArgentinaProvinceChange(e.target.value)
+                          }
+                        }}
                         onBlur={() => handleBlur('state')}
                         className={errors.state ? 'error' : ''}
                       >
-                        <option value="" disabled>Selecione o departamento</option>
-                        {form.country === 'UY'
-                          ? URUGUAY_DEPARTMENTS.map(dept => (
-                              <option key={dept} value={dept}>{dept}</option>
-                            ))
-                          : paraguayDepartments.map(dept => (
-                              <option key={dept} value={dept}>{dept}</option>
-                            ))
+                        <option value="" disabled>
+                          {form.country === 'AR' ? 'Selecione a província' : 'Selecione o departamento'}
+                        </option>
+                        {form.country === 'UY' &&
+                          URUGUAY_DEPARTMENTS.map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                          ))
+                        }
+                        {form.country === 'PY' &&
+                          paraguayDepartments.map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                          ))
+                        }
+                        {form.country === 'AR' &&
+                          argentinaProvinces.map(prov => (
+                            <option key={prov.id} value={prov.nombre}>{prov.nombre}</option>
+                          ))
                         }
                       </select>
                     ) : (
@@ -932,12 +1183,16 @@ export default function ClientIntakeForm() {
                         placeholder={
                           !form.country
                             ? 'Selecione o país primeiro'
-                            : 'Preenchido pelo código postal'
+                            : isStateManual
+                              ? 'Informe o estado / província'
+                              : 'Preenchido pelo código postal'
                         }
                         value={form.state}
-                        readOnly={true}
-                        className={`${errors.state ? 'error' : ''} cif-readonly`}
-                        tabIndex={-1}
+                        readOnly={!isStateManual}
+                        onChange={isStateManual ? e => set('state', e.target.value) : undefined}
+                        onBlur={() => handleBlur('state')}
+                        className={`${errors.state ? 'error' : ''} ${!isStateManual ? 'cif-readonly' : ''}`}
+                        tabIndex={isStateManual ? 0 : -1}
                       />
                     )}
                     {errors.state && <span className="cif-error-msg">{errors.state}</span>}

@@ -13,6 +13,8 @@ export {
   getParaguayDepartments,
   getParaguayCities,
   getParaguayPostcode,
+  getArgentinaProvinces,
+  getArgentinaCities,
 } from './postalCodeService'
 
 export type {

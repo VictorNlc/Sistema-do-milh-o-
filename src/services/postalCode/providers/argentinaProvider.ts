@@ -1,35 +1,17 @@
 // ============================================================
-// Argentina Provider — Consulta via Zippopotam.us
-// Fallback: RapidAPI Argentina CPA
-// Supporting numeric (4 digits) and CPA (8 chars) formats
+// Argentina Provider — Consulta via RapidAPI Argentina CPA
+// Supporting CPA (8 chars) format
 // ============================================================
 
 import type { PostalCodeProvider, ProviderResult } from '../types'
-
-// ── Zippopotam types ────────────────────────────────────────
-
-/** Resposta da API Zippopotam.us */
-interface ZippopotamPlace {
-  'place name': string
-  longitude: string
-  latitude: string
-  state: string
-  'state abbreviation': string
-}
-
-interface ZippopotamResponse {
-  country: string
-  'country abbreviation': string
-  'post code': string
-  places: ZippopotamPlace[]
-}
 
 // ── RapidAPI CPA types ──────────────────────────────────────
 
 /** Resposta da API RapidAPI Argentina CPA (validate_cpa) */
 interface RapidApiCpaResponse {
-  localidad?: string
-  provincia?: string
+  localidad?: string | { nombre?: string; name?: string }
+  provincia?: string | { nombre?: string; name?: string }
+  province?: string | { nombre?: string; name?: string }
   cpa?: string
   codigo_postal?: string
   [key: string]: unknown
@@ -44,7 +26,7 @@ const RAPIDAPI_CPA_BASE_URL = `https://${RAPIDAPI_CPA_HOST}/localidades/validate
 
 /**
   * Remove espaços em branco e converte letras para maiúsculas.
-  * Valida ambos os formatos e retorna o valor normalizado.
+  * Valida o formato CPA e retorna o valor normalizado.
   */
 export function normalizeArgentinaPostalCode(code: string): string {
   const normalized = code.replace(/\s+/g, '').toUpperCase()
@@ -55,56 +37,8 @@ export function normalizeArgentinaPostalCode(code: string): string {
   return normalized
 }
 
-/** Verifica se o código está no formato CPA completo (ex: C1043AAZ) */
-function isCpaFormat(code: string): boolean {
-  return /^[A-Z]\d{4}[A-Z]{3}$/.test(code)
-}
-
-// ── Zippopotam lookup ───────────────────────────────────────
-
-async function fetchFromZippopotam(code: string): Promise<ProviderResult> {
-  console.log('[AR] Consultando Zippopotam...')
-  try {
-    const response = await fetch(`https://api.zippopotam.us/AR/${code}`, {
-      signal: AbortSignal.timeout(8000),
-    })
-
-    if (response.status === 404) {
-      return { success: false, error: 'Código postal não encontrado.' }
-    }
-
-    if (!response.ok) {
-      return { success: false, error: 'Erro ao consultar código postal. Tente novamente.' }
-    }
-
-    const data: ZippopotamResponse = await response.json()
-
-    if (!data.places || data.places.length === 0) {
-      return { success: false, error: 'Código postal não encontrado.' }
-    }
-
-    const place = data.places[0]
-
-    return {
-      success: true,
-      data: {
-        country: 'AR',
-        city: place['place name'],
-        state: place.state,
-      },
-    }
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'TimeoutError') {
-      return { success: false, error: 'Tempo de resposta esgotado. Tente novamente.' }
-    }
-    return { success: false, error: 'Erro de conexão. Verifique sua internet e tente novamente.' }
-  }
-}
-
-// ── RapidAPI CPA fallback ───────────────────────────────────
-
 /**
- * Consulta a API RapidAPI Argentina CPA como fallback.
+ * Consulta a API RapidAPI Argentina CPA.
  * Utiliza o endpoint validate_cpa para buscar localidade e província
  * a partir do código CPA completo.
  *
@@ -114,7 +48,6 @@ async function fetchFromZippopotam(code: string): Promise<ProviderResult> {
 async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
   const apiKey = import.meta.env.VITE_ARGENTINA_CPA_API_KEY
 
-  // ── AUDITORIA: Etapa 2 — Verificar CPA recebido ──────────
   console.log('[AR] CPA recebido:', cpa)
   console.log('[AR] CPA typeof:', typeof cpa)
   console.log('[AR] CPA length:', cpa.length)
@@ -123,11 +56,10 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
     console.warn('[AR] Chave da API RapidAPI CPA não configurada (VITE_ARGENTINA_CPA_API_KEY).')
     return {
       success: false,
-      error: 'Chave da API de fallback não configurada.',
+      error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.',
     }
   }
 
-  // ── AUDITORIA: Verificar se a chave está presente ─────────
   console.log('[AR] API Key presente:', apiKey ? `${apiKey.substring(0, 8)}...` : 'VAZIA')
 
   try {
@@ -139,10 +71,7 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
       'Content-Type': 'application/json',
     }
 
-    // ── AUDITORIA: Etapa 1 — Verificar URL ──────────────────
     console.log('[AR] URL utilizada:', url)
-
-    // ── AUDITORIA: Etapa 3 — Verificar headers ──────────────
     console.log('[AR] Headers enviados:', {
       'x-rapidapi-key': `${apiKey.substring(0, 8)}...`,
       'x-rapidapi-host': headers['x-rapidapi-host'],
@@ -155,24 +84,20 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
       signal: AbortSignal.timeout(10000),
     })
 
-    // ── AUDITORIA: Etapa 4 — Status e Content-Type ──────────
     console.log('[AR] Status:', response.status)
     console.log('[AR] Content-Type:', response.headers.get('content-type'))
 
     if (response.status === 404) {
-      return { success: false, error: 'Código CPA não encontrado na API de fallback.' }
+      return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
     if (!response.ok) {
       console.error(`[AR] RapidAPI CPA — Erro HTTP: ${response.status}`)
-      return { success: false, error: 'Erro ao consultar API de fallback.' }
+      return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
-    // ── AUDITORIA: Etapa 5 — Resposta bruta (text) ──────────
     const rawResult = await response.text()
     console.log('[AR] Resposta bruta:', rawResult)
-
-    // ── AUDITORIA: Etapa 6 — Tipo da resposta ───────────────
     console.log('[AR] Estrutura identificada:', typeof rawResult)
 
     // Tentar parsear como JSON
@@ -182,12 +107,10 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
     } catch (parseErr) {
       console.error('[AR] Falha ao parsear JSON:', parseErr)
       console.error('[AR] Conteúdo bruto que falhou no parse:', rawResult)
-      return { success: false, error: 'Resposta inválida da API de fallback.' }
+      return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
-    // ── AUDITORIA: Etapa 7 — Estrutura completa ─────────────
     console.log('[AR] Parsed result type:', typeof parsedResult)
-    console.log('[AR] Parsed result isArray:', Array.isArray(parsedResult))
     console.dir(parsedResult, { depth: null })
 
     // A API pode retornar um array ou um objeto único
@@ -197,27 +120,53 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
 
     if (!record) {
       console.warn('[AR] Record é undefined/null após extração.')
-      return { success: false, error: 'Código CPA não encontrado na API de fallback.' }
+      return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
-    // ── AUDITORIA: Listar todas as chaves do record ─────────
     console.log('[AR] Chaves do record:', Object.keys(record))
     console.log('[AR] Valores do record:', record)
 
-    const city = record.localidad ?? ''
-    const state = (record.province as { nombre?: string })?.nombre ?? ''
+    // Extração robusta de cidade (localidad.nombre)
+    let city = ''
+    if (record.localidad) {
+      if (typeof record.localidad === 'object' && record.localidad !== null) {
+        city = (record.localidad as { nombre?: string; name?: string }).nombre || 
+               (record.localidad as { nombre?: string; name?: string }).name || ''
+      } else if (typeof record.localidad === 'string') {
+        city = record.localidad
+      }
+    }
+    city = city.trim()
+
+    // Extração robusta de estado/província (province)
+    let state = ''
+    if (record.province) {
+      if (typeof record.province === 'object' && record.province !== null) {
+        state = (record.province as { nombre?: string; name?: string }).nombre || 
+                (record.province as { nombre?: string; name?: string }).name || ''
+      } else if (typeof record.province === 'string') {
+        state = record.province
+      }
+    } else if (record.provincia) {
+      if (typeof record.provincia === 'object' && record.provincia !== null) {
+        state = (record.provincia as { nombre?: string; name?: string }).nombre || 
+                (record.provincia as { nombre?: string; name?: string }).name || ''
+      } else if (typeof record.provincia === 'string') {
+        state = record.provincia
+      }
+    }
+    state = state.trim()
 
     console.log('[AR] city (localidad):', JSON.stringify(city))
-    console.log('[AR] state (province.nombre):', JSON.stringify(state))
+    console.log('[AR] state (province):', JSON.stringify(state))
 
     if (!state) {
-      console.warn('[AR] State está vazio (province.nombre null/undefined).')
-      return { success: false, error: 'Código CPA não encontrado na API de fallback.' }
+      console.warn('[AR] State/province está vazio.')
+      return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
     console.log('[AR] Resultado encontrado via RapidAPI CPA.')
 
-    // ── AUDITORIA: Etapa 8 — Resultado final ────────────────
     const mappedResult = {
       country: 'AR',
       city,
@@ -232,10 +181,10 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
   } catch (err) {
     if (err instanceof DOMException && err.name === 'TimeoutError') {
       console.error('[AR] Timeout na consulta RapidAPI CPA.')
-      return { success: false, error: 'Tempo de resposta esgotado na API de fallback.' }
+    } else {
+      console.error('[AR] Erro de rede na consulta RapidAPI CPA:', err)
     }
-    console.error('[AR] Erro de rede na consulta RapidAPI CPA:', err)
-    return { success: false, error: 'Erro de conexão na API de fallback.' }
+    return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
   }
 }
 
@@ -260,8 +209,6 @@ export const argentinaProvider: PostalCodeProvider = {
   },
 
   async lookup(postalCode: string): Promise<ProviderResult> {
-    // ── AUDITORIA: Log de entrada ───────────────────────────
-    console.log('[AR] ═══════════════════════════════════════════')
     console.log('[AR] lookup() chamado com postalCode:', JSON.stringify(postalCode))
 
     let sanitized: string
@@ -271,31 +218,70 @@ export const argentinaProvider: PostalCodeProvider = {
       return { success: false, error: 'Informe um código postal argentino válido. Exemplo: C1043AAZ' }
     }
 
-    console.log('[AR] Código normalizado:', sanitized)
+    console.log('[AR] Código CPA normalizado:', sanitized)
+    console.log('[AR] Iniciando consulta direta à RapidAPI.')
 
-    // ── Etapa 1: Consultar Zippopotam ───────────────────────
-
-    // CPA format (8 characters). Try complete code first.
-    console.log('[AR] Tentando Zippopotam com CPA completo:', sanitized)
-    const firstAttempt = await fetchFromZippopotam(sanitized)
-    console.log('[AR] Zippopotam resultado (CPA completo):', firstAttempt)
-
-    if (firstAttempt.success) {
-      return firstAttempt
-    }
-
-    // ── Etapa 2: Fallback RapidAPI CPA ──────────────────────
-
-    console.warn('[AR] Zippopotam sem resultado. Iniciando fallback CPA.')
-    const cpaResult = await lookupArgentinaCPA(sanitized)
-    console.log('[AR] RapidAPI CPA resultado:', cpaResult)
-
-    if (cpaResult.success) {
-      return cpaResult
-    }
-
-    // Ambas as APIs falharam
-    console.error('[AR] Nenhum resultado encontrado para o código informado.')
-    return firstAttempt
+    return lookupArgentinaCPA(sanitized)
   },
 }
+
+// ── Cache for Argentina Georef API ──────────────────────────
+
+export interface ArgentinaProvince {
+  id: string
+  nombre: string
+}
+
+export interface ArgentinaMunicipio {
+  id: string
+  nombre: string
+}
+
+let provincesCache: ArgentinaProvince[] | null = null
+const municipiosCache: Record<string, ArgentinaMunicipio[]> = {}
+
+export async function getArgentinaProvinces(): Promise<ArgentinaProvince[]> {
+  if (provincesCache) return provincesCache
+
+  try {
+    const response = await fetch('https://apis.datos.gob.ar/georef/api/provincias', {
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!response.ok) throw new Error('Falha ao carregar províncias da Argentina')
+    const data = await response.json()
+    const list: ArgentinaProvince[] = (data.provincias || []).map((p: any) => ({
+      id: p.id,
+      nombre: p.nombre
+    }))
+    list.sort((a, b) => a.nombre.localeCompare(b.nombre))
+    provincesCache = list
+    return list
+  } catch (err) {
+    console.error('[AR Provider] Erro ao carregar províncias:', err)
+    throw new Error('Não foi possível carregar a lista de províncias.')
+  }
+}
+
+export async function getArgentinaCities(provinceId: string): Promise<ArgentinaMunicipio[]> {
+  if (municipiosCache[provinceId]) return municipiosCache[provinceId]
+
+  try {
+    const url = `https://apis.datos.gob.ar/georef/api/municipios?provincia=${encodeURIComponent(provinceId)}&campos=id,nombre&max=100`
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!response.ok) throw new Error('Falha ao carregar municípios da Argentina')
+    const data = await response.json()
+    const list: ArgentinaMunicipio[] = (data.municipios || []).map((m: any) => ({
+      id: m.id,
+      nombre: m.nombre
+    }))
+    list.sort((a, b) => a.nombre.localeCompare(b.nombre))
+    municipiosCache[provinceId] = list
+    return list
+  } catch (err) {
+    console.error(`[AR Provider] Erro ao carregar municípios para província ${provinceId}:`, err)
+    throw new Error('Não foi possível carregar as cidades desta província.')
+  }
+}
+

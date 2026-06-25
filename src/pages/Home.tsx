@@ -12,7 +12,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Editor Visual Drag & Drop',
-    desc: 'Arraste móveis e equipamentos para criar o layout da sua farmácia de forma intuitiva.',
+    desc: 'Arraste móveis e equipamentos para criar o projeto da sua farmácia de forma intuitiva.',
   },
   {
     icon: (
@@ -23,7 +23,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Sugestões com Inteligência Artificial',
-    desc: 'A IA analisa o espaço e gera um layout otimizado para o seu tipo de farmácia.',
+    desc: 'A IA analisa o espaço e gera um projeto otimizado para o seu tipo de farmácia.',
   },
   {
     icon: (
@@ -57,7 +57,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Exportação em PDF e PNG',
-    desc: 'Baixe o relatório completo do layout com planta, lista de itens e metragem.',
+    desc: 'Baixe o relatório completo do projeto com planta, lista de itens e metragem.',
   },
   {
     icon: (
@@ -69,7 +69,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Agende com um Consultor',
-    desc: 'Conclua o layout e agende uma reunião gratuita com um especialista Projefarma.',
+    desc: 'Conclua o projeto e agende uma reunião gratuita com um especialista Projefarma.',
   },
 ]
 
@@ -119,9 +119,9 @@ const STORE_TYPES = [
 ]
 
 const TESTIMONIALS = [
-  { name: 'Ana Paula R.', city: 'São Paulo, SP', text: 'Consegui planejar toda a minha farmácia em menos de 1 hora! O consultor ficou impressionado com o layout já pronto.', rating: 5 },
+  { name: 'Ana Paula R.', city: 'São Paulo, SP', text: 'Consegui planejar toda a minha farmácia em menos de 1 hora! O consultor ficou impressionado com o projeto já pronto.', rating: 5 },
   { name: 'Carlos M.', city: 'Belo Horizonte, MG', text: 'A IA sugeriu posicionar a perfumaria na entrada e as vendas aumentaram 23% no primeiro mês!', rating: 5 },
-  { name: 'Fernanda L.', city: 'Curitiba, PR', text: 'Ferramenta incrível! Marquei os pilares da minha loja e o layout ficou perfeito sem nenhum obstáculo nos corredores.', rating: 5 },
+  { name: 'Fernanda L.', city: 'Curitiba, PR', text: 'Ferramenta incrível! Marquei os pilares da minha loja e o projeto ficou perfeito sem nenhum obstáculo nos corredores.', rating: 5 },
 ]
 
 export default function Home() {
@@ -167,7 +167,7 @@ export default function Home() {
             <a href="#como-funciona">Como funciona</a>
             <a href="#depoimentos">Depoimentos</a>
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/novo-layout')}>
-              Criar Layout Grátis
+              Criar Projeto Grátis
             </button>
           </nav>
           <button className="btn btn-primary btn-sm hide-desktop" onClick={() => navigate('/novo-layout')}>
@@ -185,14 +185,14 @@ export default function Home() {
         <div className="container hero-inner">
           <div className="hero-badge fade-in">
             <span className="badge badge-green">Novo</span>
-            <span>Planejamento de layout com IA para farmácias</span>
+            <span>Projeto de mobiliário com IA para farmácias</span>
           </div>
           <h1 className="hero-title scale-in">
-            Crie o Layout Perfeito <br />
+            Crie o Projeto Perfeito de mobiliário<br />
             para a Sua <span className="hero-title-highlight">Farmácia</span>
           </h1>
           <p className="hero-desc fade-in">
-            Planeje o espaço da sua farmácia com inteligência artificial, arraste e solte móveis, marque pilares e obstáculos reais — e agende uma reunião gratuita com um consultor Projefarma.
+            Planeje o mobiliário da sua farmácia com inteligência artificial, arraste e solte móveis, marque pilares e obstáculos reais — e agende uma reunião gratuita com um consultor Projefarma.
           </p>
           <div className="hero-actions fade-in">
             <button
@@ -205,7 +205,7 @@ export default function Home() {
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <path d="M3 9h18M9 21V9" />
               </svg>
-              Criar Meu Layout Grátis
+              Criar Meu Projeto Grátis
             </button>
             {getAllLayoutsList().length > 0 && (
               <button
@@ -265,7 +265,7 @@ export default function Home() {
                 id={`btn-tipo-${type.id}`}
                 className="store-type-card reveal"
                 onClick={() => navigate(`/editor?type=${type.id}`)}
-                style={{ 
+                style={{
                   '--type-color': type.color,
                   transitionDelay: `${i * 80}ms`
                 } as React.CSSProperties}
@@ -286,9 +286,9 @@ export default function Home() {
           <h2 className="section-title reveal">Funcionalidades Completas</h2>
           <div className="features-grid">
             {FEATURES.map((f, i) => (
-              <div 
-                key={i} 
-                className="feature-card reveal" 
+              <div
+                key={i}
+                className="feature-card reveal"
                 style={{ transitionDelay: `${i * 80}ms` }}
               >
                 <div className="feature-icon">{f.icon}</div>
@@ -354,11 +354,11 @@ export default function Home() {
                   </svg>
                 ),
                 title: 'Agende sua consultoria',
-                desc: 'Salve o layout e agende uma reunião gratuita com um especialista.'
+                desc: 'Salve o projeto e agende uma reunião gratuita com um especialista.'
               },
             ].map((s, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="step reveal"
                 style={{ transitionDelay: `${i * 100}ms` }}
               >
@@ -380,8 +380,8 @@ export default function Home() {
           <h2 className="section-title reveal">Depoimentos</h2>
           <div className="testimonials-grid">
             {TESTIMONIALS.map((t, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="testimonial-card reveal"
                 style={{ transitionDelay: `${i * 120}ms` }}
               >
@@ -421,7 +421,7 @@ export default function Home() {
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
-            Criar Meu Layout Agora
+            Criar Meu Projeto Agora
           </button>
         </div>
       </section>
