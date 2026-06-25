@@ -119,6 +119,7 @@ export default function ClientIntakeForm() {
   const [argentinaProvinces, setArgentinaProvinces] = useState<ArgentinaProvince[]>([])
   const [arCitiesInProvince, setArCitiesInProvince] = useState<ArgentinaMunicipio[]>([])
   const [arSelectedProvinceId, setArSelectedProvinceId] = useState<string>('')
+  const [locationReady, setLocationReady] = useState(false)
 
   const [form, setForm] = useState<FormData>({
     clientName: '',
@@ -248,6 +249,60 @@ export default function ClientIntakeForm() {
         return
       }
 
+      if (country === 'AR') {
+        setForm(prev => ({
+          ...prev,
+          city: result.data!.city || '',
+          state: result.data!.state || '',
+        }))
+        setPostalMessage(null)
+
+        if (!result.data!.city) {
+          console.warn('[Freight] Apenas província identificada.')
+          setIsCityManual(true)
+          setIsStateManual(true)
+          setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
+          setLocationReady(false)
+          setFreightData(null)
+          console.log('[Argentina] Aguardando cidade válida')
+          getArgentinaProvinces().then(provs => {
+            const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
+            if (found) {
+              setArSelectedProvinceId(found.id)
+            }
+          }).catch(() => { })
+        } else {
+          setIsCityManual(false)
+          setIsStateManual(false)
+          setFreightMessage(null)
+          setLocationReady(true)
+          console.log('[Argentina] Cidade selecionada')
+          getArgentinaProvinces().then(provs => {
+            const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
+            if (found) {
+              setArSelectedProvinceId(found.id)
+            }
+          }).catch(() => { })
+
+          // Pipeline: Geocoding → Distância → Frete
+          console.log('[Argentina] Iniciando geolocalização')
+          const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
+
+          if (geoResult.success && geoResult.data) {
+            console.log('[Argentina] Iniciando cálculo de frete')
+            const freightRes = await calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
+
+            if (freightRes.success && freightRes.data) {
+              setFreightData({
+                distanceKm: freightRes.data.distanceKm,
+                freightCost: freightRes.data.shippingCost
+              })
+            }
+          }
+        }
+        return
+      }
+
       setForm(prev => ({
         ...prev,
         city: result.data!.city,
@@ -266,7 +321,7 @@ export default function ClientIntakeForm() {
             if (found) {
               setArSelectedProvinceId(found.id)
             }
-          }).catch(() => {})
+          }).catch(() => { })
         } else {
           setFreightMessage(
             'Não foi possível identificar sua cidade através do código postal.\n\nPara calcular o frete corretamente, informe a cidade onde você está localizado.'
@@ -281,7 +336,7 @@ export default function ClientIntakeForm() {
             if (found) {
               setArSelectedProvinceId(found.id)
             }
-          }).catch(() => {})
+          }).catch(() => { })
         }
         setFreightMessage(null)
 
@@ -315,6 +370,9 @@ export default function ClientIntakeForm() {
         setIsStateManual(true)
         setForm(prev => ({ ...prev, city: '', state: '' }))
         setPostalMessage(result.error || 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.')
+        setLocationReady(false)
+        setFreightData(null)
+        console.log('[Argentina] Aguardando cidade válida')
         return
       }
       setIsCityManual(false)
@@ -391,11 +449,13 @@ export default function ClientIntakeForm() {
     setForm(prev => ({ ...prev, postalCode: '', city: '', state: '' }))
     setPostalMessage(null)
     setFreightMessage(null)
+    setFreightData(null)
     setLastFetchedKey('')
     setIsCityManual(form.country === 'UY' || form.country === 'PY' || form.country === 'AR')
     setIsStateManual(form.country === 'AR')
     setArSelectedProvinceId('')
     setShowSuggestions(false)
+    setLocationReady(false)
   }, [form.country])
 
   // Load Paraguay departments on demand when country is Paraguay
@@ -464,10 +524,18 @@ export default function ClientIntakeForm() {
       return
     }
 
-    // AR: se a cidade estiver vazia, exibe a ajuda visual
-    if (form.country === 'AR' && !form.city.trim()) {
-      setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
-      return
+    // AR: se a cidade estiver vazia, ou a localização não estiver pronta
+    if (form.country === 'AR') {
+      if (!form.state.trim() || !form.city.trim() || !locationReady) {
+        console.log('[Argentina] Aguardando cidade válida')
+        setFreightData(null)
+        if (!form.city.trim()) {
+          setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
+        } else {
+          setFreightMessage('Cidade inválida ou não selecionada. Escolha uma cidade da lista.')
+        }
+        return
+      }
     }
 
     if (!form.city.trim() || form.city.trim().length < 2) return
@@ -476,16 +544,24 @@ export default function ClientIntakeForm() {
     setFreightMessage(null)
 
     const timer = setTimeout(async () => {
-      const normalizedCity = normalizeManualCity(form.city)
-      console.log('[Freight] Utilizando cidade e estado informados manualmente pelo usuário.')
-      console.log('[Freight] Cidade informada:', normalizedCity)
+      if (form.country === 'AR') {
+        console.log('[Argentina] Iniciando geolocalização')
+      } else {
+        console.log('[Freight] Utilizando cidade e estado informados manualmente pelo usuário.')
+        console.log('[Freight] Cidade informada:', normalizeManualCity(form.city))
+      }
 
+      const normalizedCity = normalizeManualCity(form.city)
       const geoResult = await getCoordinates(form.country, form.state.trim(), normalizedCity)
 
       if (!geoResult.success || !geoResult.data) {
         console.warn('[Freight] Cidade não localizada no Nominatim.')
         setFreightMessage('Não foi possível localizar a cidade, precisa calcular manualmente.')
         return
+      }
+
+      if (form.country === 'AR') {
+        console.log('[Argentina] Iniciando cálculo de frete')
       }
 
       setFreightMessage(null)
@@ -499,7 +575,7 @@ export default function ClientIntakeForm() {
     }, 1500) // debounce de 1.5s para aguardar digitação
 
     return () => clearTimeout(timer)
-  }, [isCityManual, form.country, form.city, form.state])
+  }, [isCityManual, form.country, form.city, form.state, locationReady])
 
   // ── Autocomplete Logic for Uruguay, Paraguay & Argentina ─────────────────
   const citiesInDept = useMemo(() => {
@@ -582,6 +658,8 @@ export default function ClientIntakeForm() {
         city
       }))
       setPostalMessage(null)
+      setLocationReady(true)
+      console.log('[Argentina] Cidade selecionada:', city)
     }
 
     setShowSuggestions(false)
@@ -630,6 +708,18 @@ export default function ClientIntakeForm() {
       } else {
         setPostalMessage(null)
       }
+    } else if (form.country === 'AR') {
+      const trimmedCity = form.city.trim()
+      const match = citiesInDept.find(c => c.toLowerCase().trim() === trimmedCity.toLowerCase())
+      if (match) {
+        setForm(prev => ({ ...prev, city: match }))
+        setLocationReady(true)
+        console.log('[Argentina] Cidade selecionada (via blur):', match)
+      } else {
+        setLocationReady(false)
+        setFreightData(null)
+        console.log('[Argentina] Aguardando cidade válida')
+      }
     }
   }
 
@@ -637,6 +727,13 @@ export default function ClientIntakeForm() {
   const handlePostalCodeChange = (value: string) => {
     if (form.country) {
       set('postalCode', formatPostalCode(form.country, value))
+      if (form.country === 'AR') {
+        setLocationReady(false)
+        setFreightData(null)
+        setIsCityManual(true)
+        setIsStateManual(true)
+        console.log('[Argentina] Aguardando cidade válida (CPA modificado)')
+      }
     } else {
       set('postalCode', value)
     }
@@ -677,6 +774,9 @@ export default function ClientIntakeForm() {
     }))
     setPostalMessage(null)
     setShowSuggestions(false)
+    setLocationReady(false)
+    setFreightData(null)
+    console.log('[Argentina] Aguardando cidade válida (província alterada)')
   }
 
   // ── Step 1 validation ──────────────────────────────────────────────────
@@ -969,13 +1069,16 @@ export default function ClientIntakeForm() {
                                   })
                                   setPostalMessage(null)
                                 }
-                              }).catch(() => {})
+                              }).catch(() => { })
                             } else if (form.country === 'AR') {
                               // Argentina
                               setForm(prev => ({
                                 ...prev,
                                 city: val
                               }))
+                              setLocationReady(false)
+                              setFreightData(null)
+                              console.log('[Argentina] Aguardando cidade válida (digitando...)')
                             }
                             setShowSuggestions(true)
                             setActiveSuggestionIndex(0)
