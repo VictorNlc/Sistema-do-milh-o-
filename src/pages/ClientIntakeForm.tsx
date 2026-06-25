@@ -9,11 +9,11 @@ import {
   getPostalCodePlaceholder,
   getPostalCodeMaxLength,
   getPostalCodeLength,
-  getReferencePostcodeForUruguay,
 } from '../services/postalCode'
 import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
 import UY_CITIES_BY_DEPT from '../data/uyCitiesByDept.json'
+import UY_CITY_TO_POSTCODE from '../data/uyCityToPostcode.json'
 import './ClientIntakeForm.css'
 const URUGUAY_DEPARTMENTS = [
   'Artigas',
@@ -260,11 +260,16 @@ export default function ClientIntakeForm() {
   useEffect(() => {
     if (!form.country) return
 
-    // UY: não auto-preencher cidade/estado, não limpar campos manuais
+    // UY: não auto-preencher cidade/estado, não limpar campos manuais se selecionados via autocomplete
     if (form.country === 'UY') {
       const sanitized = sanitizePostalCode(form.country, form.postalCode)
       const expectedLength = getPostalCodeLength(form.country, form.postalCode)
       if (sanitized.length === expectedLength) {
+        const key = `${form.state}|${form.city}`
+        const matchedPostcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key]
+        if (matchedPostcode === sanitized) {
+          return
+        }
         performLookup(form.country, form.postalCode)
       }
       return
@@ -373,7 +378,21 @@ export default function ClientIntakeForm() {
   }, [])
 
   const handleSelectSuggestion = (city: string) => {
-    set('city', city)
+    const key = `${form.state}|${city}`
+    const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key]
+
+    setForm(prev => ({
+      ...prev,
+      city,
+      postalCode: postcode || ''
+    }))
+
+    if (postcode) {
+      setPostalMessage(null)
+    } else {
+      setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+    }
+
     setShowSuggestions(false)
   }
 
@@ -396,6 +415,19 @@ export default function ClientIntakeForm() {
     }
   }
 
+  const handleCityBlur = () => {
+    handleBlur('city')
+    if (form.country === 'UY') {
+      const key = `${form.state}|${form.city}`
+      const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key]
+      if (form.city.trim() && !postcode) {
+        setPostalMessage('Não foi possível localizar o código postal para esta cidade.')
+      } else {
+        setPostalMessage(null)
+      }
+    }
+  }
+
   // ── Postal code input handler ───────────────────────────────────────────
   const handlePostalCodeChange = (value: string) => {
     if (form.country) {
@@ -410,8 +442,9 @@ export default function ClientIntakeForm() {
       ...prev,
       state: department,
       city: '',
-      postalCode: getReferencePostcodeForUruguay(department) || prev.postalCode
+      postalCode: ''
     }))
+    setPostalMessage(null)
     setShowSuggestions(false)
   }
 
@@ -676,12 +709,22 @@ export default function ClientIntakeForm() {
                           value={form.city}
                           readOnly={false}
                           onChange={e => {
-                            set('city', e.target.value)
+                            const val = e.target.value
+                            setForm(prev => {
+                              const key = `${prev.state}|${val}`
+                              const postcode = (UY_CITY_TO_POSTCODE as Record<string, string>)[key] || ''
+                              return {
+                                ...prev,
+                                city: val,
+                                postalCode: postcode
+                              }
+                            })
+                            setPostalMessage(null)
                             setShowSuggestions(true)
                             setActiveSuggestionIndex(0)
                           }}
                           onFocus={() => setShowSuggestions(true)}
-                          onBlur={() => handleBlur('city')}
+                          onBlur={handleCityBlur}
                           onKeyDown={handleCityKeyDown}
                           className={errors.city ? 'error' : ''}
                           tabIndex={0}
