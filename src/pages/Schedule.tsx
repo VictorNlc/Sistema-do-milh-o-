@@ -93,6 +93,29 @@ export default function Schedule() {
       setStep(4) // success
       toast.success('Reunião agendada com sucesso!')
 
+      // Atualizar o e-mail, nome e telefone no perfil do lead se houver um profileId
+      try {
+        const rawIntake = sessionStorage.getItem('projefarma_intake')
+        if (rawIntake && supabase) {
+          const intake = JSON.parse(rawIntake)
+          if (intake.profileId) {
+            supabase.from('profiles').update({
+              email: form.email,
+              name: form.name,
+              phone: form.phone
+            }).eq('id', intake.profileId).then(({ error }) => {
+              if (error) {
+                console.warn('⚠️ Erro ao atualizar perfil com dados do agendamento:', error.message)
+              } else {
+                console.log('✅ Perfil atualizado com dados do agendamento:', intake.profileId)
+              }
+            })
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao ler perfil para atualizar dados de agendamento:', err)
+      }
+
       // Disparar envio de e-mails de confirmação e alerta
       if (supabase) {
         supabase.functions.invoke('send-email', {

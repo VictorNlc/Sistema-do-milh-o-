@@ -17,6 +17,7 @@ import {
 } from '../services/postalCode'
 import { getCoordinates, normalizeManualCity } from '../services/geocodingService'
 import { calculateDistance } from '../services/distanceService'
+import { supabase } from '../services/supabase'
 import UY_CITIES_BY_DEPT from '../data/uyCitiesByDept.json'
 import UY_CITY_TO_POSTCODE from '../data/uyCityToPostcode.json'
 import './ClientIntakeForm.css'
@@ -840,8 +841,44 @@ export default function ClientIntakeForm() {
 
     const selectedCountry = SUPPORTED_COUNTRIES.find(c => c.code === form.country)
 
+    // Generate a unique profileId for this lead
+    const profileId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+      ? crypto.randomUUID() 
+      : 'p_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+
+    // Try to save to Supabase profiles table
+    if (supabase) {
+      try {
+        const { error } = await supabase.from('profiles').insert({
+          id: profileId,
+          name: form.clientName.trim(),
+          pharmacyName: form.pharmacyName.trim(),
+          phone: form.phone,
+          country: form.country,
+          postalCode: form.postalCode.trim(),
+          city: form.city.trim(),
+          state: form.state.trim(),
+          address: form.address.trim(),
+          number: form.number.trim(),
+          complement: form.complement.trim(),
+          employees: form.employees,
+          storeWidth: form.spaceMode === 'dimensions' ? parseFloat(form.width) : null,
+          storeHeight: form.spaceMode === 'dimensions' ? parseFloat(form.height) : null,
+          role: 'user'
+        })
+        if (error) {
+          console.warn('⚠️ Erro ao salvar perfil no Supabase:', error.message)
+        } else {
+          console.log('✅ Perfil do lead salvo no Supabase:', profileId)
+        }
+      } catch (err) {
+        console.warn('⚠️ Falha ao salvar perfil no Supabase:', err)
+      }
+    }
+
     // Save client data to sessionStorage so Editor can consume it
     const intakeData = {
+      profileId,
       clientName: form.clientName.trim(),
       pharmacyName: form.pharmacyName.trim(),
       country: form.country,
