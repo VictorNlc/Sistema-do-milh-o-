@@ -224,3 +224,64 @@ export const argentinaProvider: PostalCodeProvider = {
     return lookupArgentinaCPA(sanitized)
   },
 }
+
+// ── Cache for Argentina Georef API ──────────────────────────
+
+export interface ArgentinaProvince {
+  id: string
+  nombre: string
+}
+
+export interface ArgentinaMunicipio {
+  id: string
+  nombre: string
+}
+
+let provincesCache: ArgentinaProvince[] | null = null
+const municipiosCache: Record<string, ArgentinaMunicipio[]> = {}
+
+export async function getArgentinaProvinces(): Promise<ArgentinaProvince[]> {
+  if (provincesCache) return provincesCache
+
+  try {
+    const response = await fetch('https://apis.datos.gob.ar/georef/api/provincias', {
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!response.ok) throw new Error('Falha ao carregar províncias da Argentina')
+    const data = await response.json()
+    const list: ArgentinaProvince[] = (data.provincias || []).map((p: any) => ({
+      id: p.id,
+      nombre: p.nombre
+    }))
+    list.sort((a, b) => a.nombre.localeCompare(b.nombre))
+    provincesCache = list
+    return list
+  } catch (err) {
+    console.error('[AR Provider] Erro ao carregar províncias:', err)
+    throw new Error('Não foi possível carregar a lista de províncias.')
+  }
+}
+
+export async function getArgentinaCities(provinceId: string): Promise<ArgentinaMunicipio[]> {
+  if (municipiosCache[provinceId]) return municipiosCache[provinceId]
+
+  try {
+    const url = `https://apis.datos.gob.ar/georef/api/municipios?provincia=${encodeURIComponent(provinceId)}&campos=id,nombre&max=100`
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!response.ok) throw new Error('Falha ao carregar municípios da Argentina')
+    const data = await response.json()
+    const list: ArgentinaMunicipio[] = (data.municipios || []).map((m: any) => ({
+      id: m.id,
+      nombre: m.nombre
+    }))
+    list.sort((a, b) => a.nombre.localeCompare(b.nombre))
+    municipiosCache[provinceId] = list
+    return list
+  } catch (err) {
+    console.error(`[AR Provider] Erro ao carregar municípios para província ${provinceId}:`, err)
+    throw new Error('Não foi possível carregar as cidades desta província.')
+  }
+}
+
