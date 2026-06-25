@@ -7,6 +7,7 @@ import { brazilProvider } from './providers/brazilProvider'
 import { argentinaProvider } from './providers/argentinaProvider'
 import { uruguayProvider } from './providers/uruguayProvider'
 import { paraguayProvider } from './providers/paraguayProvider'
+import { URUGUAY_POSTCODES } from '../../data/uyPostcodes'
 
 export type { PostalLookupResult, ProviderResult, SupportedCountry } from './types'
 export { SUPPORTED_COUNTRIES } from './types'
@@ -157,4 +158,17 @@ export function getPostalCodeMaxLength(countryCode: string, value?: string): num
   // Paraguai: códigos de 4, 5 ou 6 dígitos
   if (countryCode === 'PY') return 6
   return provider.postalCodeLength
+}
+
+/**
+ * Retorna um código postal de referência para um departamento do Uruguai.
+ */
+export function getReferencePostcodeForUruguay(department: string): string | null {
+  const target = department.toLowerCase().trim()
+  for (const key in URUGUAY_POSTCODES) {
+    if (URUGUAY_POSTCODES[key].department.toLowerCase().trim() === target) {
+      return URUGUAY_POSTCODES[key].postalCode
+    }
+  }
+  return null
 }

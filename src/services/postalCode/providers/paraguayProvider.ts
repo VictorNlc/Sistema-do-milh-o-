@@ -124,7 +124,7 @@ export const paraguayProvider: PostalCodeProvider = {
 
     try {
       const map = await loadParaguayCsv()
-      
+
       // 1. Tenta buscar exatamente o valor informado
       let entry = map.get(sanitized)
 
