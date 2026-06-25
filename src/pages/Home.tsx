@@ -12,7 +12,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Editor Visual Drag & Drop',
-    desc: 'Arraste móveis e equipamentos para criar o layout da sua farmácia de forma intuitiva.',
+    desc: 'Arraste móveis e equipamentos para criar o projeto da sua farmácia de forma intuitiva.',
   },
   {
     icon: (
@@ -23,7 +23,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Sugestões com Inteligência Artificial',
-    desc: 'A IA analisa o espaço e gera um layout otimizado para o seu tipo de farmácia.',
+    desc: 'A IA analisa o espaço e gera um projeto otimizado para o seu tipo de farmácia.',
   },
   {
     icon: (
@@ -57,7 +57,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Exportação em PDF e PNG',
-    desc: 'Baixe o relatório completo do layout com planta, lista de itens e metragem.',
+    desc: 'Baixe o relatório completo do projeto com planta, lista de itens e metragem.',
   },
   {
     icon: (
@@ -69,7 +69,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Agende com um Consultor',
-    desc: 'Conclua o layout e agende uma reunião gratuita com um especialista Projefarma.',
+    desc: 'Conclua o projeto e agende uma reunião gratuita com um especialista Projefarma.',
   },
 ]
 
@@ -119,9 +119,9 @@ const STORE_TYPES = [
 ]
 
 const TESTIMONIALS = [
-  { name: 'Ana Paula R.', city: 'São Paulo, SP', text: 'Consegui planejar toda a minha farmácia em menos de 1 hora! O consultor ficou impressionado com o layout já pronto.', rating: 5 },
+  { name: 'Ana Paula R.', city: 'São Paulo, SP', text: 'Consegui planejar toda a minha farmácia em menos de 1 hora! O consultor ficou impressionado com o projeto já pronto.', rating: 5 },
   { name: 'Carlos M.', city: 'Belo Horizonte, MG', text: 'A IA sugeriu posicionar a perfumaria na entrada e as vendas aumentaram 23% no primeiro mês!', rating: 5 },
-  { name: 'Fernanda L.', city: 'Curitiba, PR', text: 'Ferramenta incrível! Marquei os pilares da minha loja e o layout ficou perfeito sem nenhum obstáculo nos corredores.', rating: 5 },
+  { name: 'Fernanda L.', city: 'Curitiba, PR', text: 'Ferramenta incrível! Marquei os pilares da minha loja e o projeto ficou perfeito sem nenhum obstáculo nos corredores.', rating: 5 },
 ]
 
 export default function Home() {
@@ -354,7 +354,7 @@ export default function Home() {
                   </svg>
                 ),
                 title: 'Agende sua consultoria',
-                desc: 'Salve o layout e agende uma reunião gratuita com um especialista.'
+                desc: 'Salve o projeto e agende uma reunião gratuita com um especialista.'
               },
             ].map((s, i) => (
               <div
