@@ -3247,7 +3247,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
         {!loading && showIntro && (
           <div className="three-lock-overlay" onClick={handleLockClick}>
             <div className="lock-card" onClick={e => e.stopPropagation()}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--green-400)', marginBottom: 12 }}><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+              <svg className="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
               <h3>Clique na tela para iniciar</h3>
               <p>
                 {isTouch 

@@ -183,6 +183,13 @@
   animation: scaleIn 0.3s var(--ease-spring);
 }
 
+.lock-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--green-400);
+  margin-bottom: 12px;
+}
+
 .lock-card h3 {
   font-size: var(--fs-xl);
   font-weight: 800;
@@ -503,6 +510,16 @@
     font-size: var(--fs-2xs) !important;
     justify-content: center;
     padding: 0 var(--s2) !important;
+  }
+
+  .lock-card {
+    padding: var(--s4) var(--s5) !important; /* Smaller padding on mobile screens */
+  }
+
+  .lock-icon {
+    width: 36px !important;
+    height: 36px !important;
+    margin-bottom: 8px !important;
   }
 }
 
