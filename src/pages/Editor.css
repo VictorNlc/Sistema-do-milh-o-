@@ -234,6 +234,17 @@
   stroke-linejoin: round;
 }
 
+.tb-btn-danger {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #FCA5A5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+.tb-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: #EF4444 !important;
+  color: white !important;
+}
+
 .tb-btn-primary {
   background: var(--dourado);
   color: var(--verde-escuro);

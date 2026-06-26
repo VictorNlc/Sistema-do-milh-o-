@@ -556,6 +556,10 @@ export default function Editor() {
           <I.Center /> Centralizar
         </button>
 
+        <button className="tb-btn tb-btn-danger desktop-only" onClick={() => { if (confirm('Limpar todo o layout?')) clearCanvas() }} title="Limpar todo o layout" style={{ height: 32 }}>
+          <I.Trash /> Limpar Layout
+        </button>
+
         {/* Actions */}
         <div className="tb-right">
           <div className="tb-status desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
