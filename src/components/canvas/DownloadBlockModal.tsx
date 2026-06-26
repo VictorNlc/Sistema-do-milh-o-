@@ -1,4 +1,5 @@
 import React from 'react'
+import DownloadGuide, { detectBrowser } from './DownloadGuide'
 import './DownloadBlockModal.css'
 
 interface DownloadBlockModalProps {
@@ -9,6 +10,8 @@ interface DownloadBlockModalProps {
 
 export default function DownloadBlockModal({ isOpen, onClose, onRetry }: DownloadBlockModalProps) {
   if (!isOpen) return null
+
+  const browser = detectBrowser()
 
   const handleUnderstand = () => {
     localStorage.setItem('multiple_downloads_allowed', 'true')
@@ -44,57 +47,7 @@ export default function DownloadBlockModal({ isOpen, onClose, onRetry }: Downloa
           </div>
 
           {/* Visual Guide Illustration */}
-          <div className="dl-illustration">
-            {/* Mock of browser address bar */}
-            <div className="dl-browser-chrome">
-              <div className="dl-chrome-dots">
-                <span className="dl-dot red"></span>
-                <span className="dl-dot yellow"></span>
-                <span className="dl-dot green"></span>
-              </div>
-              <div className="dl-chrome-address-bar">
-                <div className="dl-lock-wrapper">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="dl-lock-icon">
-                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-                  </svg>
-                </div>
-                <span className="dl-domain">https://projefarma.com.br</span>
-              </div>
-
-              {/* Pulsing pointer arrow */}
-              <div className="dl-arrow-pointer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="dl-bounce-up">
-                  <line x1="12" y1="19" x2="12" y2="5"></line>
-                  <polyline points="5 12 12 5 19 12"></polyline>
-                </svg>
-                <span className="dl-pointer-text">Clique aqui</span>
-              </div>
-            </div>
-
-            {/* Mock of website settings panel */}
-            <div className="dl-settings-dropdown">
-              <div className="dl-dropdown-header">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6 }}>
-                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-                </svg>
-                <span>Configurações do site</span>
-              </div>
-              <div className="dl-dropdown-item">
-                <div className="dl-item-left">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 8, color: 'var(--text-3)' }}>
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  <span>Downloads automáticos</span>
-                </div>
-                <div className="dl-dropdown-toggle">
-                  <span className="dl-toggle-option">Permitir</span>
-                  <span className="dl-toggle-check">●</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <DownloadGuide browser={browser} />
 
           <div className="dl-instructions">
             <h3>Como permitir downloads automáticos:</h3>
@@ -103,7 +56,7 @@ export default function DownloadBlockModal({ isOpen, onClose, onRetry }: Downloa
               <li>Abra as configurações do site.</li>
               <li>Procure pela opção <strong>"Downloads automáticos"</strong>.</li>
               <li>Altere para <strong>"Permitir"</strong>.</li>
-              <li>Feche a janela e clique novamente em <strong>"Exportar PDF"</strong>.</li>
+              <li>Clique em concluído e depois em <strong>"Tentar novamente"</strong>, ou feche esta caixa e clique em <strong>"Exportar PDF"</strong>.</li>
             </ol>
           </div>
 

@@ -11,7 +11,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000; /* Garante que fique acima de tudo, inclusive outros modais */
+  z-index: 2000;
+  /* Garante que fique acima de tudo, inclusive outros modais */
   animation: dl-fadeIn 0.25s ease-out;
 }
 
@@ -133,9 +134,17 @@
   border-radius: 50%;
 }
 
-.dl-chrome-dots .red { background: #ff5f56; }
-.dl-chrome-dots .yellow { background: #ffbd2e; }
-.dl-chrome-dots .green { background: #27c93f; }
+.dl-chrome-dots .red {
+  background: #ff5f56;
+}
+
+.dl-chrome-dots .yellow {
+  background: #ffbd2e;
+}
+
+.dl-chrome-dots .green {
+  background: #27c93f;
+}
 
 .dl-chrome-address-bar {
   flex: 1;
@@ -175,13 +184,36 @@
 /* Seta animada apontando para o cadeado */
 .dl-arrow-pointer {
   position: absolute;
-  left: 28px;
-  top: 42px; /* Posicionada exatamente abaixo do ícone do cadeado */
+  top: 42px;
   display: flex;
   flex-direction: column;
   align-items: center;
   z-index: 10;
   pointer-events: none;
+}
+
+.dl-arrow-pointer.safari-pointer {
+  left: 28px;
+}
+
+.dl-arrow-pointer.chromium-pointer {
+  left: auto;
+  right: 27px; /* Shifted slightly to the left to align with the red icon */
+  width: 20px;
+  align-items: center;
+}
+
+.dl-right-icon-blocked {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--r-sm);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #ef4444;
 }
 
 .dl-bounce-up {
@@ -322,16 +354,201 @@
 }
 
 @keyframes dl-fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes dl-springIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes dl-bounceUp {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(6px); }
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(6px);
+  }
+}
+
+/* =============================================================================
+   Chrome Blocked Download Dialog Mockup
+   ============================================================================= */
+
+.dl-chrome-bloq-dialog {
+  margin-top: 16px;
+  margin-left: 16px; /* Aligned to the left side */
+  margin-right: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--border-sm);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 280px;
+  /* Reduced width (approx. half of main modal size) */
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.dl-bloq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.dl-bloq-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+.dl-bloq-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 11px;
+  cursor: not-allowed;
+  padding: 2px;
+  opacity: 0.6;
+}
+
+.dl-bloq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dl-bloq-option-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  transition: background-color var(--dur-fast);
+  position: relative;
+}
+
+.dl-bloq-option-row.highlight-target {
+  background: transparent;
+  border: 1.5px solid transparent;
+}
+
+.dl-bloq-option-row.highlight-target .dl-bloq-radio-outer {
+  border-color: #ef4444;
+  /* Red circle */
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+  /* Soft red ring */
+  animation: dl-pulseRed 1.5s infinite ease-in-out;
+}
+
+@keyframes dl-pulseRed {
+  0% {
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.8);
+  }
+
+  100% {
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4);
+  }
+}
+
+.dl-bloq-option-row.selected {
+  background: var(--surface-subtle);
+  border: 1.5px solid transparent;
+}
+
+.dl-bloq-radio-outer {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.dl-bloq-radio-outer.checked {
+  border-color: #1a73e8;
+  /* Chrome Blue */
+}
+
+.dl-bloq-radio-inner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.dl-bloq-radio-inner.checked {
+  background: #1a73e8;
+  /* Chrome Blue */
+}
+
+.dl-bloq-option-text {
+  font-size: 10.5px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.dl-bloq-option-text strong {
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.dl-bloq-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dl-bloq-btn-manage {
+  background: #fce8e6;
+  /* Peach-colored button for Chrome management */
+  color: #c5221f;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: not-allowed;
+  margin-right: auto;
+  /* Push to the left */
+}
+
+.dl-bloq-btn-done {
+  background: #1a73e8;
+  /* Chrome standard blue button */
+  color: white;
+  border: 1px solid #1a73e8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: not-allowed;
 }
