@@ -275,7 +275,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   toggleMeasures: () => set(s => ({ showMeasures: !s.showMeasures })),
 
-  setScale: (scale) => set({ scale: Math.max(0.3, Math.min(3, scale)) }),
+  setScale: (scale) => set({ scale: Math.max(0.05, Math.min(5, scale)) }),
 
   setStagePosition: (x, y) => set({ stageX: x, stageY: y }),
   setStageInstance: (stage) => set({ stageInstance: stage }),
