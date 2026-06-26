@@ -36,6 +36,7 @@ const I = {
   Rotate: () => <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-3.14"/></svg>,
   Copy: () => <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
   Trash: () => <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>,
+  Center: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8" /><line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" /><line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" /></svg>,
 }
 
 const CAT_ICONS = {
@@ -120,7 +121,7 @@ export default function Editor() {
     toggleSnapToGrid, toggleGrid, toggleMeasures,
     deleteSelected, undo, redo, canUndo, canRedo,
     getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas, loadLayout,
-    freightData,
+    freightData, recenter,
   } = useCanvasStore(
     useShallow(state => ({
       storeWidth: state.storeWidth,
@@ -158,6 +159,7 @@ export default function Editor() {
       layoutName: state.layoutName,
       setFreightData: state.setFreightData,
       freightData: state.freightData,
+      recenter: state.recenter,
     }))
   )
 
@@ -549,6 +551,10 @@ export default function Editor() {
 
         {/* Zoom */}
         <ZoomControls />
+
+        <button className="tb-btn desktop-only" onClick={recenter} title="Centralizar Visualização" style={{ height: 32 }}>
+          <I.Center /> Centralizar
+        </button>
 
         {/* Actions */}
         <div className="tb-right">

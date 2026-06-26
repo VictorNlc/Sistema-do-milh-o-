@@ -69,6 +69,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const gridSize = useCanvasStore(state => state.gridSize)
   const activeTool = useCanvasStore(state => state.activeTool)
   const layoutId = useCanvasStore(state => state.layoutId)
+  const recenterCount = useCanvasStore(state => state.recenterCount)
   
   const setSelectedItem = useCanvasStore(state => state.setSelectedItem)
   const setScale = useCanvasStore(state => state.setScale)
@@ -195,7 +196,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     const zoomX = containerSize.width / canvasW
     const zoomY = containerSize.height / canvasH
     const zoomInicial = Math.min(zoomX, zoomY)
-    const zoomFinal = zoomInicial * 0.92
+    const zoomFinal = zoomInicial * 0.83
     const zoomClamped = Math.max(0.05, Math.min(5, zoomFinal))
 
     lastProgrammaticScale.current = zoomClamped
@@ -236,6 +237,14 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       hasManuallyNavigated.current = true
     }
   }, [scale, stageX, stageY])
+
+  // Listen to recenter requests from the toolbar button
+  useEffect(() => {
+    if (recenterCount > 0) {
+      hasManuallyNavigated.current = false
+      fitToView()
+    }
+  }, [recenterCount, fitToView])
 
   // Keyboard shortcuts
   useEffect(() => {
