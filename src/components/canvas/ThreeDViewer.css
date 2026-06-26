@@ -56,7 +56,8 @@
   padding: var(--s3) var(--s5);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   animation: fadeDown 0.3s var(--ease-out);
-  z-index: 30; /* sit above the lock screen overlay */
+  z-index: 30;
+  /* sit above the lock screen overlay */
 }
 
 .hud-title {
@@ -86,7 +87,8 @@
   flex-direction: column;
   gap: var(--s4);
   animation: slideRight 0.35s var(--ease-out);
-  z-index: 30; /* sit above the lock screen overlay */
+  z-index: 30;
+  /* sit above the lock screen overlay */
 }
 
 .pointer-events-auto {
@@ -173,10 +175,11 @@
   border-radius: var(--r-2xl);
   padding: var(--s8) var(--s10);
   text-align: center;
-  max-width: 440px;
+  max-width: min(440px, 90%);
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: -8vh; /* Shifts the card slightly higher */
   animation: scaleIn 0.3s var(--ease-spring);
 }
 
@@ -248,7 +251,8 @@
   border-radius: var(--r-xl);
   padding: var(--s3);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-  z-index: 30; /* sit above lock overlay */
+  z-index: 30;
+  /* sit above lock overlay */
 }
 
 .dpad-btn {
@@ -279,10 +283,25 @@
   transform: scale(0.95);
 }
 
-.dpad-up { grid-area: up; border-radius: var(--r-md) var(--r-md) 0 0; }
-.dpad-left { grid-area: left; border-radius: var(--r-md) 0 0 var(--r-md); }
-.dpad-right { grid-area: right; border-radius: 0 var(--r-md) var(--r-md) 0; }
-.dpad-down { grid-area: down; border-radius: 0 0 var(--r-md) var(--r-md); }
+.dpad-up {
+  grid-area: up;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+}
+
+.dpad-left {
+  grid-area: left;
+  border-radius: var(--r-md) 0 0 var(--r-md);
+}
+
+.dpad-right {
+  grid-area: right;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+.dpad-down {
+  grid-area: down;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
 
 .dpad-center {
   grid-area: center;
@@ -297,40 +316,107 @@
   user-select: none;
 }
 
+/* ─── HUD TOGGLE CUSTOMIZER (DESKTOP DEFAULT) ─── */
+.hud-toggle-customizer {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 12px !important;
+  font-size: var(--fs-xs) !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  border-radius: var(--r-md) !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all var(--dur-fast) var(--ease-out) !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+}
+
+.hud-toggle-customizer:hover {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.hud-toggle-customizer.active {
+  background: var(--primary) !important;
+  border: 1px solid var(--green-400) !important;
+  box-shadow: var(--sh-green-sm) !important;
+}
+
+/* ─── CUSTOMIZER INPUT ─── */
+.cust-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  width: 100%;
+  font-size: var(--fs-xs);
+  outline: none;
+  box-sizing: border-box;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.cust-input:focus {
+  border-color: var(--green-400);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+/* ─── RESPONSIVE VISIBILITY UTILITIES ─── */
+.show-mobile-inline {
+  display: none !important;
+}
+
 /* Responsividade Mobile (<= 767px) */
 @media (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile-inline {
+    display: inline !important;
+  }
+
   .three-hud {
     padding: var(--s3) !important;
   }
-  
+
   .hud-header {
     padding: var(--s2) var(--s3) !important;
     gap: 8px;
     border-radius: var(--r-lg);
   }
-  
+
   .hud-title {
-    font-size: var(--fs-xs) !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: var(--fs-sm) !important;
+    font-weight: 800 !important;
   }
-  
+
   .hud-debug-telemetry {
     display: none !important;
   }
-  
+
   .hud-close {
-    font-size: var(--fs-xs) !important;
+    font-size: var(--fs-2xs) !important;
     padding: 4px 8px !important;
-    white-space: nowrap;
+    white-space: nowrap !important;
   }
-  
+
   .hud-toggle-customizer {
     font-size: var(--fs-2xs) !important;
     padding: 4px 8px !important;
   }
-  
+
+  /* Hides bottom HUD components (DPAD, Presets) when Customizer is active to prevent overlaps */
+  .customizer-open .camera-presets,
+  .customizer-open .three-dpad {
+    display: none !important;
+  }
+
   .three-customizer {
     top: 75px !important;
     left: var(--s3) !important;
@@ -342,22 +428,81 @@
     border-radius: var(--r-lg) !important;
     gap: var(--s3) !important;
   }
-  
+
+  /* Make customizer sections more mobile-friendly */
+  .cust-grid {
+    grid-template-columns: 1fr !important;
+    /* Stack buttons vertically to avoid squeezing */
+    gap: 8px !important;
+  }
+
+  .cust-btn {
+    height: 38px !important;
+    /* Larger touch targets */
+    font-size: var(--fs-xs) !important;
+  }
+
+  .cust-input {
+    padding: 8px 12px !important;
+    font-size: var(--fs-sm) !important;
+  }
+
+  /* Positions camera presets and DPAD side-by-side at the bottom */
   .three-dpad {
     bottom: var(--s3) !important;
     right: var(--s3) !important;
+    left: auto !important;
     padding: var(--s2) !important;
     grid-template-columns: 42px 42px 42px !important;
     grid-template-rows: 42px 42px 42px !important;
     border-radius: var(--r-lg) !important;
   }
-  
+
   .dpad-btn {
     font-size: var(--fs-xs) !important;
   }
-  
+
   .hud-instructions {
-    display: none !important; /* Hide to avoid blocking screen space on tiny mobile portrait views */
+    display: none !important;
+    /* Hide to avoid blocking screen space on tiny mobile portrait views */
+  }
+
+  .camera-presets {
+    bottom: var(--s3) !important;
+    left: var(--s3) !important;
+    right: 178px !important;
+    /* Stop before the DPAD element */
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    border-radius: var(--r-lg) !important;
+    padding: var(--s2) !important;
+    gap: 6px !important;
+    scrollbar-width: none !important;
+  }
+
+  .camera-presets::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .preset-title {
+    width: auto !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-bottom: none !important;
+    padding-right: 6px !important;
+    padding-bottom: 0 !important;
+    margin-right: 2px !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .preset-btn {
+    flex: 0 0 auto !important;
+    min-width: 75px !important;
+    height: 32px !important;
+    font-size: var(--fs-2xs) !important;
+    justify-content: center;
+    padding: 0 var(--s2) !important;
   }
 }
 
@@ -375,7 +520,8 @@
   border-radius: var(--r-xl);
   padding: var(--s3);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-  z-index: 30; /* sit above lock overlay */
+  z-index: 30;
+  /* sit above lock overlay */
 }
 
 .preset-title {
@@ -415,44 +561,10 @@
   color: var(--text-1);
 }
 
-.preset-btn:active, .preset-btn.active {
+.preset-btn:active,
+.preset-btn.active {
   background: var(--primary);
   border-color: var(--green-400);
   color: white;
   box-shadow: var(--sh-green-sm);
 }
-
-@media (max-width: 767px) {
-  .camera-presets {
-    bottom: calc(var(--s3) + 120px) !important;
-    left: var(--s3) !important;
-    right: var(--s3) !important;
-    flex-wrap: wrap;
-    justify-content: center;
-    border-radius: var(--r-lg) !important;
-    padding: var(--s2) !important;
-    gap: 4px !important;
-  }
-  
-  .preset-title {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding-right: 0;
-    padding-bottom: 4px;
-    justify-content: center;
-    margin-right: 0;
-    margin-bottom: 4px;
-  }
-  
-  .preset-btn {
-    flex: 1;
-    min-width: 80px;
-    height: 32px;
-    font-size: 8px !important;
-    justify-content: center;
-    padding: 0 var(--s2) !important;
-  }
-}
-
-
