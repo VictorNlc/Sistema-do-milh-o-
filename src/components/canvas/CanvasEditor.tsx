@@ -414,6 +414,21 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
 
   // Outer walls and dimension COTAs memoized
   const outerWallsAndDimensions = useMemo(() => {
+    const fs = Math.max(9, 12 / scale)
+    const textXStr = `${storeWidth.toFixed(2).replace('.', ',')} m`
+    const textYStr = `${storeHeight.toFixed(2).replace('.', ',')} m`
+    const textWidthX = textXStr.length * fs * 0.6
+    const textWidthY = textYStr.length * fs * 0.6
+    const rectWidthX = textWidthX + 16
+    const rectWidthY = textWidthY + 16
+    const rectHeight = fs * 1.4
+
+    // Dynamically calculate the coordinate offsets so the dimensions push outwards as they grow.
+    // Outer wall boundary is at -WALL_THICKNESS (top/left) and canvas size + WALL_THICKNESS (bottom/right).
+    // Pushing them further out keeps them perfectly separated.
+    const lineY = -15 - rectHeight
+    const lineX = canvasW + 15 + rectHeight
+
     return (
       <Group listening={false}>
         {/* Walls */}
@@ -424,41 +439,50 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
 
         {/* Dimension labels */}
         {/* Horizontal top dimension line */}
-        <Line points={[0, -22, canvasW, -22]} stroke="#71717a" strokeWidth={1} />
-        <Line points={[0, -28, 0, -16]} stroke="#71717a" strokeWidth={1.2} />
-        <Line points={[canvasW, -28, canvasW, -16]} stroke="#71717a" strokeWidth={1.2} />
-        <Line points={[5, -25, 0, -22, 5, -19]} stroke="#71717a" strokeWidth={1} />
-        <Line points={[canvasW - 5, -25, canvasW, -22, canvasW - 5, -19]} stroke="#71717a" strokeWidth={1} />
-        <Rect x={canvasW / 2 - 35} y={-28} width={70} height={12} fill="#FCF9F2" />
-        <Text
-          x={canvasW / 2 - 35} y={-26}
-          width={70}
-          text={`${storeWidth.toFixed(2).replace('.', ',')} m`}
-          fontSize={9} fontStyle="bold"
-          fill="#0B3D2E"
-          align="center"
-        />
+        <Line points={[0, lineY, canvasW, lineY]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[0, lineY - 6, 0, lineY + 6]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[canvasW, lineY - 6, canvasW, lineY + 6]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[5, lineY - 3, 0, lineY, 5, lineY + 3]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[canvasW - 5, lineY - 3, canvasW, lineY, canvasW - 5, lineY + 3]} stroke="#71717a" strokeWidth={1} />
+        <Group x={canvasW / 2} y={lineY}>
+          <Rect x={-rectWidthX / 2} y={-rectHeight / 2} width={rectWidthX} height={rectHeight} fill="#FCF9F2" />
+          <Text
+            x={-rectWidthX / 2}
+            y={-rectHeight / 2 + rectHeight * 0.1}
+            width={rectWidthX}
+            text={textXStr}
+            fontSize={fs}
+            fontStyle="bold"
+            fill="#0B3D2E"
+            align="center"
+          />
+        </Group>
 
         {/* Vertical right dimension line */}
-        <Line points={[canvasW + 22, 0, canvasW + 22, canvasH]} stroke="#71717a" strokeWidth={1} />
-        <Line points={[canvasW + 16, 0, canvasW + 28, 0]} stroke="#71717a" strokeWidth={1.2} />
-        <Line points={[canvasW + 16, canvasH, canvasW + 28, canvasH]} stroke="#71717a" strokeWidth={1.2} />
-        <Line points={[canvasW + 19, 5, canvasW + 22, 0, canvasW + 25, 5]} stroke="#71717a" strokeWidth={1} />
-        <Line points={[canvasW + 19, canvasH - 5, canvasW + 22, canvasH, canvasW + 25, canvasH - 5]} stroke="#71717a" strokeWidth={1} />
-        <Rect x={canvasW + 16} y={canvasH / 2 - 35} width={12} height={70} fill="#FCF9F2" />
-        <Text
-          x={canvasW + 29} y={canvasH / 2 - 35}
-          text={`${storeHeight.toFixed(2).replace('.', ',')} m`}
-          fontSize={9} fontStyle="bold"
-          fill="#0B3D2E"
-          rotation={90}
-        />
+        <Line points={[lineX, 0, lineX, canvasH]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[lineX - 6, 0, lineX + 6, 0]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[lineX - 6, canvasH, lineX + 6, canvasH]} stroke="#71717a" strokeWidth={1.2} />
+        <Line points={[lineX - 3, 5, lineX, 0, lineX + 3, 5]} stroke="#71717a" strokeWidth={1} />
+        <Line points={[lineX - 3, canvasH - 5, lineX, canvasH, lineX + 3, canvasH - 5]} stroke="#71717a" strokeWidth={1} />
+        <Group x={lineX} y={canvasH / 2} rotation={90}>
+          <Rect x={-rectWidthY / 2} y={-rectHeight / 2} width={rectWidthY} height={rectHeight} fill="#FCF9F2" />
+          <Text
+            x={-rectWidthY / 2}
+            y={-rectHeight / 2 + rectHeight * 0.1}
+            width={rectWidthY}
+            text={textYStr}
+            fontSize={fs}
+            fontStyle="bold"
+            fill="#0B3D2E"
+            align="center"
+          />
+        </Group>
 
         {/* North indicator */}
         <Text x={canvasW - 28} y={12} text="N" fontSize={10} fill="rgba(11, 61, 46, 0.6)" fontStyle="bold" />
       </Group>
     )
-  }, [storeWidth, storeHeight, canvasW, canvasH])
+  }, [storeWidth, storeHeight, canvasW, canvasH, scale])
 
   // Draw measurements between gondolas/shelves on the floor
   const corridorMeasures = useMemo(() => {
