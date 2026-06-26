@@ -23,6 +23,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   const gridSize = useCanvasStore(state => state.gridSize)
   const storeWidth = useCanvasStore(state => state.storeWidth)
   const storeHeight = useCanvasStore(state => state.storeHeight)
+  const deleteItem = useCanvasStore(state => state.deleteItem)
 
   const x = (item.x ?? 0) * PIXELS_PER_METER
   const y = (item.y ?? 0) * PIXELS_PER_METER
@@ -120,9 +121,48 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     const node = e.target
     const newX = node.x() / PIXELS_PER_METER
     const newY = node.y() / PIXELS_PER_METER
-    onDragEnd(item.id, newX, newY)
-  }, [item.id, onDragEnd])
 
+    const stage = node.getStage()
+    const container = stage?.container()
+    const rect = container?.getBoundingClientRect()
+    const pointerPos = stage?.getPointerPosition()
+
+    // 1. Check if dragged outside the visible container (viewport)
+    let isOutsideViewport = false
+    if (pointerPos && rect) {
+      if (pointerPos.x < 0 || pointerPos.y < 0 || pointerPos.x > rect.width || pointerPos.y > rect.height) {
+        isOutsideViewport = true
+      }
+    }
+
+    // 2. Check if dragged mostly outside the store layout bounds (with 20% margin threshold)
+    const marginX = item.width * 0.2
+    const marginY = item.height * 0.2
+    const isOutsideLayout = 
+      newX < -item.width + marginX || 
+      newY < -item.height + marginY || 
+      newX > storeWidth - marginX || 
+      newY > storeHeight - marginY
+
+    if (isOutsideViewport || isOutsideLayout) {
+      deleteItem(item.id)
+      if (stage) stage.container().style.cursor = 'default'
+    } else {
+      // Snaps item to grid and clamps inside layout walls
+      const clamped = clampItemPosition(
+        newX,
+        newY,
+        item.width,
+        item.height,
+        item.rotation || 0,
+        storeWidth,
+        storeHeight
+      )
+      onDragEnd(item.id, clamped.x, clamped.y)
+    }
+  }, [item.id, item.width, item.height, item.rotation, storeWidth, storeHeight, onDragEnd, deleteItem])
+
+  // Allow dragging outside the boundaries during the drag itself, but snap to grid
   const dragBoundFunc = useCallback((pos: { x: number; y: number }) => {
     const node = groupRef.current
     if (!node) return pos
@@ -134,37 +174,22 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     const sX = stage.x()
     const sY = stage.y()
 
-    // Convert absolute screen position back to local coordinates (in pixels)
     const localX = (pos.x - sX) / sScale
     const localY = (pos.y - sY) / sScale
     
-    // Convert to meters for easier math
     let targetX = localX / PIXELS_PER_METER
     let targetY = localY / PIXELS_PER_METER
     
-    // Snap to grid if enabled
     if (snapToGrid) {
       targetX = Math.round(targetX / gridSize) * gridSize
       targetY = Math.round(targetY / gridSize) * gridSize
     }
     
-    // Clamp rotated item boundaries in meters
-    const clamped = clampItemPosition(
-      targetX,
-      targetY,
-      item.width,
-      item.height,
-      item.rotation || 0,
-      storeWidth,
-      storeHeight
-    )
-    
-    // Convert back to absolute screen coordinates
     return {
-      x: clamped.x * PIXELS_PER_METER * sScale + sX,
-      y: clamped.y * PIXELS_PER_METER * sScale + sY,
+      x: targetX * PIXELS_PER_METER * sScale + sX,
+      y: targetY * PIXELS_PER_METER * sScale + sY,
     }
-  }, [snapToGrid, gridSize, storeWidth, storeHeight, item.width, item.height, item.rotation])
+  }, [snapToGrid, gridSize])
 
   // 1. PILLAR
   if (isPillar) {
@@ -197,13 +222,39 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
           <Line points={[w, 0, 0, h]} stroke="#475569" strokeWidth={1} opacity={0.4} />
         </Group>
         {isSelected && (
-          <Text
-            x={w + 6} y={2}
-            text={`${item.width}m × ${item.height}m`}
-            fontSize={9}
-            fill="#C5A028"
-            fontStyle="600"
-          />
+          <>
+            <Text
+              x={w + 6} y={12}
+              text={`${item.width}m × ${item.height}m`}
+              fontSize={9}
+              fill="#C5A028"
+              fontStyle="600"
+            />
+            <Group
+              x={w + 4}
+              y={-4}
+              onClick={(e) => {
+                e.cancelBubble = true
+                deleteItem(item.id)
+              }}
+              onTap={(e) => {
+                e.cancelBubble = true
+                deleteItem(item.id)
+              }}
+              onMouseEnter={(e) => {
+                const stage = e.target.getStage()
+                if (stage) stage.container().style.cursor = 'pointer'
+              }}
+              onMouseLeave={(e) => {
+                const stage = e.target.getStage()
+                if (stage) stage.container().style.cursor = 'default'
+              }}
+            >
+              <Circle radius={7} fill="#EF4444" stroke="white" strokeWidth={1} shadowBlur={2} shadowColor="rgba(0,0,0,0.3)" />
+              <Line points={[-3, -3, 3, 3]} stroke="white" strokeWidth={1.2} lineCap="round" />
+              <Line points={[-3, 3, 3, -3]} stroke="white" strokeWidth={1.2} lineCap="round" />
+            </Group>
+          </>
         )}
       </Group>
     )
@@ -439,6 +490,32 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
             <Circle x={t} y={t} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
             <Circle x={t} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
             <Circle x={0} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+            
+            {/* Delete Balloon (Red Badge with X) */}
+            <Group
+              x={w + 4}
+              y={-4}
+              onClick={(e) => {
+                e.cancelBubble = true
+                deleteItem(item.id)
+              }}
+              onTap={(e) => {
+                e.cancelBubble = true
+                deleteItem(item.id)
+              }}
+              onMouseEnter={(e) => {
+                const stage = e.target.getStage()
+                if (stage) stage.container().style.cursor = 'pointer'
+              }}
+              onMouseLeave={(e) => {
+                const stage = e.target.getStage()
+                if (stage) stage.container().style.cursor = 'default'
+              }}
+            >
+              <Circle radius={7} fill="#EF4444" stroke="white" strokeWidth={1} shadowBlur={2} shadowColor="rgba(0,0,0,0.3)" />
+              <Line points={[-3, -3, 3, 3]} stroke="white" strokeWidth={1.2} lineCap="round" />
+              <Line points={[-3, 3, 3, -3]} stroke="white" strokeWidth={1.2} lineCap="round" />
+            </Group>
           </>
         )}
       </Group>
@@ -786,6 +863,32 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
           <Circle x={w} y={0} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
           <Circle x={0} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
           <Circle x={w} y={h} radius={3.5} fill="#C5A028" stroke="white" strokeWidth={1} />
+          
+          {/* Delete Balloon (Red Badge with X) */}
+          <Group
+            x={w + 4}
+            y={-4}
+            onClick={(e) => {
+              e.cancelBubble = true
+              deleteItem(item.id)
+            }}
+            onTap={(e) => {
+              e.cancelBubble = true
+              deleteItem(item.id)
+            }}
+            onMouseEnter={(e) => {
+              const stage = e.target.getStage()
+              if (stage) stage.container().style.cursor = 'pointer'
+            }}
+            onMouseLeave={(e) => {
+              const stage = e.target.getStage()
+              if (stage) stage.container().style.cursor = 'default'
+            }}
+          >
+            <Circle radius={7} fill="#EF4444" stroke="white" strokeWidth={1} shadowBlur={2} shadowColor="rgba(0,0,0,0.3)" />
+            <Line points={[-3, -3, 3, 3]} stroke="white" strokeWidth={1.2} lineCap="round" />
+            <Line points={[-3, 3, 3, -3]} stroke="white" strokeWidth={1.2} lineCap="round" />
+          </Group>
         </>
       )}
     </Group>
