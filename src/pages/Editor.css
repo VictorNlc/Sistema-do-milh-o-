@@ -644,13 +644,14 @@
 /* ══════════ MOBILE BOTTOM NAV ══════════ */
 .mobile-nav {
   display: none;
-  height: var(--nav-h);
+  height: calc(var(--nav-h) + var(--safe-b));
   background: var(--surface-card) !important;
   border-top: 1.5px solid var(--border-sm);
   padding-bottom: var(--safe-b);
   box-shadow: 0 -4px 15px rgba(11, 61, 46, 0.05);
   flex-shrink: 0;
   z-index: var(--z-sticky);
+  box-sizing: border-box;
 }
 
 @media (max-width: 767px) { .mobile-nav { display: flex; } }
@@ -661,11 +662,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 3px;
   background: none;
   border: none;
   cursor: pointer;
-  padding: var(--s2) var(--s1);
+  padding: 6px var(--s1) 4px;
   color: var(--text-3);
   transition: all var(--dur-fast) var(--ease-out);
   position: relative;
@@ -704,10 +705,11 @@
 }
 
 .mnav-label {
-  font-size: var(--fs-2xs);
+  font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 /* CTA button */
@@ -1111,6 +1113,15 @@
   backdrop-filter: blur(12px);
   flex-shrink: 0;
 }
+.mobile-save-action svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* Tab screens wrappers for mobile content */
 .mobile-content-area {
@@ -1120,6 +1131,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+@media (max-width: 767px) {
+  .mobile-content-area {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
 }
 
 /* Mobile top zoom widget */
