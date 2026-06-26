@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState, useEffect, memo } from 'react'
 import { Group, Rect, Text, Circle, Line } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
-import { clampItemPosition } from '../../utils/geometry'
+import { clampItemPosition, getRotatedBounds } from '../../utils/geometry'
 import { cleanItemName } from '../../utils/labels'
 import type { CanvasItem as CanvasItemType } from '../../types'
 
@@ -135,14 +135,13 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       }
     }
 
-    // 2. Check if dragged mostly outside the store layout bounds (with 20% margin threshold)
-    const marginX = item.width * 0.2
-    const marginY = item.height * 0.2
+    // 2. Check if dragged totally outside the store layout bounds (rotated AABB check)
+    const bounds = getRotatedBounds(newX, newY, item.width, item.height, item.rotation || 0)
     const isOutsideLayout = 
-      newX < -item.width + marginX || 
-      newY < -item.height + marginY || 
-      newX > storeWidth - marginX || 
-      newY > storeHeight - marginY
+      bounds.x + bounds.width <= 0 || 
+      bounds.y + bounds.height <= 0 || 
+      bounds.x >= storeWidth || 
+      bounds.y >= storeHeight
 
     if (isOutsideViewport || isOutsideLayout) {
       deleteItem(item.id)

@@ -346,6 +346,11 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
   const [loading, setLoading] = useState(true)
   const [showIntro, setShowIntro] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isTouch, setIsTouch] = useState(false)
+
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
 
   // Customization & Physics States
   const [showCustomizer, setShowCustomizer] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 767 : true))
@@ -3004,7 +3009,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
   }
 
   return (
-    <div className="three-overlay">
+    <div className={`three-overlay ${showCustomizer ? 'customizer-open' : ''}`}>
       {errorMsg && (
         <div style={{
           position: 'absolute',
@@ -3031,30 +3036,19 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
       {/* ─── UI CONTROLS / OVERLAY ─── */}
       <div className="three-hud">
         <div className="hud-header">
-          <div className="hud-title">Visualização 3D</div>
+          <div className="hud-title">
+            <span className="hide-mobile">Visualização </span>3D
+          </div>
           
           <button 
             className={`btn btn-secondary btn-sm hud-toggle-customizer ${showCustomizer ? 'active' : ''}`}
             onClick={() => setShowCustomizer(!showCustomizer)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              fontSize: 'var(--fs-xs)',
-              fontWeight: 700,
-              background: showCustomizer ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
-              border: showCustomizer ? '1px solid var(--green-400)' : '1px solid rgba(255, 255, 255, 0.15)',
-              color: 'white',
-              borderRadius: 'var(--r-md)',
-              cursor: 'pointer',
-              boxShadow: showCustomizer ? 'var(--sh-green-sm)' : 'none',
-              transition: 'all var(--dur-fast) var(--ease-out)',
-              zIndex: 100,
-              pointerEvents: 'auto'
-            }}
           >
-            ⚙️ {showCustomizer ? 'Fechar Ajustes' : 'Customizar'}
+            ⚙️ {showCustomizer ? (
+              <>Fechar<span className="hide-mobile"> Ajustes</span></>
+            ) : (
+              <><span className="hide-mobile">Customizar</span><span className="show-mobile-inline">Ajustes</span></>
+            )}
           </button>
 
           <div className="hud-debug-telemetry" ref={debugTextRef} style={{
@@ -3073,7 +3067,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
             Iniciando telemetria...
           </div>
           <button className="btn btn-secondary btn-sm hud-close" onClick={onClose}>
-            ✕ Fechar Modo 3D
+            ✕ <span className="hide-mobile">Fechar Modo 3D</span><span className="show-mobile-inline">Fechar</span>
           </button>
         </div>
 
@@ -3137,16 +3131,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
               className="cust-input"
               value={pharmacyName} 
               onChange={e => setPharmacyName(e.target.value)} 
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: 'white',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                width: '100%',
-                fontSize: 'var(--fs-xs)',
-                outline: 'none'
-              }}
             />
           </div>
 
@@ -3265,24 +3249,37 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
             <div className="lock-card" onClick={e => e.stopPropagation()}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--green-400)', marginBottom: 12 }}><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
               <h3>Clique na tela para iniciar</h3>
-              <p>Mova o mouse ou arraste para olhar ao redor, e use as teclas **W, A, S, D** ou os botões para navegar.</p>
+              <p>
+                {isTouch 
+                  ? 'Arraste a tela para olhar ao redor e use os botões direcionais para se mover.'
+                  : 'Mova o mouse ou arraste para olhar ao redor, e use as teclas W, A, S, D ou os botões para navegar.'
+                }
+              </p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
-                <button className="btn btn-primary btn-md" onClick={handleLockClick}>
-                  Entrar na Farmácia
-                </button>
-                <button className="btn btn-secondary btn-md" onClick={() => {
-                  setShowIntro(false)
-                  const canvas = canvasRef.current
-                  if (canvas) {
-                    try {
-                      canvas.focus()
-                    } catch (e) {
-                      console.warn("Erro ao focar canvas:", e)
-                    }
-                  }
-                }}>
-                  Explorar por Arrastar
-                </button>
+                {isTouch ? (
+                  <button className="btn btn-primary btn-md" onClick={() => setShowIntro(false)}>
+                    Começar a Explorar
+                  </button>
+                ) : (
+                  <>
+                    <button className="btn btn-primary btn-md" onClick={handleLockClick}>
+                      Entrar na Farmácia
+                    </button>
+                    <button className="btn btn-secondary btn-md" onClick={() => {
+                      setShowIntro(false)
+                      const canvas = canvasRef.current
+                      if (canvas) {
+                        try {
+                          canvas.focus()
+                        } catch (e) {
+                          console.warn("Erro ao focar canvas:", e)
+                        }
+                      }
+                    }}>
+                      Explorar por Arrastar
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -3295,7 +3292,11 @@ export default function ThreeDViewer({ onClose, showSimulation = false }: ThreeD
         ) : (
           !showIntro && !loading && (
             <div className="hud-instructions">
-              <span>🚶‍♂️ <strong>WASD / Setas</strong> para andar · <strong>Arraste a tela</strong> para olhar · <span style={{ textDecoration: 'underline', cursor: 'pointer', color: 'var(--green-400)' }} onClick={handleLockClick}>Focar Cursor</span></span>
+              {isTouch ? (
+                <span>🚶‍♂️ <strong>Botões direcionais</strong> para andar · <strong>Arraste a tela</strong> para olhar</span>
+              ) : (
+                <span>🚶‍♂️ <strong>WASD / Setas</strong> para andar · <strong>Arraste a tela</strong> para olhar · <span style={{ textDecoration: 'underline', cursor: 'pointer', color: 'var(--green-400)' }} onClick={handleLockClick}>Focar Cursor</span></span>
+              )}
             </div>
           )
         )}
