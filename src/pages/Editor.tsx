@@ -16,6 +16,7 @@ import ErgonomyPanel from '../components/canvas/ErgonomyPanel'
 import { exportToCSV, exportToXLSX } from '../services/excelExport'
 import FloorPlanReaderModal from '../components/canvas/FloorPlanReaderModal'
 import { getFullLayoutDataUrl } from '../utils/canvasExport'
+import DownloadBlockModal from '../components/canvas/DownloadBlockModal'
 import './Editor.css'
 
 const ThreeDViewer = lazy(() => import('../components/canvas/ThreeDViewer'))
@@ -100,6 +101,11 @@ export default function Editor() {
   const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('ai')
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [show3D, setShow3D] = useState(false)
+  const [warningVisible, setWarningVisible] = useState(false)
+  const [downloadBlocked, setDownloadBlocked] = useState(false)
+  const [pdfExportModule, setPdfExportModule] = useState<any>(null)
+  const downloadTimeoutRef = useRef<number | null>(null)
+  const exportAttemptIdRef = useRef(0)
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [showSimulation, setShowSimulation] = useState(false)
   const [showAuditoria, setShowAuditoria] = useState(false)
@@ -292,6 +298,23 @@ export default function Editor() {
     }
   }, []);
 
+  // Preload PDF export module to avoid async delay during user-initiated click
+  useEffect(() => {
+    import('../services/pdfExport')
+      .then(module => {
+        setPdfExportModule(module)
+      })
+      .catch(err => {
+        console.warn('Failed to preload pdfExport:', err)
+      })
+
+    return () => {
+      if (downloadTimeoutRef.current) {
+        window.clearTimeout(downloadTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleOpen3D = () => {
     if (!isWebGLAvailable()) {
       setShowWebGLWarning(true)
@@ -374,9 +397,42 @@ export default function Editor() {
     setShowExportOptions(false)
   }
 
+  const startSmartTimeout = (attemptId: number) => {
+    if (downloadTimeoutRef.current) {
+      window.clearTimeout(downloadTimeoutRef.current)
+    }
+    const alreadyAllowed = localStorage.getItem('multiple_downloads_allowed') === 'true'
+    if (alreadyAllowed) return
+
+    downloadTimeoutRef.current = window.setTimeout(() => {
+      if (attemptId === exportAttemptIdRef.current) {
+        console.log('[Export] Downloads bloqueados')
+        setDownloadBlocked(true)
+        setWarningVisible(true)
+      }
+    }, 2500)
+  }
+
   const handleExportPDF = async () => {
+    const currentAttemptId = ++exportAttemptIdRef.current
+    console.log('[Export] Iniciando exportação')
+
+    // Reset state for the new export attempt
+    if (downloadTimeoutRef.current) {
+      window.clearTimeout(downloadTimeoutRef.current)
+    }
+    setWarningVisible(false)
+    setDownloadBlocked(false)
+    console.log('[Export] Estado de bloqueio limpo')
+
     try {
-      // Capture image BEFORE async import so the Konva stage is guaranteed to be mounted
+      if (freightData?.freightCost === undefined || freightData?.freightCost === null) {
+        toast.error('Não foi possível gerar o orçamento porque o frete ainda não foi calculado.')
+        setShowExportOptions(false)
+        return
+      }
+
+      // Capture image BEFORE any potentially async path
       let layoutImageDataUrl: string | undefined
       try {
         const stage = getActiveStage()
@@ -385,25 +441,49 @@ export default function Editor() {
         }
       } catch { /* canvas may be tainted — proceed without image */ }
 
-      // Also download the PNG file separately
-      downloadLayoutPNG(true)
+      const runDownloads = (exportFn: any) => {
+        // Download PNG file
+        const pngSuccess = downloadLayoutPNG(true)
+        if (pngSuccess) {
+          console.log('[Export] PNG iniciado')
+        }
 
-      if (freightData?.freightCost === undefined || freightData?.freightCost === null) {
-        toast.error('Não foi possível gerar o orçamento porque o frete ainda não foi calculado.')
+        // Download PDF file
+        const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout', freightData }
+        const pdfSuccess = exportFn(layoutData, layoutImageDataUrl)
+        if (pdfSuccess) {
+          console.log('[Export] PDF iniciado')
+        }
+
+        if (pngSuccess && pdfSuccess) {
+          console.log('[Export] Exportação concluída')
+          // Reset states immediately
+          setDownloadBlocked(false)
+          setWarningVisible(false)
+          console.log('[Export] Estado de bloqueio limpo')
+
+          // Start the smart timeout checking for browser-level block
+          startSmartTimeout(currentAttemptId)
+        } else {
+          console.log('[Export] Downloads bloqueados')
+          setDownloadBlocked(true)
+          setWarningVisible(true)
+        }
+
         setShowExportOptions(false)
-        return
       }
 
-      const { exportLayoutToPDF } = await import('../services/pdfExport')
-      const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout', freightData }
-      const success = exportLayoutToPDF(layoutData, layoutImageDataUrl)
-      if (success) {
-        toast.success('Relatório PDF gerado!')
+      if (pdfExportModule) {
+        runDownloads(pdfExportModule.exportLayoutToPDF)
       } else {
-        toast.error('Erro ao gerar PDF')
+        const module = await import('../services/pdfExport')
+        setPdfExportModule(module)
+        runDownloads(module.exportLayoutToPDF)
       }
-      setShowExportOptions(false)
-    } catch { toast.error('Erro ao exportar PDF') }
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao exportar PDF')
+    }
   }
 
   const handleExportCSV = () => {
@@ -1274,6 +1354,17 @@ export default function Editor() {
 
       {showTutorial && (
         <TutorialOverlay onClose={() => setShowTutorial(false)} />
+      )}
+
+      {warningVisible && (
+        <DownloadBlockModal
+          isOpen={warningVisible}
+          onClose={() => setWarningVisible(false)}
+          onRetry={() => {
+            setWarningVisible(false)
+            handleExportPDF()
+          }}
+        />
       )}
     </div>
   )

@@ -1,0 +1,337 @@
+/* =============================================================================
+   DownloadBlockModal.css — Estilos premium para o modal de bloqueio de downloads
+   ============================================================================= */
+
+.dl-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000; /* Garante que fique acima de tudo, inclusive outros modais */
+  animation: dl-fadeIn 0.25s ease-out;
+}
+
+.dl-container {
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-sm);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-xl);
+  width: 500px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: dl-springIn 0.35s var(--ease-spring);
+}
+
+.dl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s4) var(--s5);
+  border-bottom: 1.5px solid var(--border-sm);
+  background: var(--surface-subtle);
+}
+
+.dl-title {
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.dl-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--text-3);
+  background: var(--surface-base);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  transition: all var(--dur-fast);
+}
+
+.dl-close:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.dl-body {
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.dl-warning-box {
+  display: flex;
+  gap: var(--s3);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1.5px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+}
+
+.dl-warning-icon {
+  color: var(--danger);
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.dl-warning-text {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+/* ─── ILUSTRAÇÃO VETORIAL ─── */
+.dl-illustration {
+  margin: var(--s2) 0;
+  border: 1.5px solid var(--border-sm);
+  border-radius: var(--r-lg);
+  background: var(--surface-subtle);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  position: relative;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.dl-browser-chrome {
+  background: var(--surface-base);
+  border: 1px solid var(--border-sm);
+  border-radius: var(--r-md);
+  padding: var(--s2) var(--s4);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  height: 48px;
+}
+
+.dl-chrome-dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dl-chrome-dots .dl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dl-chrome-dots .red { background: #ff5f56; }
+.dl-chrome-dots .yellow { background: #ffbd2e; }
+.dl-chrome-dots .green { background: #27c93f; }
+
+.dl-chrome-address-bar {
+  flex: 1;
+  background: var(--surface-card);
+  border: 1px solid var(--border-sm);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-2);
+  height: 26px;
+}
+
+.dl-lock-wrapper {
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--r-sm);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dl-lock-icon {
+  color: #10b981;
+}
+
+.dl-domain {
+  font-family: monospace;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+/* Seta animada apontando para o cadeado */
+.dl-arrow-pointer {
+  position: absolute;
+  left: 28px;
+  top: 42px; /* Posicionada exatamente abaixo do ícone do cadeado */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.dl-bounce-up {
+  animation: dl-bounceUp 0.8s infinite alternate ease-in-out;
+  color: #10b981;
+  filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
+}
+
+.dl-pointer-text {
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+  background: #10b981;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Mock do painel de configurações */
+.dl-settings-dropdown {
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-sm);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  box-shadow: var(--sh-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 260px;
+  align-self: flex-end;
+  margin-right: var(--s2);
+}
+
+.dl-dropdown-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-xs);
+  padding-bottom: 6px;
+}
+
+.dl-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-1);
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.dl-item-left {
+  display: flex;
+  align-items: center;
+}
+
+.dl-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  font-size: 10.5px;
+}
+
+.dl-toggle-option {
+  font-weight: 800;
+}
+
+.dl-toggle-check {
+  font-size: 8px;
+}
+
+/* ─────────────────────────── */
+
+.dl-instructions {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-sm);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5);
+}
+
+.dl-instructions h3 {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  color: var(--text-1);
+  margin-bottom: var(--s2);
+}
+
+.dl-instructions ol {
+  margin: 0;
+  padding-left: var(--s4);
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+.dl-instructions li {
+  margin-bottom: var(--s2);
+}
+
+.dl-instructions li strong {
+  color: var(--text-1);
+}
+
+.dl-note {
+  font-size: var(--fs-2xs);
+  color: var(--text-3);
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 0;
+}
+
+.dl-note-sub {
+  font-size: var(--fs-2xs);
+  color: var(--text-4);
+  font-weight: 600;
+  text-align: center;
+  margin: 0;
+}
+
+.dl-foot {
+  padding: var(--s4) var(--s5);
+  border-top: 1.5px solid var(--border-sm);
+  background: var(--surface-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s3);
+}
+
+@keyframes dl-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dl-springIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes dl-bounceUp {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(6px); }
+}
