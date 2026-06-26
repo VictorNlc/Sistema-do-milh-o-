@@ -68,6 +68,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const stageY = useCanvasStore(state => state.stageY)
   const gridSize = useCanvasStore(state => state.gridSize)
   const activeTool = useCanvasStore(state => state.activeTool)
+  const layoutId = useCanvasStore(state => state.layoutId)
   
   const setSelectedItem = useCanvasStore(state => state.setSelectedItem)
   const setScale = useCanvasStore(state => state.setScale)
@@ -95,7 +96,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       }
     }
   }, [stageRef, setStageInstance])
-  const [containerSize, setContainerSize] = useState({ width: 600, height: 500 })
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [editingCorridor, setEditingCorridor] = useState<EditingCorridor | null>(null)
   const corridorCommittedRef = useRef(false)
@@ -104,6 +105,11 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   // Pinch-to-zoom state
   const lastDist = useRef(0)
   const lastCenter = useRef<Point | null>(null)
+
+  // Track if user manually zoomed or panned
+  const hasManuallyNavigated = useRef(false)
+  const lastProgrammaticScale = useRef<number | null>(null)
+  const lastProgrammaticPos = useRef<{ x: number; y: number } | null>(null)
 
   const handleItemSelect = useCallback((id: string | null) => {
     setSelectedItem(id)
@@ -177,20 +183,59 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     }
   }, [setStageInstance])
 
-  const hasInitialized = useRef(false)
-
-  // Center stage when dimensions change — Bug Fix: only center initially or when store layout dimensions change
-  useEffect(() => {
-    if (hasInitialized.current) return
-    if (!storeWidth || !storeHeight || (containerSize.width === 600 && containerSize.height === 500)) {
+  // Function to run Fit to View (zoom and center layout)
+  const fitToView = useCallback(() => {
+    if (!storeWidth || !storeHeight || containerSize.width <= 0 || containerSize.height <= 0) {
       return
     }
 
-    const cx = (containerSize.width - canvasW * scale) / 2
-    const cy = (containerSize.height - canvasH * scale) / 2
+    const canvasW = storeWidth * PIXELS_PER_METER
+    const canvasH = storeHeight * PIXELS_PER_METER
+
+    const zoomX = containerSize.width / canvasW
+    const zoomY = containerSize.height / canvasH
+    const zoomInicial = Math.min(zoomX, zoomY)
+    const zoomFinal = zoomInicial * 0.92
+    const zoomClamped = Math.max(0.05, Math.min(5, zoomFinal))
+
+    lastProgrammaticScale.current = zoomClamped
+    const cx = (containerSize.width - canvasW * zoomClamped) / 2
+    const cy = (containerSize.height - canvasH * zoomClamped) / 2
+    lastProgrammaticPos.current = { x: cx, y: cy }
+
+    setScale(zoomClamped)
     setStagePosition(cx, cy)
-    hasInitialized.current = true
-  }, [storeWidth, storeHeight, containerSize])
+  }, [storeWidth, storeHeight, containerSize, setScale, setStagePosition])
+
+  // Track layout changes (loading, creating, dimension changes) to reset manual navigation state
+  useEffect(() => {
+    hasManuallyNavigated.current = false
+    lastProgrammaticScale.current = null
+    lastProgrammaticPos.current = null
+  }, [layoutId, storeWidth, storeHeight])
+
+  // Automatically fit layout to view if container sizes or layout dimensions change and user hasn't manually navigated
+  useEffect(() => {
+    if (hasManuallyNavigated.current) return
+    if (containerSize.width <= 0 || containerSize.height <= 0) return
+
+    // Run in requestAnimationFrame to ensure elements and container layout are finalized
+    const animId = requestAnimationFrame(() => {
+      fitToView()
+    })
+    return () => cancelAnimationFrame(animId)
+  }, [containerSize, storeWidth, storeHeight, fitToView])
+
+  // Detect when the user manually zooms or pans (wheel, touch, toolbar, etc.)
+  useEffect(() => {
+    const isDifferentScale = lastProgrammaticScale.current !== null && Math.abs(scale - lastProgrammaticScale.current) > 0.001
+    const isDifferentX = lastProgrammaticPos.current !== null && Math.abs(stageX - lastProgrammaticPos.current.x) > 0.1
+    const isDifferentY = lastProgrammaticPos.current !== null && Math.abs(stageY - lastProgrammaticPos.current.y) > 0.1
+
+    if (isDifferentScale || isDifferentX || isDifferentY) {
+      hasManuallyNavigated.current = true
+    }
+  }, [scale, stageX, stageY])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -209,6 +254,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const handleStageDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     if (e.target === stageRef.current) {
       setStagePosition(e.target.x(), e.target.y())
+      hasManuallyNavigated.current = true
     }
   }, [setStagePosition, stageRef])
 
@@ -234,6 +280,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       pointer.x - mousePointTo.x * newScale,
       pointer.y - mousePointTo.y * newScale,
     )
+    hasManuallyNavigated.current = true
   }, [scale, setScale, setStagePosition, stageRef])
 
   // Touch: Pinch to zoom
@@ -272,6 +319,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       center.x - pointTo.x * newScale,
       center.y - pointTo.y * newScale,
     )
+    hasManuallyNavigated.current = true
 
     lastDist.current = dist
     lastCenter.current = center
