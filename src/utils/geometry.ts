@@ -91,3 +91,54 @@ export function clampItemPosition(
   }
 }
 
+/**
+ * Detects if a moved item collides with any other item in the store,
+ * allowing doors to overlap with other doors (to represent corner doors),
+ * but preventing doors from overlapping with normal items, and normal items from overlapping.
+ */
+export function checkItemsCollision(
+  idA: string,
+  xA: number,
+  yA: number,
+  wA: number,
+  hA: number,
+  rotA: number,
+  items: any[]
+): boolean {
+  const boxA = getRotatedBounds(xA, yA, wA, hA, rotA)
+  const itemA = items.find(i => i.id === idA)
+  
+  const isDoorItem = (item: any) => 
+    item?.isDoor || 
+    item?.isEmergency || 
+    item?.itemId?.includes('door') || 
+    item?.itemId?.includes('porta') ||
+    item?.itemId?.includes('emergencia') ||
+    item?.category === 'ESTRUTURA'
+
+  const isADoor = itemA ? isDoorItem(itemA) : false
+
+  return items.some(item => {
+    if (item.id === idA) return false
+    
+    const isBDoor = isDoorItem(item)
+
+    // Allow doors to overlap with other doors (e.g. corner pharmacy doors)
+    if (isADoor && isBDoor) {
+      return false
+    }
+
+    const boxB = getRotatedBounds(item.x, item.y, item.width, item.height, item.rotation || 0)
+
+    // A 2cm tolerance margin allows side-by-side placement
+    const collision = (
+      boxA.x + 0.02 < boxB.x + boxB.width &&
+      boxA.x + boxA.width - 0.02 > boxB.x &&
+      boxA.y + 0.02 < boxB.y + boxB.height &&
+      boxA.y + boxA.height - 0.02 > boxB.y
+    )
+    return collision
+  })
+}
+
+

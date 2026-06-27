@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState, useEffect, memo } from 'react'
 import { Group, Rect, Text, Circle, Line } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
-import { clampItemPosition, getRotatedBounds } from '../../utils/geometry'
+import { clampItemPosition, getRotatedBounds, checkItemsCollision } from '../../utils/geometry'
 import { cleanItemName } from '../../utils/labels'
 import type { CanvasItem as CanvasItemType } from '../../types'
 
@@ -109,15 +109,43 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     onSelect(item.id)
   }, [item.id, onSelect])
 
+  const [isOutsideThreshold, setIsOutsideThreshold] = useState(false)
+  const dragStartPos = useRef({ x: item.x, y: item.y })
+
   const handleDragStart = useCallback(() => {
+    dragStartPos.current = { x: item.x, y: item.y }
     setIsDragging(true)
+    setIsOutsideThreshold(false)
     if (!isMobileDevice) {
       onSelect(item.id)
     }
-  }, [item.id, onSelect, isMobileDevice])
+  }, [item.id, item.x, item.y, onSelect, isMobileDevice])
+
+  const handleDragMove = useCallback((e: any) => {
+    const node = e.target
+    const dragX = node.x() / PIXELS_PER_METER
+    const dragY = node.y() / PIXELS_PER_METER
+
+    const clamped = clampItemPosition(
+      dragX,
+      dragY,
+      item.width,
+      item.height,
+      item.rotation || 0,
+      storeWidth,
+      storeHeight
+    )
+
+    const dx = dragX - clamped.x
+    const dy = dragY - clamped.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    setIsOutsideThreshold(dist > 0.3)
+  }, [item.width, item.height, item.rotation, storeWidth, storeHeight])
 
   const handleDragEnd = useCallback((e: any) => {
     setIsDragging(false)
+    setIsOutsideThreshold(false)
     const node = e.target
     const newX = node.x() / PIXELS_PER_METER
     const newY = node.y() / PIXELS_PER_METER
@@ -135,29 +163,49 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       }
     }
 
-    // 2. Check if dragged totally outside the store layout bounds (rotated AABB check)
-    const bounds = getRotatedBounds(newX, newY, item.width, item.height, item.rotation || 0)
-    const isOutsideLayout = 
-      bounds.x + bounds.width <= 0 || 
-      bounds.y + bounds.height <= 0 || 
-      bounds.x >= storeWidth || 
-      bounds.y >= storeHeight
+    // 2. Check distance from clamped (meaning it broke resistance)
+    const clamped = clampItemPosition(
+      newX,
+      newY,
+      item.width,
+      item.height,
+      item.rotation || 0,
+      storeWidth,
+      storeHeight
+    )
 
-    if (isOutsideViewport || isOutsideLayout) {
+    const dx = newX - clamped.x
+    const dy = newY - clamped.y
+    const distOutside = Math.sqrt(dx * dx + dy * dy)
+
+    if (isOutsideViewport || distOutside > 0.3) {
+      // Dragged out of resistance -> delete item!
       deleteItem(item.id)
       if (stage) stage.container().style.cursor = 'default'
     } else {
-      // Snaps item to grid and clamps inside layout walls
-      const clamped = clampItemPosition(
-        newX,
-        newY,
+      // Check collision with other items
+      const allItems = useCanvasStore.getState().items
+      const collides = checkItemsCollision(
+        item.id,
+        clamped.x,
+        clamped.y,
         item.width,
         item.height,
         item.rotation || 0,
-        storeWidth,
-        storeHeight
+        allItems
       )
-      onDragEnd(item.id, clamped.x, clamped.y)
+
+      if (collides) {
+        // Revert visually
+        node.position({
+          x: dragStartPos.current.x * PIXELS_PER_METER,
+          y: dragStartPos.current.y * PIXELS_PER_METER
+        })
+        node.getLayer()?.batchDraw()
+        onDragEnd(item.id, dragStartPos.current.x, dragStartPos.current.y)
+      } else {
+        onDragEnd(item.id, clamped.x, clamped.y)
+      }
     }
   }, [item.id, item.width, item.height, item.rotation, storeWidth, storeHeight, onDragEnd, deleteItem])
 
@@ -173,22 +221,45 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     const sX = stage.x()
     const sY = stage.y()
 
-    const localX = (pos.x - sX) / sScale
-    const localY = (pos.y - sY) / sScale
-    
-    let targetX = localX / PIXELS_PER_METER
-    let targetY = localY / PIXELS_PER_METER
+    let targetX = (pos.x - sX) / sScale / PIXELS_PER_METER
+    let targetY = (pos.y - sY) / sScale / PIXELS_PER_METER
     
     if (snapToGrid) {
       targetX = Math.round(targetX / gridSize) * gridSize
       targetY = Math.round(targetY / gridSize) * gridSize
     }
-    
-    return {
-      x: targetX * PIXELS_PER_METER * sScale + sX,
-      y: targetY * PIXELS_PER_METER * sScale + sY,
+
+    const clamped = clampItemPosition(
+      targetX,
+      targetY,
+      item.width,
+      item.height,
+      item.rotation || 0,
+      storeWidth,
+      storeHeight
+    )
+
+    const dx = targetX - clamped.x
+    const dy = targetY - clamped.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    const RESISTANCE_THRESHOLD = 1.0 // 1.0 meter threshold of resistance
+
+    let finalX = clamped.x
+    let finalY = clamped.y
+
+    if (dist > RESISTANCE_THRESHOLD) {
+      // Break free from resistance
+      finalX = targetX
+      finalY = targetY
     }
-  }, [snapToGrid, gridSize])
+
+    return {
+      x: finalX * PIXELS_PER_METER * sScale + sX,
+      y: finalY * PIXELS_PER_METER * sScale + sY,
+    }
+  }, [snapToGrid, gridSize, item.width, item.height, item.rotation, storeWidth, storeHeight])
+
 
   // 1. PILLAR
   if (isPillar) {
@@ -202,9 +273,11 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         onDblClick={handleDblClick}
         onDblTap={handleDblClick}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         dragBoundFunc={dragBoundFunc}
         rotation={item.rotation || 0}
+        opacity={isOutsideThreshold ? 0.35 : 1}
       >
         <Group ref={drawingsGroupRef}>
           <Rect
@@ -274,9 +347,11 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         onDblClick={handleDblClick}
         onDblTap={handleDblClick}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         dragBoundFunc={dragBoundFunc}
         rotation={item.rotation || 0}
+        opacity={isOutsideThreshold ? 0.35 : 1}
       >
         <Group ref={drawingsGroupRef}>
           {/* Door opening line */}
@@ -296,22 +371,39 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
 
           {/* CAD Entrance Arrow if it is the entrance door */}
           {isEntranceDoor ? (
-            <>
-              {/* Arrow pointing up (into the store) */}
-              <Line points={[w / 2, 12, w / 2, -12]} stroke="#0B3D2E" strokeWidth={2.5} lineCap="round" opacity={0.85} />
-              <Line points={[w / 2 - 4, -8, w / 2, -12, w / 2 + 4, -8]} stroke="#0B3D2E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
-              {/* Green label badge */}
-              <Text
-                x={w / 2 - 30}
-                y={16}
-                width={60}
-                text="ENTRADA"
-                fontSize={8}
-                fontStyle="bold"
-                fill="#0B3D2E"
-                align="center"
-              />
-            </>
+            (() => {
+              const rot = (item.rotation || 0) % 360
+              const isRotatedVertically = rot === 90 || rot === 270
+              
+              const arrowLinePoints = isRotatedVertically
+                ? [w / 2, -12, w / 2, 12]
+                : [w / 2, 12, w / 2, -12]
+
+              const arrowHeadPoints = isRotatedVertically
+                ? [w / 2 - 4, 8, w / 2, 12, w / 2 + 4, 8]
+                : [w / 2 - 4, -8, w / 2, -12, w / 2 + 4, -8]
+
+              const labelY = isRotatedVertically ? -22 : 16
+
+              return (
+                <>
+                  {/* Arrow pointing up (into the store) */}
+                  <Line points={arrowLinePoints} stroke="#0B3D2E" strokeWidth={2.5} lineCap="round" opacity={0.85} />
+                  <Line points={arrowHeadPoints} stroke="#0B3D2E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+                  {/* Green label badge */}
+                  <Text
+                    x={w / 2 - 30}
+                    y={labelY}
+                    width={60}
+                    text="ENTRADA"
+                    fontSize={8}
+                    fontStyle="bold"
+                    fill="#0B3D2E"
+                    align="center"
+                  />
+                </>
+              )
+            })()
           ) : (
             <Text
               x={w * 0.1}
@@ -381,9 +473,11 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
         onDblClick={handleDblClick}
         onDblTap={handleDblClick}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         dragBoundFunc={dragBoundFunc}
         rotation={item.rotation || 0}
+        opacity={isOutsideThreshold ? 0.35 : 1}
       >
         <Group ref={drawingsGroupRef}>
           <Line
@@ -548,9 +642,11 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       onDblClick={handleDblClick}
       onDblTap={handleDblClick}
       onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       dragBoundFunc={dragBoundFunc}
       rotation={item.rotation || 0}
+      opacity={isOutsideThreshold ? 0.35 : 1}
     >
       <Group ref={drawingsGroupRef}>
         <Rect

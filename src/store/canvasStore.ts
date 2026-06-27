@@ -9,7 +9,7 @@ import type {
   LayoutDensity,
   PharmacyItemTemplate,
 } from '../types'
-import { clampItemPosition, getRotatedBounds } from '../utils/geometry'
+import { clampItemPosition, getRotatedBounds, checkItemsCollision } from '../utils/geometry'
 import { cleanItemName } from '../utils/labels'
 import { toast } from './toastStore'
 
@@ -305,8 +305,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       name: cleanedName,
       icon: itemTemplate.icon,
       category: itemTemplate.category,
-      x: Math.max(0, Math.min(x, storeWidth - itemTemplate.width)),
-      y: Math.max(0, Math.min(y, storeHeight - itemTemplate.height)),
+      x: (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
+        ? Math.max(0, Math.min(x, storeWidth))
+        : Math.max(0, Math.min(x, storeWidth - itemTemplate.width)),
+      y: (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
+        ? Math.max(0, Math.min(y, storeHeight))
+        : Math.max(0, Math.min(y, storeHeight - itemTemplate.height)),
       width: itemTemplate.width,
       height: itemTemplate.height,
       fillColor: itemTemplate.fillColor,
@@ -361,6 +365,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     const clamped = clampItemPosition(newX, newY, item.width, item.height, item.rotation || 0, storeWidth, storeHeight)
 
+    // Check collision
+    const collides = checkItemsCollision(id, clamped.x, clamped.y, item.width, item.height, item.rotation || 0, items)
+    if (collides) {
+      toast.error('Não é possível sobrepor os módulos!')
+      return
+    }
+
     set(s => ({
       items: s.items.map(i => (i.id === id ? { ...i, x: clamped.x, y: clamped.y } : i)),
       isDirty: true,
@@ -373,8 +384,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const item = items.find(i => i.id === id)
     if (!item) return
 
-    const newWidth = Math.max(0.2, Math.min(width, storeWidth - item.x))
-    const newHeight = Math.max(0.2, Math.min(height, storeHeight - item.y))
+    const isWallOrDoor = item.isDoor || item.isWallItem || item.category === 'ESTRUTURA' || item.itemId?.includes('porta')
+
+    const newWidth = isWallOrDoor 
+      ? width 
+      : Math.max(0.2, Math.min(width, storeWidth - item.x))
+    const newHeight = isWallOrDoor 
+      ? height 
+      : Math.max(0.2, Math.min(height, storeHeight - item.y))
 
     set(s => ({
       items: s.items.map(i => (i.id === id ? { ...i, width: newWidth, height: newHeight } : i)),
@@ -384,12 +401,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   rotateItem: (id, angle) => {
-    const { storeWidth, storeHeight } = get()
+    const { storeWidth, storeHeight, items } = get()
+    const item = items.find(i => i.id === id)
+    if (!item) return
+
+    const newRotation = ((item.rotation || 0) + angle) % 360
+    const clamped = clampItemPosition(item.x, item.y, item.width, item.height, newRotation, storeWidth, storeHeight)
+
+    // Check collision
+    const collides = checkItemsCollision(id, clamped.x, clamped.y, item.width, item.height, newRotation, items)
+    if (collides) {
+      toast.error('Giro bloqueado: causaria sobreposição de módulos!')
+      return
+    }
+
     set(s => ({
       items: s.items.map(i => {
         if (i.id !== id) return i
-        const newRotation = ((i.rotation || 0) + angle) % 360
-        const clamped = clampItemPosition(i.x, i.y, i.width, i.height, newRotation, storeWidth, storeHeight)
         return { ...i, rotation: newRotation, x: clamped.x, y: clamped.y }
       }),
       isDirty: true,

@@ -326,7 +326,7 @@ export async function generateAILayout(
     entrance = newEnt
   }
 
-  if (!exit) {
+  if (!exit && doors.length === 0) {
     const extX = Math.min(storeWidth - 1.5, storeWidth / 2 + CORNER_GAP_LIMIT)
     const extY = storeHeight - 0.15
     const newExt = makeItem(

@@ -94,6 +94,19 @@ export default function ClientIntakeForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general' | 'postalCode', string>>>({})
 
+  // Door states for Step 3
+  const [doorWidth, setDoorWidth] = useState('2')
+  const [doorOrientation, setDoorOrientation] = useState<'N' | 'S' | 'E' | 'W'>('S')
+  const [doorOffset, setDoorOffset] = useState('0')
+  const isDraggingDoorRef = useRef(false)
+
+  // Second door (corner pharmacy)
+  const [hasDoor2, setHasDoor2] = useState(false)
+  const [door2Width, setDoor2Width] = useState('2')
+  const [door2Orientation, setDoor2Orientation] = useState<'N' | 'S' | 'E' | 'W'>('E')
+  const [door2Offset, setDoor2Offset] = useState('0')
+  const isDraggingDoor2Ref = useRef(false)
+
   // Postal code lookup state
   const [postalLoading, setPostalLoading] = useState(false)
   const [postalMessage, setPostalMessage] = useState<string | null>(null)
@@ -140,6 +153,17 @@ export default function ClientIntakeForm() {
     floorPlanFile: null,
     floorPlanPreview: null,
   })
+
+  // Recalculates default centered door offset
+  useEffect(() => {
+    if (step !== 3) return
+    const w = parseFloat(form.width) || 10
+    const h = parseFloat(form.height) || 12
+    const dWidth = parseFloat(doorWidth) || 2
+    const wallLength = (doorOrientation === 'N' || doorOrientation === 'S') ? w : h
+    const maxOffset = Math.max(0, wallLength - dWidth)
+    setDoorOffset((maxOffset / 2).toFixed(1))
+  }, [doorOrientation, doorWidth, form.width, form.height, step])
 
   const set = (field: keyof FormData, value: unknown) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -819,6 +843,10 @@ export default function ClientIntakeForm() {
     if (validateStep1()) setStep(2)
   }
 
+  const handleStep2Next = () => {
+    if (validateStep2()) setStep(3)
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -897,6 +925,24 @@ export default function ClientIntakeForm() {
       hasFloorPlan: form.spaceMode === 'floorplan',
       floorPlanDataUrl: form.spaceMode === 'floorplan' ? form.floorPlanPreview : null,
       freightData,
+      door: form.spaceMode === 'dimensions' ? {
+        width: parseFloat(doorWidth) || 2.0,
+        orientation: doorOrientation,
+        offset: parseFloat(doorOffset) || 0.0
+      } : null,
+      door2: (form.spaceMode === 'dimensions' && hasDoor2) ? {
+        width: parseFloat(door2Width) || 2.0,
+        orientation: door2Orientation,
+        offset: parseFloat(door2Offset) || 0.0
+      } : null,
+      isCorner: form.spaceMode === 'dimensions' && hasDoor2 &&
+        doorOrientation !== door2Orientation &&
+        !(
+          (doorOrientation === 'N' && door2Orientation === 'S') ||
+          (doorOrientation === 'S' && door2Orientation === 'N') ||
+          (doorOrientation === 'E' && door2Orientation === 'W') ||
+          (doorOrientation === 'W' && door2Orientation === 'E')
+        )
     }
     sessionStorage.setItem('projefarma_intake', JSON.stringify(intakeData))
     sessionStorage.setItem('projefarma_client_details', JSON.stringify({
@@ -918,6 +964,8 @@ export default function ClientIntakeForm() {
     const params = new URLSearchParams()
     if (form.spaceMode === 'floorplan') {
       params.set('floorplan', '1')
+    } else {
+      params.set('view3d', 'aerial')
     }
 
     navigate(`/editor?${params.toString()}`)
@@ -961,11 +1009,24 @@ export default function ClientIntakeForm() {
               ) : '1'}
             </div>
             <div className={`cif-progress-line ${step >= 2 ? 'filled' : ''}`} />
-            <div className={`cif-step-dot ${step >= 2 ? 'active' : ''}`}>2</div>
+            <div className={`cif-step-dot ${step >= 2 ? 'active' : ''}`}>
+              {step > 2 ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : '2'}
+            </div>
+            {form.spaceMode === 'dimensions' && (
+              <>
+                <div className={`cif-progress-line ${step >= 3 ? 'filled' : ''}`} />
+                <div className={`cif-step-dot ${step >= 3 ? 'active' : ''}`}>3</div>
+              </>
+            )}
           </div>
           <div className="cif-step-labels">
             <span className={step === 1 ? 'active' : ''}>Dados da Farmácia</span>
             <span className={step === 2 ? 'active' : ''}>Espaço da Loja</span>
+            {form.spaceMode === 'dimensions' && (
+              <span className={step === 3 ? 'active' : ''}>Porta de Entrada</span>
+            )}
           </div>
 
           {/* ── STEP 1 ── */}
@@ -1515,12 +1576,17 @@ export default function ClientIntakeForm() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
                   Voltar
                 </button>
-                <button
+                 <button
                   className="cif-btn-primary"
-                  onClick={handleSubmit}
+                  onClick={form.spaceMode === 'dimensions' ? handleStep2Next : handleSubmit}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? (
+                  {form.spaceMode === 'dimensions' ? (
+                    <>
+                      Próximo
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </>
+                  ) : isSubmitting ? (
                     <>
                       <span className="cif-spinner" />
                       Preparando layout...
@@ -1532,6 +1598,450 @@ export default function ClientIntakeForm() {
                         <path d="M3 9h18M9 21V9" />
                       </svg>
                       Criar Meu Layout
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3 ── */}
+          {step === 3 && (
+            <div className="cif-body cif-fade-in">
+              <div className="cif-step-header">
+                <div className="cif-step-icon" style={{ background: '#10b981', color: 'white' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M9 3v18M15 3v18" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="cif-step-title">Porta de Entrada</h2>
+                  <p className="cif-step-desc">Defina a posição e a largura da porta de entrada principal da farmácia.</p>
+                </div>
+              </div>
+
+              <div className="cif-fields">
+                <div className="cif-field-row">
+                  <div className="cif-field">
+                    <label htmlFor="cif-door-wall">Parede da Porta <span className="cif-required">*</span></label>
+                    <select
+                      id="cif-door-wall"
+                      value={doorOrientation}
+                      onChange={e => setDoorOrientation(e.target.value as any)}
+                    >
+                      <option value="S">Parede Inferior (Frente/Principal)</option>
+                      <option value="N">Parede Superior (Fundos)</option>
+                      <option value="W">Parede Esquerda</option>
+                      <option value="E">Parede Direita</option>
+                    </select>
+                  </div>
+                  <div className="cif-field">
+                    <label htmlFor="cif-door-width">Largura da Porta (m) <span className="cif-required">*</span></label>
+                    <input
+                      id="cif-door-width"
+                      type="number"
+                      min="0.8"
+                      max="4.0"
+                      step="0.1"
+                      placeholder="Ex: 2.0"
+                      value={doorWidth}
+                      onChange={e => setDoorWidth(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* SVG Interactive Door Preview */}
+                {(() => {
+                  const wMeters = parseFloat(form.width) || 10
+                  const hMeters = parseFloat(form.height) || 12
+                  const dWidth = parseFloat(doorWidth) || 2
+                  const dOffset = parseFloat(doorOffset) || 0
+                  const isHoriz = doorOrientation === 'N' || doorOrientation === 'S'
+                  const wallLength = isHoriz ? wMeters : hMeters
+                  const maxOffset = Math.max(0, wallLength - dWidth)
+
+                  const maxPreviewW = 280
+                  const maxPreviewH = 180
+                  const aspectRatio = wMeters / hMeters
+
+                  let previewW = maxPreviewW
+                  let previewH = maxPreviewW / aspectRatio
+                  if (previewH > maxPreviewH) {
+                    previewH = maxPreviewH
+                    previewW = maxPreviewH * aspectRatio
+                  }
+
+                  const scaleX = previewW / wMeters
+                  const scaleY = previewH / hMeters
+                  const doorPxWidth = dWidth * (isHoriz ? scaleX : scaleY)
+                  const doorPxOffset = dOffset * (isHoriz ? scaleX : scaleY)
+                  const doorThickness = 7
+
+                  let doorX = 0, doorY = 0, doorW = 0, doorH = 0
+                  let arrowX = 0, arrowY = 0, arrowPoints = '', arrowLineToX = 0, arrowLineToY = 0
+                  // Transparent interactive wall strip rect coords
+                  let wallStripX = 0, wallStripY = 0, wallStripW = 0, wallStripH = 0
+
+                  if (doorOrientation === 'N') {
+                    doorX = doorPxOffset; doorY = 0; doorW = doorPxWidth; doorH = doorThickness
+                    arrowX = doorX + doorW / 2; arrowY = doorY + 22
+                    arrowPoints = `${arrowX - 5},17 ${arrowX},22 ${arrowX + 5},17`
+                    arrowLineToX = arrowX; arrowLineToY = arrowY - 12
+                    wallStripX = 0; wallStripY = 0; wallStripW = previewW; wallStripH = 20
+                  } else if (doorOrientation === 'S') {
+                    doorX = doorPxOffset; doorY = previewH - doorThickness; doorW = doorPxWidth; doorH = doorThickness
+                    arrowX = doorX + doorW / 2; arrowY = doorY - 22
+                    arrowPoints = `${arrowX - 5},${previewH - 17} ${arrowX},${previewH - 22} ${arrowX + 5},${previewH - 17}`
+                    arrowLineToX = arrowX; arrowLineToY = arrowY + 12
+                    wallStripX = 0; wallStripY = previewH - 20; wallStripW = previewW; wallStripH = 20
+                  } else if (doorOrientation === 'W') {
+                    doorX = 0; doorY = doorPxOffset; doorW = doorThickness; doorH = doorPxWidth
+                    arrowX = doorX + 22; arrowY = doorY + doorH / 2
+                    arrowPoints = `17,${arrowY - 5} 22,${arrowY} 17,${arrowY + 5}`
+                    arrowLineToX = arrowX - 12; arrowLineToY = arrowY
+                    wallStripX = 0; wallStripY = 0; wallStripW = 20; wallStripH = previewH
+                  } else { // E
+                    doorX = previewW - doorThickness; doorY = doorPxOffset; doorW = doorThickness; doorH = doorPxWidth
+                    arrowX = doorX - 22; arrowY = doorY + doorH / 2
+                    arrowPoints = `${previewW - 17},${arrowY - 5} ${previewW - 22},${arrowY} ${previewW - 17},${arrowY + 5}`
+                    arrowLineToX = arrowX + 12; arrowLineToY = arrowY
+                    wallStripX = previewW - 20; wallStripY = 0; wallStripW = 20; wallStripH = previewH
+                  }
+
+                  const computeOffset = (clientX: number, clientY: number, svgEl: SVGSVGElement) => {
+                    const rect = svgEl.getBoundingClientRect()
+                    const relX = clientX - rect.left
+                    const relY = clientY - rect.top
+                    let newOffset: number
+                    if (isHoriz) {
+                      newOffset = (relX - doorPxWidth / 2) / scaleX
+                    } else {
+                      newOffset = (relY - doorPxWidth / 2) / scaleY
+                    }
+                    return Math.max(0, Math.min(maxOffset, newOffset))
+                  }
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '18px 0' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(11,61,46,0.65)', marginBottom: '6px', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                        Clique ou arraste na parede para posicionar a porta
+                      </span>
+                      <svg
+                        width={previewW}
+                        height={previewH}
+                        style={{
+                          background: '#f0fdf4',
+                          border: '2px solid #6ee7b7',
+                          borderRadius: '8px',
+                          cursor: isHoriz ? 'ew-resize' : 'ns-resize',
+                          touchAction: 'none',
+                          userSelect: 'none'
+                        }}
+                        onMouseDown={e => {
+                          isDraggingDoorRef.current = true
+                          const newOff = computeOffset(e.clientX, e.clientY, e.currentTarget)
+                          setDoorOffset(newOff.toFixed(1))
+                        }}
+                        onMouseMove={e => {
+                          if (!isDraggingDoorRef.current) return
+                          const newOff = computeOffset(e.clientX, e.clientY, e.currentTarget)
+                          setDoorOffset(newOff.toFixed(1))
+                        }}
+                        onMouseUp={() => { isDraggingDoorRef.current = false }}
+                        onMouseLeave={() => { isDraggingDoorRef.current = false }}
+                        onTouchStart={e => {
+                          e.preventDefault()
+                          isDraggingDoorRef.current = true
+                          const t = e.touches[0]
+                          const newOff = computeOffset(t.clientX, t.clientY, e.currentTarget)
+                          setDoorOffset(newOff.toFixed(1))
+                        }}
+                        onTouchMove={e => {
+                          e.preventDefault()
+                          if (!isDraggingDoorRef.current) return
+                          const t = e.touches[0]
+                          const newOff = computeOffset(t.clientX, t.clientY, e.currentTarget)
+                          setDoorOffset(newOff.toFixed(1))
+                        }}
+                        onTouchEnd={() => { isDraggingDoorRef.current = false }}
+                      >
+                        <defs>
+                          <pattern id="preview-grid" width={12} height={12} patternUnits="userSpaceOnUse">
+                            <path d="M 12 0 L 0 0 0 12" fill="none" stroke="#dcfce7" strokeWidth="1" />
+                          </pattern>
+                        </defs>
+                        {/* Floor fill */}
+                        <rect width={previewW} height={previewH} fill="url(#preview-grid)" rx={6} />
+
+                        {/* Interactive wall highlight strip */}
+                        <rect
+                          x={wallStripX} y={wallStripY} width={wallStripW} height={wallStripH}
+                          fill="rgba(16,185,129,0.12)"
+                          stroke="rgba(16,185,129,0.35)"
+                          strokeWidth={1}
+                          rx={3}
+                        />
+
+                        {/* Label on wall strip */}
+                        {isHoriz ? (
+                          <text
+                            x={previewW / 2}
+                            y={doorOrientation === 'S' ? previewH - 6 : 13}
+                            textAnchor="middle"
+                            fontSize={8}
+                            fill="rgba(4,120,87,0.7)"
+                            fontWeight="700"
+                            style={{ pointerEvents: 'none', userSelect: 'none' }}
+                          >
+                            ← arraste →
+                          </text>
+                        ) : (
+                          <text
+                            x={doorOrientation === 'E' ? previewW - 10 : 10}
+                            y={previewH / 2}
+                            textAnchor="middle"
+                            fontSize={8}
+                            fill="rgba(4,120,87,0.7)"
+                            fontWeight="700"
+                            transform={`rotate(-90, ${doorOrientation === 'E' ? previewW - 10 : 10}, ${previewH / 2})`}
+                            style={{ pointerEvents: 'none', userSelect: 'none' }}
+                          >
+                            ← arraste →
+                          </text>
+                        )}
+
+                        {/* Door block */}
+                        <rect
+                          x={doorX} y={doorY} width={doorW} height={doorH}
+                          fill="#10b981"
+                          stroke="#047857"
+                          strokeWidth={1.5}
+                          rx={2}
+                          style={{ pointerEvents: 'none' }}
+                        />
+
+                        {/* Arrow pointing inward */}
+                        <polyline
+                          points={arrowPoints}
+                          fill="none" stroke="#047857" strokeWidth={2.5}
+                          strokeLinecap="round" strokeLinejoin="round"
+                          style={{ pointerEvents: 'none' }}
+                        />
+                        <line
+                          x1={arrowLineToX} y1={arrowLineToY} x2={arrowX} y2={arrowY}
+                          stroke="#047857" strokeWidth={2.5} strokeLinecap="round"
+                          style={{ pointerEvents: 'none' }}
+                        />
+                      </svg>
+                      {/* Position readout */}
+                      <div style={{ marginTop: 8, fontSize: '0.78rem', fontWeight: 700, color: 'rgba(11,61,46,0.75)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '2px 10px' }}>
+                          Posição: {parseFloat(doorOffset).toFixed(1)} m do canto
+                        </span>
+                        <span style={{ color: 'rgba(11,61,46,0.4)', fontSize: '0.7rem' }}>
+                          máx. {maxOffset.toFixed(1)} m
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* ── Second Door (Corner Pharmacy) ── */}
+              {!hasDoor2 ? (
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setHasDoor2(true)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'rgba(16,185,129,0.06)',
+                      border: '1.5px dashed rgba(16,185,129,0.5)',
+                      borderRadius: 10, padding: '8px 20px',
+                      color: 'rgba(11,61,46,0.75)', fontSize: '0.82rem',
+                      fontWeight: 700, cursor: 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(16,185,129,0.14)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(16,185,129,0.06)')}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Adicionar segunda porta (farmácia de esquina)
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(16,185,129,0.05)',
+                  border: '1.5px solid rgba(16,185,129,0.3)',
+                  borderRadius: 12, padding: '14px 16px',
+                  marginBottom: 16
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'rgba(11,61,46,0.8)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      </svg>
+                      Segunda Porta – Farmácia de Esquina
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHasDoor2(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(11,61,46,0.4)', fontSize: '0.75rem', padding: '2px 6px' }}
+                    >
+                      ✕ remover
+                    </button>
+                  </div>
+
+                  <div className="cif-form-row">
+                    <div className="cif-field">
+                      <label>Parede da 2ª Porta</label>
+                      <select value={door2Orientation} onChange={e => setDoor2Orientation(e.target.value as any)}>
+                        {doorOrientation !== 'S' && <option value="S">Parede Inferior (Frente)</option>}
+                        {doorOrientation !== 'N' && <option value="N">Parede Superior (Fundos)</option>}
+                        {doorOrientation !== 'W' && <option value="W">Parede Esquerda</option>}
+                        {doorOrientation !== 'E' && <option value="E">Parede Direita</option>}
+                      </select>
+                    </div>
+                    <div className="cif-field">
+                      <label>Largura da 2ª Porta (m)</label>
+                      <input
+                        type="number" min="0.8" max="4.0" step="0.1"
+                        placeholder="Ex: 2.0"
+                        value={door2Width}
+                        onChange={e => setDoor2Width(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SVG Interactive Preview for Door 2 */}
+                  {(() => {
+                    const wM = parseFloat(form.width) || 10
+                    const hM = parseFloat(form.height) || 12
+                    const dW2 = parseFloat(door2Width) || 2
+                    const dOff2 = parseFloat(door2Offset) || 0
+                    const isH2 = door2Orientation === 'N' || door2Orientation === 'S'
+                    const wLen2 = isH2 ? wM : hM
+                    const maxOff2 = Math.max(0, wLen2 - dW2)
+                    const maxPW2 = 260; const maxPH2 = 160
+                    const ar2 = wM / hM
+                    let pW2 = maxPW2; let pH2 = maxPW2 / ar2
+                    if (pH2 > maxPH2) { pH2 = maxPH2; pW2 = maxPH2 * ar2 }
+                    const sX2 = pW2 / wM; const sY2 = pH2 / hM
+                    const dPxW2 = dW2 * (isH2 ? sX2 : sY2)
+                    const dPxOff2 = dOff2 * (isH2 ? sX2 : sY2)
+                    const dt2 = 7
+                    let dX2 = 0, dY2 = 0, dW2px = 0, dH2px = 0
+                    let aX2 = 0, aY2 = 0, aPoints2 = '', aLX2 = 0, aLY2 = 0
+                    let wsX2 = 0, wsY2 = 0, wsW2 = 0, wsH2 = 0
+                    if (door2Orientation === 'N') {
+                      dX2 = dPxOff2; dY2 = 0; dW2px = dPxW2; dH2px = dt2
+                      aX2 = dX2 + dW2px/2; aY2 = dY2 + 22
+                      aPoints2 = `${aX2-5},17 ${aX2},22 ${aX2+5},17`
+                      aLX2 = aX2; aLY2 = aY2 - 12
+                      wsX2 = 0; wsY2 = 0; wsW2 = pW2; wsH2 = 20
+                    } else if (door2Orientation === 'S') {
+                      dX2 = dPxOff2; dY2 = pH2 - dt2; dW2px = dPxW2; dH2px = dt2
+                      aX2 = dX2 + dW2px/2; aY2 = dY2 - 22
+                      aPoints2 = `${aX2-5},${pH2-17} ${aX2},${pH2-22} ${aX2+5},${pH2-17}`
+                      aLX2 = aX2; aLY2 = aY2 + 12
+                      wsX2 = 0; wsY2 = pH2 - 20; wsW2 = pW2; wsH2 = 20
+                    } else if (door2Orientation === 'W') {
+                      dX2 = 0; dY2 = dPxOff2; dW2px = dt2; dH2px = dPxW2
+                      aX2 = dX2 + 22; aY2 = dY2 + dH2px/2
+                      aPoints2 = `17,${aY2-5} 22,${aY2} 17,${aY2+5}`
+                      aLX2 = aX2 - 12; aLY2 = aY2
+                      wsX2 = 0; wsY2 = 0; wsW2 = 20; wsH2 = pH2
+                    } else {
+                      dX2 = pW2 - dt2; dY2 = dPxOff2; dW2px = dt2; dH2px = dPxW2
+                      aX2 = dX2 - 22; aY2 = dY2 + dH2px/2
+                      aPoints2 = `${pW2-17},${aY2-5} ${pW2-22},${aY2} ${pW2-17},${aY2+5}`
+                      aLX2 = aX2 + 12; aLY2 = aY2
+                      wsX2 = pW2 - 20; wsY2 = 0; wsW2 = 20; wsH2 = pH2
+                    }
+                    const cmpOff2 = (cx: number, cy: number, svg: SVGSVGElement) => {
+                      const r = svg.getBoundingClientRect()
+                      const v = isH2 ? (cx - r.left - dPxW2/2) / sX2 : (cy - r.top - dPxW2/2) / sY2
+                      return Math.max(0, Math.min(maxOff2, v))
+                    }
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0 4px' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(11,61,46,0.55)', marginBottom: 6, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                          Clique ou arraste para posicionar a 2ª porta
+                        </span>
+                        <svg
+                          width={pW2} height={pH2}
+                          style={{ background: '#f0fdf4', border: '2px solid #93c5fd', borderRadius: 8, cursor: isH2 ? 'ew-resize' : 'ns-resize', touchAction: 'none', userSelect: 'none' }}
+                          onMouseDown={e => { isDraggingDoor2Ref.current = true; setDoor2Offset(cmpOff2(e.clientX, e.clientY, e.currentTarget).toFixed(1)) }}
+                          onMouseMove={e => { if (!isDraggingDoor2Ref.current) return; setDoor2Offset(cmpOff2(e.clientX, e.clientY, e.currentTarget).toFixed(1)) }}
+                          onMouseUp={() => { isDraggingDoor2Ref.current = false }}
+                          onMouseLeave={() => { isDraggingDoor2Ref.current = false }}
+                          onTouchStart={e => { e.preventDefault(); isDraggingDoor2Ref.current = true; const t = e.touches[0]; setDoor2Offset(cmpOff2(t.clientX, t.clientY, e.currentTarget).toFixed(1)) }}
+                          onTouchMove={e => { e.preventDefault(); if (!isDraggingDoor2Ref.current) return; const t = e.touches[0]; setDoor2Offset(cmpOff2(t.clientX, t.clientY, e.currentTarget).toFixed(1)) }}
+                          onTouchEnd={() => { isDraggingDoor2Ref.current = false }}
+                        >
+                          <defs><pattern id="pg2" width={12} height={12} patternUnits="userSpaceOnUse"><path d="M 12 0 L 0 0 0 12" fill="none" stroke="#dbeafe" strokeWidth="1" /></pattern></defs>
+                          <rect width={pW2} height={pH2} fill="url(#pg2)" rx={6} />
+                          <rect x={wsX2} y={wsY2} width={wsW2} height={wsH2} fill="rgba(59,130,246,0.10)" stroke="rgba(59,130,246,0.30)" strokeWidth={1} rx={3} />
+                          <rect x={dX2} y={dY2} width={dW2px} height={dH2px} fill="#3b82f6" stroke="#1d4ed8" strokeWidth={1.5} rx={2} style={{ pointerEvents: 'none' }} />
+                          <polyline points={aPoints2} fill="none" stroke="#1d4ed8" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: 'none' }} />
+                          <line x1={aLX2} y1={aLY2} x2={aX2} y2={aY2} stroke="#1d4ed8" strokeWidth={2.5} strokeLinecap="round" style={{ pointerEvents: 'none' }} />
+                        </svg>
+                        <div style={{ marginTop: 6, fontSize: '0.75rem', fontWeight: 700, color: 'rgba(11,61,46,0.7)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 6, padding: '2px 10px' }}>
+                            Posição: {parseFloat(door2Offset).toFixed(1)} m do canto
+                          </span>
+                          <span style={{ color: 'rgba(11,61,46,0.35)', fontSize: '0.68rem' }}>máx. {maxOff2.toFixed(1)} m</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Corner badge */}
+                  {(() => {
+                    const perp =
+                      ((doorOrientation === 'S' || doorOrientation === 'N') && (door2Orientation === 'E' || door2Orientation === 'W')) ||
+                      ((doorOrientation === 'E' || doorOrientation === 'W') && (door2Orientation === 'S' || door2Orientation === 'N'))
+                    return perp ? (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, color: 'rgba(11,61,46,0.75)' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h18v18H3z" /><path d="M3 12h18M12 3v18" /></svg>
+                        Modo Esquina ativado — fachada em L no visualizador 3D
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(250,204,21,0.1)', border: '1px solid rgba(250,204,21,0.4)', borderRadius: 8, padding: '6px 12px', fontSize: '0.73rem', color: 'rgba(120,90,0,0.8)' }}>
+                        ⚠ Para fachada de esquina, escolha paredes perpendiculares (ex: Frente + Direita)
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
+              <div className="cif-actions">
+                <button className="cif-btn-secondary" onClick={() => setStep(2)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
+                  Voltar
+                </button>
+                <button
+                  className="cif-btn-primary"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  style={{ background: '#10b981', borderColor: '#10b981' }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="cif-spinner" />
+                      Gerando projeto...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                        <path d="M12 6v12M6 12h12" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      Gerar Projeto
                     </>
                   )}
                 </button>

@@ -12,7 +12,6 @@
     "items": [
 
       {"id":"r001-i01","itemId":"catalog-22-premium","name":"Prateleira Medicamentos 0.50m","icon":"💊","category":"GONDOLAS","x":0.00,"y":0.00,"width":0.50,"height":0.21,"fillColor":"#FDF8F0","strokeColor":"#8B7355","rotation":0,"label":"MED 500mm","isObstacle":false,"isPillar":false,"isDoor":false,"isEmergency":false,"isWallItem":true,"price":0,"createdAt":1749758400000},
-
       {"id":"r001-i02","itemId":"catalog-21-premium","name":"Prateleira Medicamentos 0.807m","icon":"💊","category":"GONDOLAS","x":0.50,"y":0.00,"width":0.807,"height":0.21,"fillColor":"#FDF8F0","strokeColor":"#8B7355","rotation":0,"label":"MED 807mm","isObstacle":false,"isPillar":false,"isDoor":false,"isEmergency":false,"isWallItem":true,"price":0,"createdAt":1749758400000},
       {"id":"r001-i03","itemId":"catalog-21-premium","name":"Prateleira Medicamentos 0.807m","icon":"💊","category":"GONDOLAS","x":1.307,"y":0.00,"width":0.807,"height":0.21,"fillColor":"#FDF8F0","strokeColor":"#8B7355","rotation":0,"label":"MED 807mm","isObstacle":false,"isPillar":false,"isDoor":false,"isEmergency":false,"isWallItem":true,"price":0,"createdAt":1749758400000},
       {"id":"r001-i04","itemId":"catalog-21-premium","name":"Prateleira Medicamentos 0.807m","icon":"💊","category":"GONDOLAS","x":2.114,"y":0.00,"width":0.807,"height":0.21,"fillColor":"#FDF8F0","strokeColor":"#8B7355","rotation":0,"label":"MED 807mm","isObstacle":false,"isPillar":false,"isDoor":false,"isEmergency":false,"isWallItem":true,"price":0,"createdAt":1749758400000},

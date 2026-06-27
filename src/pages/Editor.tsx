@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react'
 import type Konva from 'konva'
-import type { ItemCategory } from '../types'
+import type { ItemCategory, CanvasItem, StoreType, LayoutDensity } from '../types'
+import { generateAILayout } from '../services/heuristicLayoutGenerator'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import CanvasEditor from '../components/canvas/CanvasEditor'
 import ItemLibrary from '../components/canvas/ItemLibrary'
@@ -16,8 +17,11 @@ import ErgonomyPanel from '../components/canvas/ErgonomyPanel'
 import { exportToCSV, exportToXLSX } from '../services/excelExport'
 import FloorPlanReaderModal from '../components/canvas/FloorPlanReaderModal'
 import { getFullLayoutDataUrl } from '../utils/canvasExport'
+import { PHARMACY_ITEMS } from '../data/items'
+import { getRotatedBounds } from '../utils/geometry'
 import DownloadBlockModal from '../components/canvas/DownloadBlockModal'
 import './Editor.css'
+import '../components/canvas/ThreeDViewer.css'
 
 const ThreeDViewer = lazy(() => import('../components/canvas/ThreeDViewer'))
 
@@ -94,14 +98,21 @@ function MobileZoomControls() {
 export default function Editor() {
   const { id: routeId } = useParams()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const stageRef = useRef<Konva.Stage | null>(null)
 
   const [activeMobileTab, setActiveMobileTab] = useState<'layout' | 'library' | 'ai' | 'budget'>('layout')
   const [showSettings, setShowSettings] = useState(false)
   const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('ai')
   const [showExportOptions, setShowExportOptions] = useState(false)
-  const [show3D, setShow3D] = useState(false)
+  const [show3D, setShow3D] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('view3d') === 'aerial' && isWebGLAvailable()
+  })
+  const [initialCameraView, setInitialCameraView] = useState<'normal' | 'aerial'>(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('view3d') === 'aerial' ? 'aerial' : 'normal'
+  })
   const [warningVisible, setWarningVisible] = useState(false)
   const [downloadBlocked, setDownloadBlocked] = useState(false)
   const [pdfExportModule, setPdfExportModule] = useState<any>(null)
@@ -241,8 +252,118 @@ export default function Editor() {
             sessionStorage.removeItem('projefarma_intake') // consome apenas uma vez
 
             if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
+              useCanvasStore.getState().clearCanvas()
               setStoreDimensions(Number(intake.width), Number(intake.height))
               toast.success(`Dimensões aplicadas: ${intake.width}×${intake.height}m`)
+
+              // Instanciar porta de entrada se configurada
+              if (intake.door) {
+                const hasDoor = useCanvasStore.getState().items.some(i => i.itemId === 'porta-entrada' || i.isDoor)
+                if (!hasDoor) {
+                  const doorTemplate = PHARMACY_ITEMS.find(i => i.id === 'porta-entrada')
+                  if (doorTemplate) {
+                    const doorWidth = Number(intake.door.width) || 2.0
+                    const orient = intake.door.orientation || 'S'
+                    const offset = Number(intake.door.offset) || 0.0
+                    const storeW = Number(intake.width)
+                    const storeH = Number(intake.height)
+
+                    let rotation = 0
+                    if (orient === 'E') rotation = 90
+                    else if (orient === 'N') rotation = 180
+                    else if (orient === 'W') rotation = 270
+
+                    let x = 0
+                    let y = 0
+                    if (orient === 'S') {
+                      x = offset
+                      y = storeH - 0.15
+                    } else if (orient === 'N') {
+                      x = offset + doorWidth
+                      y = 0.15
+                    } else if (orient === 'W') {
+                      x = 0
+                      y = offset + doorWidth
+                    } else if (orient === 'E') {
+                      x = storeW
+                      y = offset
+                    }
+
+                    const addedDoorId = useCanvasStore.getState().addItem(doorTemplate, x, y)
+                    if (rotation !== 0) {
+                      useCanvasStore.getState().rotateItem(addedDoorId, rotation)
+                    }
+                    useCanvasStore.getState().updateItemSize(addedDoorId, doorWidth, 0.15)
+                    
+                    const bounds = getRotatedBounds(x, y, doorWidth, 0.15, rotation)
+                    useCanvasStore.getState().setEntrance({
+                      x: bounds.x + bounds.width / 2,
+                      y: bounds.y + bounds.height / 2,
+                      orientation: orient
+                    })
+                  }
+                }
+              }
+
+              // Instanciar segunda porta (farmácia de esquina)
+              if (intake.door2) {
+                const door2Template = PHARMACY_ITEMS.find(i => i.id === 'porta-entrada') ||
+                                     PHARMACY_ITEMS.find(i => i.isDoor)
+                if (door2Template) {
+                  const d2Width = Number(intake.door2.width) || 2.0
+                  const d2Orient = intake.door2.orientation || 'E'
+                  const d2Offset = Number(intake.door2.offset) || 0.0
+                  const storeW2 = Number(intake.width)
+                  const storeH2 = Number(intake.height)
+
+                  let d2Rot = 0
+                  if (d2Orient === 'E') d2Rot = 90
+                  else if (d2Orient === 'N') d2Rot = 180
+                  else if (d2Orient === 'W') d2Rot = 270
+
+                  let d2X = 0, d2Y = 0
+                  if (d2Orient === 'S') { d2X = d2Offset; d2Y = storeH2 - 0.15 }
+                  else if (d2Orient === 'N') { d2X = d2Offset + d2Width; d2Y = 0.15 }
+                  else if (d2Orient === 'W') { d2X = 0; d2Y = d2Offset + d2Width }
+                  else { d2X = storeW2; d2Y = d2Offset }
+
+                  const addedDoor2Id = useCanvasStore.getState().addItem(door2Template, d2X, d2Y)
+                  if (d2Rot !== 0) useCanvasStore.getState().rotateItem(addedDoor2Id, d2Rot)
+                  useCanvasStore.getState().updateItemSize(addedDoor2Id, d2Width, 0.15)
+
+                  // Store isCorner flag in sessionStorage for ThreeDViewer
+                  if (intake.isCorner) {
+                    sessionStorage.setItem('projefarma_corner', JSON.stringify({ isCorner: true, door2: intake.door2 }))
+                  }
+                }
+              }
+
+
+              // Gerar layout otimizado automaticamente
+              setTimeout(async () => {
+                try {
+                  const w = Number(intake.width)
+                  const h = Number(intake.height)
+                  const currentItems = useCanvasStore.getState().items
+                  const density = useCanvasStore.getState().layoutDensity || 'normal'
+                  const storeType = useCanvasStore.getState().storeType || 'premium'
+
+                  const result = await generateAILayout(w, h, storeType, currentItems, density)
+                  if (result.valid || result.items.length > 0) {
+                    const structural = currentItems.filter(i => 
+                      i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA'
+                    )
+                    useCanvasStore.setState({ 
+                      items: [...structural, ...result.items] as CanvasItem[], 
+                      isDirty: true 
+                    })
+                    useCanvasStore.getState().saveToHistory()
+                    toast.success('Layout otimizado gerado automaticamente pela IA!')
+                  }
+                } catch (err) {
+                  console.error('Erro ao gerar layout automático pós-intake:', err)
+                }
+              }, 50)
             } else if (intake.spaceMode === 'floorplan' && intake.floorPlanDataUrl) {
               // Injeta a imagem pendente para o FloorPlanReaderModal
               sessionStorage.setItem('projefarma_floorplan_pending', intake.floorPlanDataUrl)
@@ -281,6 +402,24 @@ export default function Editor() {
       const seen = localStorage.getItem('projefarma_tutorial_seen')
       if (!seen) {
         setShowTutorial(true)
+      }
+
+      // 5. Verifica se deve abrir o 3D diretamente
+      const view3dParam = searchParams.get('view3d')
+      if (view3dParam) {
+        if (view3dParam === 'aerial') {
+          setInitialCameraView('aerial')
+        }
+        
+        const newParams = new URLSearchParams(searchParams)
+        newParams.delete('view3d')
+        setSearchParams(newParams, { replace: true })
+
+        if (isWebGLAvailable()) {
+          setShow3D(true)
+        } else {
+          setShowWebGLWarning(true)
+        }
       }
     }
 
@@ -1157,24 +1296,44 @@ export default function Editor() {
       
       {show3D && (
         <Suspense fallback={
-          <div className="three-lazy-loading-placeholder" style={{
-            position: 'fixed',
-            inset: 0,
-            background: '#060f0b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            color: 'var(--green-400)',
-            flexDirection: 'column',
-            gap: '12px',
-            fontFamily: 'sans-serif'
-          }}>
-            <div className="spin" style={{ width: 32, height: 32, border: '3px solid var(--green-400)', borderTopColor: 'transparent', borderRadius: '50%' }} />
-            <span>Iniciando motor 3D...</span>
+          <div className="hud-loader">
+            <div className="loader-content">
+              {/* Logo / Icon Area */}
+              <div className="loader-icon-container">
+                <svg className="loader-cube-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+                <div className="loader-glow-ring" />
+              </div>
+              
+              {/* Title & Brand */}
+              <h2 className="loader-title">Projefarma 3D</h2>
+              <p className="loader-subtitle">Criando maquete tridimensional estratégica</p>
+
+              {/* Progress Bar Container */}
+              <div className="loader-progress-box">
+                <div className="loader-progress-info">
+                  <span className="loader-progress-text">Iniciando motor 3D...</span>
+                  <span className="loader-progress-percentage">Carregando...</span>
+                </div>
+                <div className="loader-progress-track">
+                  <div className="loader-progress-fill" style={{ width: '15%' }} />
+                </div>
+              </div>
+
+              {/* Dicas / Tips Card */}
+              <div className="loader-tip-card">
+                <span className="loader-tip-tag">💡 DICA PROJEFARMA</span>
+                <p className="loader-tip-text">
+                  Após o carregamento, você poderá caminhar pela farmácia usando as teclas WASD e explorar cada detalhe do layout.
+                </p>
+              </div>
+            </div>
           </div>
         }>
-          <ThreeDViewer onClose={() => setShow3D(false)} showSimulation={showSimulation} />
+          <ThreeDViewer onClose={() => setShow3D(false)} showSimulation={showSimulation} initialCameraView={initialCameraView} />
         </Suspense>
       )}
       {showAuditoria && (
