@@ -411,6 +411,18 @@ export default function ItemLibrary({
                 <>Gerar Projeto com IA</>
               )}
             </button>
+          {/* IA Layout banner card */}
+          <div className="lib-ia-card">
+            <div className="lib-ia-card-head">
+              <span className="lib-ia-sparkle">✨</span>
+              <span className="lib-ia-title">Inteligência Artificial</span>
+            </div>
+            <p className="lib-ia-desc">Otimize o layout da sua farmácia com nossa Inteligência Artificial.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              <button className="btn btn-primary btn-sm btn-full" onClick={handleAiGenerate} disabled={isGenerating} style={{ background: '#10b981' }}>
+                {isGenerating ? <><span className="il-spinner" />Gerando layout…</> : 'Otimizar Layout com IA'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -419,3 +431,4 @@ export default function ItemLibrary({
     </div>
   )
 }
+
