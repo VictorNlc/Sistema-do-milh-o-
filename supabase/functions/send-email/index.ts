@@ -16,7 +16,8 @@ Deno.serve(async (req) => {
     const body = await req.json()
     const { 
       action, name, email, phone, city, date, time, storeType, notes, 
-      layoutName, storeWidth, storeHeight, shareUrl, items, totalBudget 
+      layoutName, storeWidth, storeHeight, shareUrl, items, totalBudget,
+      layoutImage 
     } = body
 
     // Obter credenciais do servidor SMTP enviadas como variáveis de ambiente no Supabase
@@ -86,6 +87,27 @@ Deno.serve(async (req) => {
       const sizeW = Number(storeWidth) || 0
       const sizeH = Number(storeHeight) || 0
 
+      // Se houver imagem do layout, exibe no corpo do e-mail
+      let imageHtml = ''
+      const attachments = []
+      
+      if (layoutImage && typeof layoutImage === 'string' && layoutImage.startsWith('data:image')) {
+        imageHtml = `
+          <div style="text-align: center; margin: 25px 0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; padding: 6px; background-color: #f8fafc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+            <img src="cid:layout-image" alt="Imagem do Layout" style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;" />
+          </div>
+        `
+        const base64Data = layoutImage.split(';base64,').pop()
+        if (base64Data) {
+          attachments.push({
+            filename: 'layout.jpg',
+            content: base64Data,
+            encoding: 'base64',
+            cid: 'layout-image'
+          })
+        }
+      }
+
       // E-mail HTML para o Cliente
       const clientMailOptions = {
         from: `"Projefarma" <${smtpUser}>`,
@@ -102,6 +124,8 @@ Deno.serve(async (req) => {
             <p style="font-size: 15px;">Olá, <strong>${name}</strong>!</p>
             <p style="font-size: 15px;">Nossa equipe especializada planejou cada detalhe do layout de sua farmácia para torná-lo moderno, funcional e extremamente atrativo ao público.</p>
             
+            ${imageHtml}
+
             <div style="background-color: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0;">
               <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Resumo do Layout</h3>
               <p style="margin: 8px 0; font-size: 14px;">🏪 <strong>Nome do Projeto:</strong> ${layoutName || 'Farmácia Premium'}</p>
@@ -151,6 +175,7 @@ Deno.serve(async (req) => {
             </p>
           </div>
         `,
+        attachments: attachments
       }
 
       // E-mail de Notificação para a Equipe Interna (Admin)
@@ -183,6 +208,7 @@ Deno.serve(async (req) => {
             </p>
           </div>
         `,
+        attachments: attachments
       }
 
       await Promise.all([

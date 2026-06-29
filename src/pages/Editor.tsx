@@ -576,9 +576,9 @@ export default function Editor() {
         throw new Error('Não foi possível salvar o layout na nuvem para obter o link de compartilhamento.')
       }
 
-      // 2. Agrupar os itens do orçamento para a tabela do e-mail
+      // 2. Agrupar os itens do orçamento para a tabela do e-mail (ignorando pilares, obstáculos e portas)
       const groupedItems = items.reduce((acc: any[], item) => {
-        if (item.isPillar || item.isObstacle) return acc
+        if (item.isPillar || item.isObstacle || item.isDoor) return acc
         const existing = acc.find(i => i.name === item.name)
         if (existing) {
           existing.quantity += 1
@@ -594,7 +594,11 @@ export default function Editor() {
         return acc
       }, [])
 
-      const totalPrice = items.reduce((acc, item) => acc + (item.price || 0), 0)
+      // Calcula o preço total sem contar portas e pilares
+      const totalPrice = items
+        .filter(item => !item.isPillar && !item.isDoor)
+        .reduce((acc, item) => acc + (item.price || 0), 0)
+
       const shareUrl = `${window.location.origin}/layout/${saved.shareToken}`
 
       // 3. Invocar a Edge Function do Supabase
@@ -609,7 +613,8 @@ export default function Editor() {
           storeHeight,
           shareUrl,
           items: groupedItems,
-          totalBudget: totalPrice
+          totalBudget: totalPrice,
+          layoutImage: saved.thumbnail // Passamos a imagem do layout
         }
       })
 

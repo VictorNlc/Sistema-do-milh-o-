@@ -32,9 +32,9 @@ export default function BudgetPanel({ onRequestEmail }: BudgetPanelProps) {
     }))
   )
 
-  // Filter items that are commercial (have a price > 0 or a code)
+  // Filter items that are commercial (have a price > 0 or a code) and not structural (pillars or doors)
   const commercialItems = useMemo(() => {
-    return items.filter(item => (item.price && item.price > 0) || item.code)
+    return items.filter(item => ((item.price && item.price > 0) || item.code) && !item.isPillar && !item.isDoor)
   }, [items])
 
   const groupedItems = useMemo(() => {
