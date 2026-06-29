@@ -381,6 +381,10 @@
   background: var(--surface-card) !important;
   border-right: 1.5px solid var(--border-sm) !important;
   overflow: hidden;
+  transition: width 0.25s var(--ease-out);
+}
+.editor-sidebar-left.collapsed {
+  width: 72px;
 }
 
 .editor-sidebar-right {

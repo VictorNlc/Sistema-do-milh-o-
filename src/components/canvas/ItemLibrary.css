@@ -75,6 +75,7 @@
 /* Catalog Panel (Right area) */
 .lib-catalog-panel {
   flex: 1;
+  min-width: 218px;
   display: flex;
   flex-direction: column;
   height: 100%;

@@ -11,23 +11,17 @@ import './ItemLibrary.css'
 interface ItemLibraryProps {
   onItemAdded?: () => void
   onOpenFloorPlanReader?: () => void
+  isOpen?: boolean
+  onToggleOpen?: (open: boolean) => void
 }
 
 const SIDEBAR_CATEGORIES = [
-  { id: 'shelving', label: 'BIBLIOTECA', iconKey: 'shelving' },
-  { id: 'counters', label: 'BALCÕES', iconKey: 'counters' },
-  { id: 'displays', label: 'DISPLAYS', iconKey: 'displays' },
-  { id: 'furniture', label: 'MÓVEIS', iconKey: 'furniture' },
-  { id: 'rx', label: 'EQUIPAMENTOS', iconKey: 'rx' },
+  { id: 'library', label: 'BIBLIOTECA', iconKey: 'shelving' },
   { id: 'structure', label: 'ESTRUTURA', iconKey: 'structure' },
 ]
 
 const CATEGORY_MAP: Record<string, ItemCategory[]> = {
-  shelving: ['GONDOLAS', 'REFRIGERACAO'],
-  counters: ['BALCOES'],
-  displays: ['PERFUMARIA'],
-  furniture: ['OPERACIONAL'],
-  rx: ['SERVICOS'],
+  library: ['GONDOLAS', 'REFRIGERACAO', 'BALCOES', 'PERFUMARIA', 'OPERACIONAL', 'SERVICOS'],
   structure: ['ESTRUTURA', 'ACESSIBILIDADE'],
 }
 
@@ -222,10 +216,15 @@ const getItemIcon = (category: string, id: string, name: string) => {
   )
 }
 
-export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: ItemLibraryProps) {
+export default function ItemLibrary({ 
+  onItemAdded, 
+  onOpenFloorPlanReader,
+  isOpen = false,
+  onToggleOpen
+}: ItemLibraryProps) {
   const [search, setSearch] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string>('shelving')
-  const [subFilter, setSubFilter] = useState<'all' | 'shelves' | 'counters' | 'displays' | 'furniture'>('all')
+  const [activeCategory, setActiveCategory] = useState<string>('library')
+  const [subFilter, setSubFilter] = useState<'all' | 'shelves' | 'counters' | 'displays' | 'furniture' | 'rx'>('all')
   const [catalogItems, setCatalogItems] = useState<PharmacyItemTemplate[]>([])
 
   useEffect(() => {
@@ -279,10 +278,11 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
     }
 
     if (subFilter !== 'all') {
-      if (subFilter === 'shelves') matchCat = item.category === 'GONDOLAS'
+      if (subFilter === 'shelves') matchCat = item.category === 'GONDOLAS' || item.category === 'REFRIGERACAO'
       else if (subFilter === 'counters') matchCat = item.category === 'BALCOES'
       else if (subFilter === 'displays') matchCat = item.category === 'PERFUMARIA'
       else if (subFilter === 'furniture') matchCat = item.category === 'OPERACIONAL'
+      else if (subFilter === 'rx') matchCat = item.category === 'SERVICOS'
     }
 
     const matchStoreType = storeType === 'premium'
@@ -298,8 +298,21 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
         {SIDEBAR_CATEGORIES.map(cat => (
           <button
             key={cat.id}
-            className={`lib-nav-item ${activeCategory === cat.id ? 'active' : ''}`}
-            onClick={() => { setActiveCategory(cat.id); setSubFilter('all') }}
+            className={`lib-nav-item ${isOpen && activeCategory === cat.id ? 'active' : ''}`}
+            onClick={() => {
+              if (isOpen) {
+                if (activeCategory === cat.id) {
+                  onToggleOpen?.(false)
+                } else {
+                  setActiveCategory(cat.id)
+                  setSubFilter('all')
+                }
+              } else {
+                setActiveCategory(cat.id)
+                setSubFilter('all')
+                onToggleOpen?.(true)
+              }
+            }}
             title={cat.label}
           >
             <div className="lib-nav-item-icon">
@@ -328,23 +341,26 @@ export default function ItemLibrary({ onItemAdded, onOpenFloorPlanReader }: Item
         </div>
 
         {/* Category horizontal scroll pills */}
-        <div className="lib-subfilters">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'shelves', label: 'Prateleiras' },
-            { id: 'counters', label: 'Balcões' },
-            { id: 'displays', label: 'Displays' },
-            { id: 'furniture', label: 'Móveis' },
-          ].map(pill => (
-            <button
-              key={pill.id}
-              className={`lib-subfilter-pill ${subFilter === pill.id ? 'active' : ''}`}
-              onClick={() => setSubFilter(pill.id as any)}
-            >
-              {pill.label}
-            </button>
-          ))}
-        </div>
+        {activeCategory === 'library' && (
+          <div className="lib-subfilters">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'shelves', label: 'Prateleiras' },
+              { id: 'counters', label: 'Balcões' },
+              { id: 'displays', label: 'Displays' },
+              { id: 'furniture', label: 'Móveis' },
+              { id: 'rx', label: 'Equipamentos' },
+            ].map(pill => (
+              <button
+                key={pill.id}
+                className={`lib-subfilter-pill ${subFilter === pill.id ? 'active' : ''}`}
+                onClick={() => setSubFilter(pill.id as any)}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="lib-scroll-area" style={{ flex: 1, overflowY: 'auto' }}>
           <div className="lib-list">

@@ -105,6 +105,7 @@ export default function Editor() {
   const [showSettings, setShowSettings] = useState(false)
   const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('budget')
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [show3D, setShow3D] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -961,8 +962,12 @@ export default function Editor() {
       <div className="editor-body desktop-only">
 
         {/* Left Sidebar (Catalog) */}
-        <aside className="editor-sidebar-left">
-          <ItemLibrary onOpenFloorPlanReader={() => setShowFloorPlanReader(true)} />
+        <aside className={`editor-sidebar-left ${leftSidebarOpen ? 'open' : 'collapsed'}`}>
+          <ItemLibrary 
+            isOpen={leftSidebarOpen} 
+            onToggleOpen={setLeftSidebarOpen} 
+            onOpenFloorPlanReader={() => setShowFloorPlanReader(true)} 
+          />
         </aside>
 
         {/* Canvas */}
