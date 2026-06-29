@@ -798,7 +798,7 @@ export default function Editor() {
         {/* Store pill */}
         <button id="btn-store" className="tb-store" onClick={() => setShowSettings(s => !s)}>
           <span className="tb-store-val">{storeWidth}×{storeHeight}m</span>
-          <span className="tb-store-label desktop-only">Farmácia Premium</span>
+          <span className="tb-store-label desktop-only hide-tablet-text">Farmácia Premium</span>
           <span className="tb-store-arrow">▾</span>
         </button>
 
@@ -820,30 +820,31 @@ export default function Editor() {
         <ZoomControls />
 
         <button className="tb-btn desktop-only" onClick={recenter} title="Centralizar Visualização" style={{ height: 32 }}>
-          <I.Center /> Centralizar
+          <I.Center /> <span className="hide-tablet-text">Centralizar</span>
         </button>
 
         {!isReadOnly && (
           <button className="tb-btn tb-btn-danger desktop-only" onClick={() => { if (confirm('Limpar todo o layout?')) clearCanvas() }} title="Limpar todo o layout" style={{ height: 32 }}>
-            <I.Trash /> Limpar Layout
+            <I.Trash /> <span className="hide-tablet-text">Limpar Layout</span>
           </button>
         )}
 
         {/* Actions */}
         <div className="tb-right">
-          <div className="tb-status desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+          <div className="tb-status desktop-only hide-tablet-text" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
             <span>Project status: Connected</span>
           </div>
           <button className="tb-btn desktop-only" onClick={() => setShowEmailModal(true)} style={{ background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <span>Receber por E-mail</span>
+            <span className="hide-tablet-text">Receber por E-mail</span>
           </button>
 
           <button id="btn-3d" className="tb-btn desktop-only" onClick={handleOpen3D}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-            <span>Visualizar 3D</span>
+            <span className="hide-tablet-text">Visualizar 3D</span>
           </button>
+
           {!isReadOnly && (
             <button 
               id="btn-topbar-floorplan" 
@@ -856,23 +857,26 @@ export default function Editor() {
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <span>Planta Baixa (IA)</span>
+              <span className="hide-tablet-text">Planta Baixa (IA)</span>
             </button>
           )}
+
           {!isReadOnly && (
             <button id="btn-save" className="tb-btn desktop-only" onClick={() => handleSave()}>
               <I.Save />
-              <span className="desktop-only">Salvar</span>
+              <span className="hide-tablet-text">Salvar</span>
             </button>
           )}
+
           {!isReadOnly && (
             <button id="btn-share" className="tb-btn desktop-only" onClick={handleShareClick} style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
                 <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              <span>Compartilhar</span>
+              <span className="hide-tablet-text">Compartilhar</span>
             </button>
           )}
+
           {!isReadOnly && (
             <span className="tb-save-status" aria-live="polite">
               {isDirty
@@ -882,16 +886,17 @@ export default function Editor() {
                   : null}
             </span>
           )}
+
           {!isReadOnly ? (
             <button id="btn-schedule" className="tb-btn tb-btn-primary desktop-only" onClick={handleSchedule}>
-              <I.Cal /> Agendar
+              <I.Cal /> <span className="hide-tablet-text">Agendar</span>
             </button>
           ) : (
             <button id="btn-create-own" className="tb-btn tb-btn-primary desktop-only" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981', borderColor: '#10b981' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              Criar Meu Projeto
+              <span className="hide-tablet-text">Criar Meu Projeto</span>
             </button>
           )}
         </div>
@@ -1277,11 +1282,11 @@ export default function Editor() {
 
       {/* ─── STATUSBAR ─── */}
       <div className="statusbar desktop-only">
-        <div className="statusbar-item">
+        <div className="statusbar-item hide-tablet-item">
           <div className="statusbar-dot" />
           <span>{storeWidth}×{storeHeight}m · {(storeWidth * storeHeight).toFixed(0)}m²</span>
         </div>
-        <div className="statusbar-item">
+        <div className="statusbar-item hide-tablet-item">
           <span>{stats.itemCount} itens (R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) · {stats.pillars} pilares · {stats.occupancyRate}% ocupado</span>
         </div>
         <div className="statusbar-tools">
@@ -1298,7 +1303,7 @@ export default function Editor() {
             <span>Auditoria</span>
           </button>
         </div>
-        <div className="statusbar-item statusbar-right">
+        <div className="statusbar-item statusbar-right hide-tablet-item">
           <span>Scroll = zoom · Arrastar canvas = mover · Del = remover</span>
         </div>
       </div>

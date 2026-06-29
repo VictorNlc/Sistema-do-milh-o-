@@ -60,11 +60,22 @@
   /* sit above the lock screen overlay */
 }
 
+.hud-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
 .hud-title {
+  font-family: 'Outfit', sans-serif;
   font-size: var(--fs-md);
-  font-weight: 800;
-  color: var(--text-1);
-  letter-spacing: -0.01em;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, var(--verde-escuro) 0%, var(--green-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  white-space: nowrap;
 }
 
 .hud-close {
@@ -74,7 +85,7 @@
 /* ─── CUSTOMIZER SIDEBAR ─── */
 .three-customizer {
   position: absolute;
-  top: 100px;
+  top: 130px;
   left: var(--s6);
   width: 280px;
   background: rgba(252, 249, 242, 0.9);
@@ -417,10 +428,10 @@
 
 /* ─── D-PAD CONTROLLER ─── */
 .three-dpad {
+  display: none; /* Hide on desktop */
   position: absolute;
   bottom: var(--s6);
   right: var(--s6);
-  display: grid;
   grid-template-areas:
     ". up ."
     "left center right"
@@ -435,6 +446,12 @@
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
   z-index: 30;
   /* sit above lock overlay */
+}
+
+@media (max-width: 1024px) {
+  .three-dpad {
+    display: grid !important;
+  }
 }
 
 .dpad-btn {
@@ -499,7 +516,7 @@
 }
 
 /* ─── HUD TOGGLE CUSTOMIZER (DESKTOP DEFAULT) ─── */
-.hud-toggle-customizer {
+.hud-toggle-customizer, .hud-free-mode, .hud-tour-mode {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
@@ -517,17 +534,40 @@
   pointer-events: auto !important;
 }
 
-.hud-toggle-customizer:hover {
+.hud-toggle-customizer:hover, .hud-free-mode:hover, .hud-tour-mode:hover {
   background: rgba(11, 61, 46, 0.08) !important;
   border-color: rgba(11, 61, 46, 0.2) !important;
   color: var(--text-1) !important;
 }
 
-.hud-toggle-customizer.active {
+.hud-toggle-customizer.active, .hud-free-mode.active, .hud-tour-mode.active {
   background: var(--primary) !important;
   border: 1px solid var(--primary) !important;
   color: #ffffff !important;
   box-shadow: var(--sh-green-sm) !important;
+}
+
+/* ─── HAMBURGER BUTTON (MOBILE ONLY) ─── */
+.hud-burger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: rgba(11, 61, 46, 0.04);
+  border: 1px solid rgba(11, 61, 46, 0.08);
+  color: var(--verde-escuro);
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 40;
+  transition: all var(--dur-fast) var(--ease-out);
+  pointer-events: auto !important;
+}
+
+.hud-burger-btn:hover {
+  background: rgba(11, 61, 46, 0.08);
+  border-color: rgba(11, 61, 46, 0.2);
 }
 
 /* ─── CUSTOMIZER INPUT ─── */
@@ -555,8 +595,8 @@
   display: none !important;
 }
 
-/* Responsividade Mobile (<= 767px) */
-@media (max-width: 767px) {
+/* Responsividade Mobile e Tablet (<= 1024px) */
+@media (max-width: 1024px) {
   .hide-mobile {
     display: none !important;
   }
@@ -570,29 +610,48 @@
   }
 
   .hud-header {
-    padding: var(--s2) var(--s3) !important;
-    gap: 8px;
+    position: relative;
+    padding: var(--s3) var(--s4) !important;
+    gap: 12px;
     border-radius: var(--r-lg);
   }
 
   .hud-title {
-    font-size: var(--fs-sm) !important;
-    font-weight: 800 !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: 900 !important;
   }
 
-  .hud-debug-telemetry {
+  .hud-burger-btn {
+    display: flex !important;
+  }
+
+  .hud-header-actions {
     display: none !important;
   }
 
-  .hud-close {
-    font-size: var(--fs-2xs) !important;
-    padding: 4px 8px !important;
-    white-space: nowrap !important;
+  .hud-header-actions.mobile-visible {
+    display: flex !important;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: rgba(252, 249, 242, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(11, 61, 46, 0.15);
+    border-radius: var(--r-xl);
+    padding: var(--s4) !important;
+    gap: var(--s3) !important;
+    box-shadow: var(--sh-xl);
+    z-index: 35;
+    animation: fadeDown 0.25s var(--ease-out);
   }
 
-  .hud-toggle-customizer {
-    font-size: var(--fs-2xs) !important;
-    padding: 4px 8px !important;
+  .hud-header-actions.mobile-visible button {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 16px !important;
+    font-size: var(--fs-xs) !important;
   }
 
   /* Hides bottom HUD components (DPAD, Presets) when Customizer is active to prevent overlaps */
