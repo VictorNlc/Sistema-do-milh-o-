@@ -406,7 +406,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   
   const [isLocked, setIsLocked] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [showIntro, setShowIntro] = useState(true)
+  const [showIntro, setShowIntro] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isTouch, setIsTouch] = useState(false)
 
@@ -1690,7 +1690,17 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   // --- EFFECT: Resolution of Loading State ---
   useEffect(() => {
     if (initialized && loadedModelsCount >= requiredKeys.length) {
-      setLoading(false)
+      setLoading(prev => {
+        if (prev) {
+          // Auto tour activation and transition to first scene
+          setTourActive(true)
+          tourActiveRef.current = true
+          setTimeout(() => {
+            triggerTourScene(0)
+          }, 100)
+        }
+        return false
+      })
     }
   }, [initialized, loadedModelsCount, requiredKeys])
 
