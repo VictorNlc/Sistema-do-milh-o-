@@ -103,7 +103,8 @@ export default function Editor() {
 
   const [activeMobileTab, setActiveMobileTab] = useState<'layout' | 'library' | 'ai' | 'budget'>('layout')
   const [showSettings, setShowSettings] = useState(false)
-  const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('ai')
+  const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('budget')
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [show3D, setShow3D] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -969,17 +970,15 @@ export default function Editor() {
           <CanvasEditor stageRef={stageRef} showHeatmap={showHeatmap} showSimulation={showSimulation} />
         </main>
 
-        {/* Right Sidebar (AI Assistant & Budget) */}
+        {/* Right Sidebar (Budget) */}
         <aside className="editor-sidebar-right">
           <div className="sb-tabs-right">
-            <button id="tab-ai" className={`sb-tab-right ${rightPanel === 'ai' ? 'active' : ''}`}
-              onClick={() => setRightPanel('ai')}>Assistente IA</button>
-            <button id="tab-budget" className={`sb-tab-right ${rightPanel === 'budget' ? 'active' : ''}`}
-              onClick={() => setRightPanel('budget')}>Orçamento</button>
+            <button id="tab-budget" className="sb-tab-right active" style={{ cursor: 'default' }}>
+              Orçamento do Projeto
+            </button>
           </div>
           <div className="sb-body-right">
-            {rightPanel === 'ai' && <AiChat />}
-            {rightPanel === 'budget' && <BudgetPanel />}
+            <BudgetPanel />
           </div>
         </aside>
 
@@ -1484,6 +1483,44 @@ export default function Editor() {
           </div>
         </div>
       )}
+      {/* Floating AI Chat Widget */}
+      <div className="floating-chat-container">
+        {isChatOpen && (
+          <div className="floating-chat-window">
+            <div className="floating-chat-header">
+              <div className="floating-chat-header-info">
+                <h4 className="floating-chat-header-title">Assistente Projefarma IA</h4>
+                <div className="floating-chat-header-subtitle">
+                  <span className="floating-chat-header-status-dot" />
+                  ChatGPT Ativo
+                </div>
+              </div>
+              <button className="floating-chat-header-close" onClick={() => setIsChatOpen(false)}>✕</button>
+            </div>
+            <div className="floating-chat-body">
+              <AiChat />
+            </div>
+          </div>
+        )}
+        <button 
+          className="floating-chat-button" 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          title="Fale com nosso assistente de IA"
+        >
+          {isChatOpen ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '24px', height: '24px' }}>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" style={{ width: '26px', height: '26px' }}>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          )}
+          <span className="floating-chat-tooltip">Pergunte ao ProjeChat</span>
+        </button>
+      </div>
+
       {/* Botão flutuante de ajuda */}
       <button 
         className="tut-help-trigger desktop-only"
@@ -1491,7 +1528,7 @@ export default function Editor() {
         title="Como usar o sistema"
         style={{
           position: 'fixed',
-          bottom: '50px',
+          bottom: '96px',
           right: '24px',
           width: '40px',
           height: '40px',
