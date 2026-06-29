@@ -444,9 +444,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const medicamentoModelRef = useRef<THREE.Group | null>(null)
   const perfumariaModelRef = useRef<THREE.Group | null>(null) 
   const [showSignage, setShowSignage] = useState(false)
-  const [noclip, setNoclip] = useState(false) // Toggle physics/collisions
+  const [noclip, setNoclip] = useState(true) // Toggle physics/collisions
  
-  const noclipRef = useRef(noclip)
+  const noclipRef = useRef(true)
 
   const transitionRef = useRef<{
     startTime: number
@@ -4085,18 +4085,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             <div className="cust-title">Customizar Espaço</div>
           
           <div className="cust-section">
-            <label className="cust-label">Modo de Visualização</label>
-            <div className="cust-grid">
-              <button className={`cust-btn ${cameraMode === 'orbit' ? 'active' : ''}`} onClick={() => setCameraMode('orbit')}>
-                🛸 Órbita 3D
-              </button>
-              <button className={`cust-btn ${cameraMode === 'first-person' ? 'active' : ''}`} onClick={() => setCameraMode('first-person')}>
-                🚶‍♂️ Primeira Pessoa
-              </button>
-            </div>
-          </div>
-          
-          <div className="cust-section">
             <label className="cust-label">Piso (Textura & Cor)</label>
             <div className="cust-grid">
               <button className={`cust-btn ${floorStyle === 'grid' ? 'active' : ''}`} onClick={() => setFloorStyle('grid')}>
@@ -4154,48 +4142,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
                 outline: 'none'
               }}
             />
-          </div>
-
-          <div className="cust-section">
-            <label className="toggle-row" style={{ padding: 0 }}>
-              <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>Exibir Placas de Setorização</span>
-              <div className="ios-toggle">
-                <input type="checkbox" checked={showSignage} onChange={e => setShowSignage(e.target.checked)} />
-                <div className="ios-track" />
-              </div>
-            </label>
-          </div>
-
-          <div className="cust-section">
-            <label className="toggle-row" style={{ padding: 0 }}>
-              <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>Sombras de Alta Qualidade</span>
-              <div className="ios-toggle">
-                <input type="checkbox" checked={shadowsEnabled} onChange={e => setShadowsEnabled(e.target.checked)} />
-                <div className="ios-track" />
-              </div>
-            </label>
-          </div>
-
-          <div className="cust-section">
-            <label className="toggle-row" style={{ padding: 0 }}>
-              <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)' }}>Exibir Produtos nas Prateleiras</span>
-              <div className="ios-toggle">
-                <input type="checkbox" checked={showProducts} onChange={e => setShowProducts(e.target.checked)} />
-                <div className="ios-track" />
-              </div>
-            </label>
-          </div>
-
-          <div className="cust-section">
-            <label className="toggle-row" style={{ padding: 0 }}>
-              <span className="toggle-row-label" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                Atravessar Móveis (Ghost)
-              </span>
-              <div className="ios-toggle">
-                <input type="checkbox" checked={noclip} onChange={e => setNoclip(e.target.checked)} />
-                <div className="ios-track" />
-              </div>
-            </label>
           </div>
         </div>
         )}
