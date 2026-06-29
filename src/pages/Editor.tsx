@@ -8,7 +8,7 @@ import ItemLibrary from '../components/canvas/ItemLibrary'
 import AiChat from '../components/ai/AiChat'
 import { useCanvasStore } from '../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
-import { saveLayout, getLayoutById } from '../services/storage'
+import { saveLayout, getLayoutById, syncLayoutToSupabase } from '../services/storage'
 import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { toast } from '../store/toastStore'
 import TutorialOverlay from '../components/ui/TutorialOverlay'
@@ -125,6 +125,7 @@ export default function Editor() {
   const [showAuditoria, setShowAuditoria] = useState(false)
   const [showFloorPlanReader, setShowFloorPlanReader] = useState(false)
   const [showWebGLWarning, setShowWebGLWarning] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   const {
     storeWidth, storeHeight, storeType, layoutDensity, items, layoutName, selectedItemId,
@@ -134,7 +135,8 @@ export default function Editor() {
     toggleSnapToGrid, toggleGrid, toggleMeasures,
     deleteSelected, undo, redo, canUndo, canRedo,
     getSelectedItem, getStats, duplicateItem, rotateItem, clearCanvas, loadLayout,
-    freightData, recenter,
+    freightData, recenter, isDirty, lastSavedAt, markSaved,
+    profileId, setProfileId, shareToken, isReadOnly, setReadOnly,
   } = useCanvasStore(
     useShallow(state => ({
       storeWidth: state.storeWidth,
@@ -173,6 +175,14 @@ export default function Editor() {
       setFreightData: state.setFreightData,
       freightData: state.freightData,
       recenter: state.recenter,
+      isDirty: state.isDirty,
+      lastSavedAt: state.lastSavedAt,
+      markSaved: state.markSaved,
+      profileId: state.profileId,
+      setProfileId: state.setProfileId,
+      shareToken: state.shareToken,
+      isReadOnly: state.isReadOnly,
+      setReadOnly: state.setReadOnly,
     }))
   )
 
@@ -196,6 +206,9 @@ export default function Editor() {
   useEffect(() => {
     const id = searchParams.get('id') || routeId
     let loadedFromId = false
+
+    const isShared = searchParams.get('shared') === '1'
+    setReadOnly(isShared)
 
     async function loadInitial() {
       if (id) {
@@ -252,6 +265,10 @@ export default function Editor() {
           try {
             const intake = JSON.parse(raw)
             sessionStorage.removeItem('projefarma_intake') // consome apenas uma vez
+
+            if (intake.profileId) {
+              setProfileId(intake.profileId)
+            }
 
             if (intake.spaceMode === 'dimensions' && intake.width && intake.height) {
               useCanvasStore.getState().clearCanvas()
@@ -426,6 +443,9 @@ export default function Editor() {
     }
 
     loadInitial()
+    return () => {
+      setReadOnly(false)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeId])
 
@@ -475,7 +495,7 @@ export default function Editor() {
     []
   )
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async (silent = false) => {
     let thumbnail = null
     try {
       const stage = getActiveStage()
@@ -499,20 +519,124 @@ export default function Editor() {
       thumbnail
     })
     if (saved) {
-      toast.success('Layout salvo')
-      if (saved.id && saved.id !== currentId) {
-        useCanvasStore.setState({ layoutId: saved.id, shareToken: saved.shareToken })
+      const syncResult = await syncLayoutToSupabase(saved)
+      if (syncResult.success) {
+        if (!silent) toast.success('Layout salvo e sincronizado na nuvem!')
+        markSaved()
+        if (saved.id) {
+          useCanvasStore.setState({ layoutId: saved.id, shareToken: saved.shareToken, profileId: saved.profileId })
+        }
+      } else {
+        if (!silent) {
+          toast.error(`Salvo localmente. Erro ao salvar na nuvem: ${syncResult.error?.message || 'Erro de conexão'}`)
+        } else {
+          throw new Error(syncResult.error?.message || 'Erro ao sincronizar com o banco de dados do Supabase.')
+        }
       }
-    } else {
-      toast.error('Erro ao salvar')
+    } else if (!silent) {
+      toast.error('Erro ao salvar localmente')
     }
     return saved
-  }, [storeWidth, storeHeight, storeType, items, getActiveStage, routeId])
+  }, [storeWidth, storeHeight, storeType, items, getActiveStage, routeId, markSaved])
 
-  const handleSchedule = () => {
-    const saved = handleSave()
+  const handleShareClick = useCallback(async () => {
+    const currentId = useCanvasStore.getState().layoutId || routeId
+    const currentShareToken = useCanvasStore.getState().shareToken || shareToken
+    if (!currentId || !currentShareToken) {
+      toast.info("Salvando e publicando o projeto antes de compartilhar...")
+      try {
+        const saved = await handleSave(true)
+        if (saved && saved.shareToken) {
+          setShowShareModal(true)
+        } else {
+          toast.error("Erro ao salvar projeto para compartilhar.")
+        }
+      } catch (err: any) {
+        toast.error(`Falha ao compartilhar: ${err.message || 'Erro de conexão com a nuvem'}`)
+      }
+    } else {
+      setShowShareModal(true)
+    }
+  }, [routeId, shareToken, handleSave])
+
+  const handleSchedule = async () => {
+    const saved = await handleSave()
     if (saved) navigate(`/agendar/${saved.id}`)
   }
+
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+
+  const handleSendEmail = async (recipientName: string, recipientEmail: string, recipientPhone: string) => {
+    setSendingEmail(true)
+    try {
+      // 1. Salva o layout na nuvem antes para garantir que temos o shareToken atualizado
+      const saved = await handleSave(true)
+      if (!saved || !saved.shareToken) {
+        throw new Error('Não foi possível salvar o layout na nuvem para obter o link de compartilhamento.')
+      }
+
+      // 2. Agrupar os itens do orçamento para a tabela do e-mail
+      const groupedItems = items.reduce((acc: any[], item) => {
+        if (item.isPillar || item.isObstacle) return acc
+        const existing = acc.find(i => i.name === item.name)
+        if (existing) {
+          existing.quantity += 1
+          existing.total += item.price || 0
+        } else {
+          acc.push({
+            name: item.name,
+            quantity: 1,
+            price: item.price || 0,
+            total: item.price || 0
+          })
+        }
+        return acc
+      }, [])
+
+      const totalPrice = items.reduce((acc, item) => acc + (item.price || 0), 0)
+      const shareUrl = `${window.location.origin}/layout/${saved.shareToken}`
+
+      // 3. Invocar a Edge Function do Supabase
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          action: 'send-proposal',
+          name: recipientName,
+          email: recipientEmail,
+          phone: recipientPhone,
+          layoutName: saved.layoutName || 'Layout sem nome',
+          storeWidth,
+          storeHeight,
+          shareUrl,
+          items: groupedItems,
+          totalBudget: totalPrice
+        }
+      })
+
+      if (error) throw error
+
+      toast.success('Proposta enviada por e-mail com sucesso!')
+      setShowEmailModal(false)
+    } catch (err: any) {
+      console.error('Erro ao enviar e-mail de proposta:', err)
+      toast.error(`Erro ao enviar e-mail: ${err.message || 'Falha de comunicação'}`)
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  // Autosave: salva silenciosamente ~2,5s após a última alteração (apenas layouts já salvos,
+  // para não criar registros órfãos de layouts novos que o usuário ainda não nomeou/salvou).
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!isDirty) return
+    if (!(useCanvasStore.getState().layoutId || routeId)) return
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    autosaveTimer.current = setTimeout(() => handleSave(true), 2500)
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    }
+  }, [items, storeWidth, storeHeight, storeType, layoutName, isDirty, routeId, handleSave])
 
   const downloadLayoutPNG = useCallback((silent = false) => {
     try {
@@ -549,7 +673,7 @@ export default function Editor() {
 
     downloadTimeoutRef.current = window.setTimeout(() => {
       if (attemptId === exportAttemptIdRef.current) {
-        console.log('[Export] Downloads bloqueados')
+
         setDownloadBlocked(true)
         setWarningVisible(true)
       }
@@ -558,7 +682,7 @@ export default function Editor() {
 
   const handleExportPDF = async () => {
     const currentAttemptId = ++exportAttemptIdRef.current
-    console.log('[Export] Iniciando exportação')
+
 
     // Reset state for the new export attempt
     if (downloadTimeoutRef.current) {
@@ -566,7 +690,7 @@ export default function Editor() {
     }
     setWarningVisible(false)
     setDownloadBlocked(false)
-    console.log('[Export] Estado de bloqueio limpo')
+
 
     try {
       if (freightData?.freightCost === undefined || freightData?.freightCost === null) {
@@ -588,27 +712,27 @@ export default function Editor() {
         // Download PNG file
         const pngSuccess = downloadLayoutPNG(true)
         if (pngSuccess) {
-          console.log('[Export] PNG iniciado')
+
         }
 
         // Download PDF file
         const layoutData = { storeWidth, storeHeight, storeType, items, layoutName: layoutName || 'Meu Layout', freightData }
         const pdfSuccess = exportFn(layoutData, layoutImageDataUrl)
         if (pdfSuccess) {
-          console.log('[Export] PDF iniciado')
+
         }
 
         if (pngSuccess && pdfSuccess) {
-          console.log('[Export] Exportação concluída')
+
           // Reset states immediately
           setDownloadBlocked(false)
           setWarningVisible(false)
-          console.log('[Export] Estado de bloqueio limpo')
+
 
           // Start the smart timeout checking for browser-level block
           startSmartTimeout(currentAttemptId)
         } else {
-          console.log('[Export] Downloads bloqueados')
+
           setDownloadBlocked(true)
           setWarningVisible(true)
         }
@@ -681,14 +805,16 @@ export default function Editor() {
         <div className="tb-sep desktop-only" />
 
         {/* Undo / Redo */}
-        <div className="tb-tools desktop-only">
-          <button className="tb-tool" onClick={undo} disabled={!canUndo()} title="Desfazer (Ctrl+Z)">
-            <I.Undo />
-          </button>
-          <button className="tb-tool" onClick={redo} disabled={!canRedo()} title="Refazer">
-            <I.Redo />
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="tb-tools desktop-only">
+            <button className="tb-tool" onClick={undo} disabled={!canUndo()} title="Desfazer (Ctrl+Z)">
+              <I.Undo />
+            </button>
+            <button className="tb-tool" onClick={redo} disabled={!canRedo()} title="Refazer">
+              <I.Redo />
+            </button>
+          </div>
+        )}
 
         {/* Zoom */}
         <ZoomControls />
@@ -697,9 +823,11 @@ export default function Editor() {
           <I.Center /> Centralizar
         </button>
 
-        <button className="tb-btn tb-btn-danger desktop-only" onClick={() => { if (confirm('Limpar todo o layout?')) clearCanvas() }} title="Limpar todo o layout" style={{ height: 32 }}>
-          <I.Trash /> Limpar Layout
-        </button>
+        {!isReadOnly && (
+          <button className="tb-btn tb-btn-danger desktop-only" onClick={() => { if (confirm('Limpar todo o layout?')) clearCanvas() }} title="Limpar todo o layout" style={{ height: 32 }}>
+            <I.Trash /> Limpar Layout
+          </button>
+        )}
 
         {/* Actions */}
         <div className="tb-right">
@@ -707,73 +835,65 @@ export default function Editor() {
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
             <span>Project status: Connected</span>
           </div>
-          <div className="tb-export-wrap desktop-only" style={{ position: 'relative' }}>
-            <button className="tb-btn" onClick={() => setShowExportOptions(s => !s)}>
-              <I.Export /> Exportar ▾
-            </button>
-            {showExportOptions && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => setShowExportOptions(false)} />
-                <div className="export-pop" style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  right: 0,
-                  background: 'var(--surface-card)',
-                  border: '1px solid var(--border-xs)',
-                  borderRadius: 'var(--r-md)',
-                  boxShadow: 'var(--sh-lg)',
-                  padding: 'var(--s2)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--s1)',
-                  zIndex: 99,
-                  minWidth: 160
-                }}>
-                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
-                    onClick={handleExportPNG}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg> Imagem PNG
-                  </button>
-                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
-                    onClick={handleExportPDF}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg> Relatório PDF
-                  </button>
-                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
-                    onClick={handleExportCSV}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg> Orçamento CSV
-                  </button>
-                  <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', width: '100%', display: 'flex', gap: 'var(--s1)' }}
-                    onClick={handleExportXLSX}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg> Planilha Excel (XLSX)
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <button className="tb-btn desktop-only" onClick={() => setShowEmailModal(true)} style={{ background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span>Receber por E-mail</span>
+          </button>
 
           <button id="btn-3d" className="tb-btn desktop-only" onClick={handleOpen3D}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Visualizar 3D</span>
           </button>
-          <button 
-            id="btn-topbar-floorplan" 
-            className="tb-btn desktop-only" 
-            onClick={() => setShowFloorPlanReader(true)}
-            style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#34d399' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            <span>Planta Baixa (IA)</span>
-          </button>
-          <button id="btn-save" className="tb-btn desktop-only" onClick={handleSave}>
-            <I.Save />
-            <span className="desktop-only">Salvar</span>
-          </button>
-          <button id="btn-schedule" className="tb-btn tb-btn-primary desktop-only" onClick={handleSchedule}>
-            <I.Cal /> Agendar
-          </button>
+          {!isReadOnly && (
+            <button 
+              id="btn-topbar-floorplan" 
+              className="tb-btn desktop-only" 
+              onClick={() => setShowFloorPlanReader(true)}
+              style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#34d399' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <span>Planta Baixa (IA)</span>
+            </button>
+          )}
+          {!isReadOnly && (
+            <button id="btn-save" className="tb-btn desktop-only" onClick={() => handleSave()}>
+              <I.Save />
+              <span className="desktop-only">Salvar</span>
+            </button>
+          )}
+          {!isReadOnly && (
+            <button id="btn-share" className="tb-btn desktop-only" onClick={handleShareClick} style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              <span>Compartilhar</span>
+            </button>
+          )}
+          {!isReadOnly && (
+            <span className="tb-save-status" aria-live="polite">
+              {isDirty
+                ? <><span className="tb-save-dot dirty" />Não salvo</>
+                : lastSavedAt
+                  ? <><span className="tb-save-dot saved" />Salvo</>
+                  : null}
+            </span>
+          )}
+          {!isReadOnly ? (
+            <button id="btn-schedule" className="tb-btn tb-btn-primary desktop-only" onClick={handleSchedule}>
+              <I.Cal /> Agendar
+            </button>
+          ) : (
+            <button id="btn-create-own" className="tb-btn tb-btn-primary desktop-only" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981', borderColor: '#10b981' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Criar Meu Projeto
+            </button>
+          )}
         </div>
       </header>
 
@@ -796,6 +916,8 @@ export default function Editor() {
                     value={storeHeight} onChange={e => setStoreDimensions(storeWidth, +e.target.value || 12)} />
                 </div>
               </div>
+              
+
               <button 
                 className="btn btn-primary btn-sm btn-full" 
                 style={{ background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, margin: '8px 0' }}
@@ -962,13 +1084,15 @@ export default function Editor() {
       <div className="editor-body desktop-only">
 
         {/* Left Sidebar (Catalog) */}
-        <aside className={`editor-sidebar-left ${leftSidebarOpen ? 'open' : 'collapsed'}`}>
-          <ItemLibrary 
-            isOpen={leftSidebarOpen} 
-            onToggleOpen={setLeftSidebarOpen} 
-            onOpenFloorPlanReader={() => setShowFloorPlanReader(true)} 
-          />
-        </aside>
+        {!isReadOnly && (
+          <aside className={`editor-sidebar-left ${leftSidebarOpen ? 'open' : 'collapsed'}`}>
+            <ItemLibrary 
+              isOpen={leftSidebarOpen} 
+              onToggleOpen={setLeftSidebarOpen} 
+              onOpenFloorPlanReader={() => setShowFloorPlanReader(true)} 
+            />
+          </aside>
+        )}
 
         {/* Canvas */}
         <main className="editor-canvas">
@@ -983,7 +1107,7 @@ export default function Editor() {
             </button>
           </div>
           <div className="sb-body-right">
-            <BudgetPanel />
+            <BudgetPanel onRequestEmail={() => setShowEmailModal(true)} />
           </div>
         </aside>
 
@@ -1075,29 +1199,31 @@ export default function Editor() {
 
           {/* Mobile canvas controls row */}
           <div className="mobile-canvas-actions">
-            <button className="mc-act-btn" onClick={undo} disabled={!canUndo()}>
-              <div className="mc-act-icon"><I.Undo /></div>
-              <span>Desfazer</span>
-            </button>
-            <button className="mc-act-btn" onClick={redo} disabled={!canRedo()}>
-              <div className="mc-act-icon"><I.Redo /></div>
-              <span>Refazer</span>
-            </button>
+            {!isReadOnly && (
+              <button className="mc-act-btn" onClick={undo} disabled={!canUndo()}>
+                <div className="mc-act-icon"><I.Undo /></div>
+                <span>Desfazer</span>
+              </button>
+            )}
+            {!isReadOnly && (
+              <button className="mc-act-btn" onClick={redo} disabled={!canRedo()}>
+                <div className="mc-act-icon"><I.Redo /></div>
+                <span>Refazer</span>
+              </button>
+            )}
             <button className="mc-act-btn" onClick={handleOpen3D}>
               <div className="mc-act-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
               </div>
               <span>3D</span>
             </button>
-            <button className="mc-act-btn" onClick={() => {
-              if (selectedItem) {
-                // selection properties drawer will open automatically
-              } else {
-                toast.info("Selecione um item no canvas")
-              }
-            }}>
-              <div className="mc-act-icon"><I.Layers /></div>
-              <span>Camadas</span>
+            <button className="mc-act-btn" onClick={handleShareClick}>
+              <div className="mc-act-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              </div>
+              <span>Partilhar</span>
             </button>
             <button className="mc-act-btn" onClick={toggleGrid}>
               <div className="mc-act-icon">
@@ -1109,11 +1235,18 @@ export default function Editor() {
 
           {/* Mobile save/schedule button */}
           <div className="mobile-save-action">
-            <button className="btn btn-primary btn-lg btn-full" onClick={handleSchedule} style={{ background: '#10b981' }}>
-              <I.Cal />
-              <span>Salvar / Agendar</span>
-              <span style={{ marginLeft: 'auto' }}>▾</span>
-            </button>
+            {!isReadOnly ? (
+              <button className="btn btn-primary btn-lg btn-full" onClick={handleSchedule} style={{ background: '#10b981' }}>
+                <I.Cal />
+                <span>Salvar / Agendar</span>
+                <span style={{ marginLeft: 'auto' }}>▾</span>
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                <span>Criar Meu Projeto</span>
+              </button>
+            )}
           </div>
         </div>
         
@@ -1137,7 +1270,7 @@ export default function Editor() {
 
         {activeMobileTab === 'budget' && (
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <BudgetPanel />
+            <BudgetPanel onRequestEmail={() => setShowEmailModal(true)} />
           </div>
         )}
       </div>
@@ -1270,27 +1403,33 @@ export default function Editor() {
           <div className="mnav-icon"><I.Layers /></div>
           <span className="mnav-label">Layout</span>
         </button>
-        <button id="mnav-library" className={`mnav-btn ${activeMobileTab === 'library' ? 'active' : ''}`}
-          onClick={() => setActiveMobileTab('library')}>
-          <div className="mnav-icon"><BookIcon /></div>
-          <span className="mnav-label">Biblioteca</span>
-        </button>
+        {!isReadOnly && (
+          <button id="mnav-library" className={`mnav-btn ${activeMobileTab === 'library' ? 'active' : ''}`}
+            onClick={() => setActiveMobileTab('library')}>
+            <div className="mnav-icon"><BookIcon /></div>
+            <span className="mnav-label">Biblioteca</span>
+          </button>
+        )}
         
         {/* Center Plus FAB */}
-        <button id="mnav-plus" className="mnav-btn" onClick={() => setActiveMobileTab('library')} style={{ marginTop: '-4px' }}>
-          <div className="mnav-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1.5px solid #10b981', width: '42px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </div>
-        </button>
+        {!isReadOnly && (
+          <button id="mnav-plus" className="mnav-btn" onClick={() => setActiveMobileTab('library')} style={{ marginTop: '-4px' }}>
+            <div className="mnav-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1.5px solid #10b981', width: '42px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+          </button>
+        )}
 
-        <button id="mnav-ai" className={`mnav-btn ${activeMobileTab === 'ai' ? 'active' : ''}`}
-          onClick={() => setActiveMobileTab('ai')}>
-          <div className="mnav-icon"><SparklesIcon /></div>
-          <span className="mnav-label">IA Assistant</span>
-        </button>
+        {!isReadOnly && (
+          <button id="mnav-ai" className={`mnav-btn ${activeMobileTab === 'ai' ? 'active' : ''}`}
+            onClick={() => setActiveMobileTab('ai')}>
+            <div className="mnav-icon"><SparklesIcon /></div>
+            <span className="mnav-label">IA Assistant</span>
+          </button>
+        )}
         <button id="mnav-budget" className={`mnav-btn ${activeMobileTab === 'budget' ? 'active' : ''}`}
           onClick={() => setActiveMobileTab('budget')}>
           <div className="mnav-icon"><BudgetIcon /></div>
@@ -1577,6 +1716,89 @@ export default function Editor() {
           }}
         />
       )}
+
+      {showShareModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }} onClick={() => setShowShareModal(false)}>
+          <div style={{
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border-xs)',
+            borderRadius: 'var(--r-lg)',
+            boxShadow: 'var(--sh-xl)',
+            width: '90%',
+            maxWidth: '480px',
+            padding: 'var(--s6)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--s4)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>Compartilhar Projeto</h3>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-3)',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  padding: '4px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', margin: 0, lineHeight: 1.5 }}>
+              Qualquer pessoa com este link poderá visualizar a planta 2D, as estatísticas de corredores e o visualizador 3D do seu projeto.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+              <input
+                type="text"
+                readOnly
+                value={`${window.location.origin}/layout/${useCanvasStore.getState().shareToken || shareToken || ''}`}
+                style={{
+                  flex: 1,
+                  background: 'var(--surface-input)',
+                  border: '1px solid var(--border-xs)',
+                  borderRadius: 'var(--r-md)',
+                  padding: '10px var(--s3)',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-2)',
+                  outline: 'none'
+                }}
+                onClick={e => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                className="btn btn-primary"
+                style={{ padding: '0 var(--s4)', background: '#10b981', borderColor: '#10b981' }}
+                onClick={() => {
+                  const token = useCanvasStore.getState().shareToken || shareToken || ''
+                  navigator.clipboard.writeText(`${window.location.origin}/layout/${token}`)
+                  toast.success("Link copiado para a área de transferência!")
+                }}
+              >
+                Copiar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEmailModal && (
+        <SendEmailModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSend={handleSendEmail}
+          isSending={sendingEmail}
+        />
+      )}
     </div>
   )
 }
@@ -1604,3 +1826,154 @@ const BudgetIcon = () => (
     <line x1="12" y1="16" x2="16" y2="16" />
   </svg>
 )
+
+interface SendEmailModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSend: (name: string, email: string, phone: string) => Promise<void>
+  isSending: boolean
+}
+
+function SendEmailModal({ isOpen, onClose, onSend, isSending }: SendEmailModalProps) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+    try {
+      const rawDetails = sessionStorage.getItem('projefarma_client_details')
+      if (rawDetails) {
+        const details = JSON.parse(rawDetails)
+        if (details.clientName) setName(details.clientName)
+        if (details.clientPhone) setPhone(details.clientPhone)
+      }
+    } catch {}
+  }, [isOpen])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) {
+      toast.error('Por favor, informe o seu nome.')
+      return
+    }
+    if (!email.trim() || !email.includes('@')) {
+      toast.error('Por favor, informe um e-mail válido.')
+      return
+    }
+    if (!phone.trim()) {
+      toast.error('Por favor, informe seu telefone/WhatsApp.')
+      return
+    }
+    onSend(name, email, phone)
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0, 0, 0, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }} onClick={onClose}>
+      <form onSubmit={handleSubmit} style={{
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-xs)',
+        borderRadius: 'var(--r-lg)',
+        boxShadow: 'var(--sh-xl)',
+        width: '90%',
+        maxWidth: '440px',
+        padding: 'var(--s6)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--s4)'
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>Receber Projeto por E-mail</h3>
+          <button 
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-3)',
+              cursor: 'pointer',
+              fontSize: '1.2rem',
+              padding: '4px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', margin: 0, lineHeight: 1.5 }}>
+          Enviaremos um e-mail completo com o link de visualização 3D interativa do seu projeto e o orçamento detalhado dos mobiliários.
+        </p>
+
+        <div className="form-group" style={{ gap: 4 }}>
+          <label className="label" htmlFor="email-modal-name">Seu Nome</label>
+          <input
+            id="email-modal-name"
+            className="input"
+            type="text"
+            placeholder="Nome Completo"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+            disabled={isSending}
+          />
+        </div>
+
+        <div className="form-group" style={{ gap: 4 }}>
+          <label className="label" htmlFor="email-modal-email">E-mail para Envio</label>
+          <input
+            id="email-modal-email"
+            className="input"
+            type="email"
+            placeholder="seuemail@exemplo.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            disabled={isSending}
+          />
+        </div>
+
+        <div className="form-group" style={{ gap: 4 }}>
+          <label className="label" htmlFor="email-modal-phone">Telefone / WhatsApp</label>
+          <input
+            id="email-modal-phone"
+            className="input"
+            type="text"
+            placeholder="(00) 00000-0000"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            required
+            disabled={isSending}
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          style={{ width: '100%', marginTop: 8, background: '#3b82f6', borderColor: '#3b82f6', height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          disabled={isSending}
+        >
+          {isSending ? (
+            <>
+              <div className="shared-spinner" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', marginRight: 4 }} />
+              Enviando...
+            </>
+          ) : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Enviar Proposta
+            </>
+          )}
+        </button>
+      </form>
+    </div>
+  )
+}

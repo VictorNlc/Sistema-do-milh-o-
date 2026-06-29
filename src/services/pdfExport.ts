@@ -419,9 +419,9 @@ export function exportLayoutToPDF(
       const freightCost = layout.freightData?.freightCost || 0
       const totalOrcamento = totalMoveis + freightCost
 
-      console.log('[PDF] Total dos móveis:', totalMoveis)
-      console.log('[PDF] Total do frete:', freightCost)
-      console.log('[PDF] Total do orçamento:', totalOrcamento)
+
+
+
 
       const didBreak = checkPageBreak(22)
       if (!didBreak) {

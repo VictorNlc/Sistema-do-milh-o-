@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getAllLayoutsList, deleteLayout, saveLayout } from '../services/storage'
+import { getAllLayoutsList, deleteLayout, saveLayout, getLayouts } from '../services/storage'
+import { supabase, isSupabaseConfigured } from '../services/supabase'
 import type { SavedLayout } from '../types'
 import './Projects.css'
 
@@ -25,6 +26,71 @@ export default function Projects() {
   const [sort, setSort] = useState<'recent' | 'name' | 'price'>('recent')
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function syncDBLayouts() {
+      let activeProfileId: string | null = null
+      try {
+        const raw = sessionStorage.getItem('projefarma_client_details')
+        if (raw) {
+          activeProfileId = JSON.parse(raw).profileId || null
+        }
+      } catch {}
+
+      if (activeProfileId && supabase && isSupabaseConfigured) {
+        try {
+          const { data, error } = await supabase
+            .from('layouts')
+            .select('*')
+            .eq('profileId', activeProfileId)
+
+          if (error) {
+            console.warn('Erro ao carregar layouts do banco:', error.message)
+            return
+          }
+
+          if (data && data.length > 0) {
+            const localLayouts = getLayouts()
+            let changed = false
+            
+            data.forEach(dbLayout => {
+              const existing = localLayouts[dbLayout.id]
+              const dbUpdatedAt = new Date(dbLayout.updatedAt).getTime()
+              const localUpdatedAt = existing ? new Date(existing.updatedAt).getTime() : 0
+              
+              if (!existing || dbUpdatedAt > localUpdatedAt) {
+                const formatted: SavedLayout = {
+                  id: dbLayout.id,
+                  layoutName: dbLayout.layoutName,
+                  storeWidth: Number(dbLayout.storeWidth),
+                  storeHeight: Number(dbLayout.storeHeight),
+                  storeType: dbLayout.storeType,
+                  layoutDensity: dbLayout.layoutDensity,
+                  items: dbLayout.items,
+                  shareToken: dbLayout.shareToken,
+                  thumbnail: dbLayout.thumbnail,
+                  createdAt: dbLayout.createdAt,
+                  updatedAt: dbLayout.updatedAt,
+                  profileId: dbLayout.profileId
+                }
+                localLayouts[dbLayout.id] = formatted
+                changed = true
+              }
+            })
+            
+            if (changed) {
+              localStorage.setItem('projelayout_layouts', JSON.stringify(localLayouts))
+              setLayouts(getAllLayoutsList())
+            }
+          }
+        } catch (e) {
+          console.warn('Falha ao sincronizar layouts do banco de dados:', e)
+        }
+      }
+    }
+
+    syncDBLayouts()
+  }, [])
 
   const filtered = useMemo(() => {
     let list = layouts.filter(l =>

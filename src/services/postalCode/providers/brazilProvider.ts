@@ -49,7 +49,7 @@ export const brazilProvider: PostalCodeProvider = {
     }
 
     // ── 1. ViaCEP ───────────────────────────────────────────────────────────
-    console.log('[CEP] Tentando ViaCEP...')
+
     let viaCepFailed = false
 
     try {
@@ -79,10 +79,10 @@ export const brazilProvider: PostalCodeProvider = {
     }
 
     if (viaCepFailed) {
-      console.log('[CEP] ViaCEP falhou')
+
 
       // ── 2. BrasilAPI ───────────────────────────────────────────────────────
-      console.log('[CEP] Tentando BrasilAPI...')
+
       let brasilApiFailed = false
 
       try {
@@ -121,10 +121,10 @@ export const brazilProvider: PostalCodeProvider = {
       }
 
       if (brasilApiFailed) {
-        console.log('[CEP] BrasilAPI falhou')
+
 
         // ── 3. OpenCEP ───────────────────────────────────────────────────────
-        console.log('[CEP] Tentando OpenCEP...')
+
 
         try {
           const response = await fetch(`https://opencep.com/v1/${digits}`, {
@@ -145,7 +145,7 @@ export const brazilProvider: PostalCodeProvider = {
             const city = data.localidade || data.city
 
             if (city && state) {
-              console.log('[CEP] CEP encontrado via OpenCEP')
+
               return {
                 success: true,
                 data: {

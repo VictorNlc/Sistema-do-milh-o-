@@ -226,6 +226,7 @@ export default function ItemLibrary({
   const [activeCategory, setActiveCategory] = useState<string>('library')
   const [subFilter, setSubFilter] = useState<'all' | 'shelves' | 'counters' | 'displays' | 'furniture' | 'rx'>('all')
   const [catalogItems, setCatalogItems] = useState<PharmacyItemTemplate[]>([])
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
     getPharmacyCatalog().then(setCatalogItems)
@@ -252,6 +253,8 @@ export default function ItemLibrary({
   }, [addItem, storeWidth, storeHeight, onItemAdded])
 
   const handleAiGenerate = async () => {
+    if (isGenerating) return
+    setIsGenerating(true)
     try {
       const current = useCanvasStore.getState().items
       const density = useCanvasStore.getState().layoutDensity || 'normal'
@@ -265,6 +268,8 @@ export default function ItemLibrary({
       }
     } catch (err) {
       toast.error('Erro ao gerar layout')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -415,8 +420,8 @@ export default function ItemLibrary({
                 </svg>
                 Importar Planta Baixa (IA)
               </button>
-              <button className="btn btn-secondary btn-sm btn-full" onClick={handleAiGenerate}>
-                Otimizar Layout com IA
+              <button className="btn btn-secondary btn-sm btn-full" onClick={handleAiGenerate} disabled={isGenerating}>
+                {isGenerating ? <><span className="il-spinner" />Gerando layout…</> : 'Otimizar Layout com IA'}
               </button>
             </div>
           </div>

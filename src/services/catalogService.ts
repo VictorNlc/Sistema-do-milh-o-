@@ -58,7 +58,7 @@ export async function getPharmacyCatalog(): Promise<PharmacyItemTemplate[]> {
     }
 
     // Se o banco estiver vazio, fazemos o seed em segundo plano e retornamos os locais
-    console.log('🌱 Catálogo do banco vazio. Iniciando seed automático com itens locais...')
+
     seedCatalog(PHARMACY_ITEMS)
     
     cachedCatalog = PHARMACY_ITEMS
@@ -112,5 +112,5 @@ async function seedCatalog(items: PharmacyItemTemplate[]): Promise<void> {
       break
     }
   }
-  console.log('✅ Seed do catálogo concluído no banco de dados.')
+
 }

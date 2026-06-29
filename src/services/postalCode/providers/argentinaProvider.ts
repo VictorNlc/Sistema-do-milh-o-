@@ -48,9 +48,9 @@ export function normalizeArgentinaPostalCode(code: string): string {
 async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
   const apiKey = import.meta.env.VITE_ARGENTINA_CPA_API_KEY
 
-  console.log('[AR] CPA recebido:', cpa)
-  console.log('[AR] CPA typeof:', typeof cpa)
-  console.log('[AR] CPA length:', cpa.length)
+
+
+
 
   if (!apiKey) {
     console.warn('[AR] Chave da API RapidAPI CPA não configurada (VITE_ARGENTINA_CPA_API_KEY).')
@@ -60,7 +60,7 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
     }
   }
 
-  console.log('[AR] API Key presente:', apiKey ? `${apiKey.substring(0, 8)}...` : 'VAZIA')
+
 
   try {
     const url = `${RAPIDAPI_CPA_BASE_URL}?cpa=${encodeURIComponent(cpa)}`
@@ -71,12 +71,8 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
       'Content-Type': 'application/json',
     }
 
-    console.log('[AR] URL utilizada:', url)
-    console.log('[AR] Headers enviados:', {
-      'x-rapidapi-key': `${apiKey.substring(0, 8)}...`,
-      'x-rapidapi-host': headers['x-rapidapi-host'],
-      'Content-Type': headers['Content-Type'],
-    })
+
+
 
     const response = await fetch(url, {
       method: 'GET',
@@ -84,8 +80,8 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
       signal: AbortSignal.timeout(10000),
     })
 
-    console.log('[AR] Status:', response.status)
-    console.log('[AR] Content-Type:', response.headers.get('content-type'))
+
+
 
     if (response.status === 404) {
       return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
@@ -97,8 +93,8 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
     }
 
     const rawResult = await response.text()
-    console.log('[AR] Resposta bruta:', rawResult)
-    console.log('[AR] Estrutura identificada:', typeof rawResult)
+
+
 
     // Tentar parsear como JSON
     let parsedResult: unknown
@@ -110,7 +106,7 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
       return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
-    console.log('[AR] Parsed result type:', typeof parsedResult)
+
     console.dir(parsedResult, { depth: null })
 
     // A API pode retornar um array ou um objeto único
@@ -123,8 +119,8 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
       return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
-    console.log('[AR] Chaves do record:', Object.keys(record))
-    console.log('[AR] Valores do record:', record)
+
+
 
     // Extração robusta de cidade (localidad.nombre)
     let city = ''
@@ -157,22 +153,22 @@ async function lookupArgentinaCPA(cpa: string): Promise<ProviderResult> {
     }
     state = state.trim()
 
-    console.log('[AR] city (localidad):', JSON.stringify(city))
-    console.log('[AR] state (province):', JSON.stringify(state))
+
+
 
     if (!state) {
       console.warn('[AR] State/province está vazio.')
       return { success: false, error: 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.' }
     }
 
-    console.log('[AR] Resultado encontrado via RapidAPI CPA.')
+
 
     const mappedResult = {
       country: 'AR',
       city,
       state,
     }
-    console.log('[AR] Resultado final:', mappedResult)
+
 
     return {
       success: true,
@@ -209,7 +205,7 @@ export const argentinaProvider: PostalCodeProvider = {
   },
 
   async lookup(postalCode: string): Promise<ProviderResult> {
-    console.log('[AR] lookup() chamado com postalCode:', JSON.stringify(postalCode))
+
 
     let sanitized: string
     try {
@@ -218,8 +214,8 @@ export const argentinaProvider: PostalCodeProvider = {
       return { success: false, error: 'Informe um código postal argentino válido. Exemplo: C1043AAZ' }
     }
 
-    console.log('[AR] Código CPA normalizado:', sanitized)
-    console.log('[AR] Iniciando consulta direta à RapidAPI.')
+
+
 
     return lookupArgentinaCPA(sanitized)
   },

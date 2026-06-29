@@ -90,9 +90,12 @@ function formatPhone(value: string) {
 export default function ClientIntakeForm() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Etapa atual do formulário (wizard): 1 = Dados da Farmácia, 2 = Espaço da Loja, 3 = Porta de Entrada
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData | 'general' | 'postalCode', string>>>({})
+  const [profileId, setProfileId] = useState<string | null>(null)
+  const [isValidatingPhone, setIsValidatingPhone] = useState(false)
 
   // Door states for Step 3
   const [doorWidth, setDoorWidth] = useState('2')
@@ -270,7 +273,7 @@ export default function ClientIntakeForm() {
         }))
         setPostalMessage(null)
         setIsCityManual(true)
-        console.log('[UY] Código postal válido. Departamento preenchido automaticamente.')
+
         return
       }
 
@@ -289,7 +292,7 @@ export default function ClientIntakeForm() {
           setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
           setLocationReady(false)
           setFreightData(null)
-          console.log('[Argentina] Aguardando cidade válida')
+
           getArgentinaProvinces().then(provs => {
             const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
             if (found) {
@@ -301,7 +304,7 @@ export default function ClientIntakeForm() {
           setIsStateManual(false)
           setFreightMessage(null)
           setLocationReady(true)
-          console.log('[Argentina] Cidade selecionada')
+
           getArgentinaProvinces().then(provs => {
             const found = provs.find(p => p.nombre.toLowerCase().trim() === result.data!.state.toLowerCase().trim())
             if (found) {
@@ -310,11 +313,11 @@ export default function ClientIntakeForm() {
           }).catch(() => { })
 
           // Pipeline: Geocoding → Distância → Frete
-          console.log('[Argentina] Iniciando geolocalização')
+
           const geoResult = await getCoordinates(country, result.data!.state, result.data!.city)
 
           if (geoResult.success && geoResult.data) {
-            console.log('[Argentina] Iniciando cálculo de frete')
+
             const freightRes = await calculateDistance(geoResult.data.latitude, geoResult.data.longitude)
 
             if (freightRes.success && freightRes.data) {
@@ -337,7 +340,7 @@ export default function ClientIntakeForm() {
 
       if (!result.data!.city) {
         console.warn('[Freight] Apenas província identificada.')
-        console.log('[Freight] Utilizando campo Cidade existente para preenchimento manual.')
+
         setIsCityManual(true)
         if (country === 'AR') {
           setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
@@ -397,7 +400,7 @@ export default function ClientIntakeForm() {
         setPostalMessage(result.error || 'Não foi possível localizar este CPA automaticamente. Informe sua cidade e província para continuar.')
         setLocationReady(false)
         setFreightData(null)
-        console.log('[Argentina] Aguardando cidade válida')
+
         return
       }
       setIsCityManual(false)
@@ -552,7 +555,7 @@ export default function ClientIntakeForm() {
     // AR: se a cidade estiver vazia, ou a localização não estiver pronta
     if (form.country === 'AR') {
       if (!form.state.trim() || !form.city.trim() || !locationReady) {
-        console.log('[Argentina] Aguardando cidade válida')
+
         setFreightData(null)
         if (!form.city.trim()) {
           setFreightMessage('Não foi possível identificar a cidade automaticamente. Informe sua cidade para continuar.')
@@ -570,10 +573,10 @@ export default function ClientIntakeForm() {
 
     const timer = setTimeout(async () => {
       if (form.country === 'AR') {
-        console.log('[Argentina] Iniciando geolocalização')
+
       } else {
-        console.log('[Freight] Utilizando cidade e estado informados manualmente pelo usuário.')
-        console.log('[Freight] Cidade informada:', normalizeManualCity(form.city))
+
+
       }
 
       const normalizedCity = normalizeManualCity(form.city)
@@ -586,7 +589,7 @@ export default function ClientIntakeForm() {
       }
 
       if (form.country === 'AR') {
-        console.log('[Argentina] Iniciando cálculo de frete')
+
       }
 
       setFreightMessage(null)
@@ -684,7 +687,7 @@ export default function ClientIntakeForm() {
       }))
       setPostalMessage(null)
       setLocationReady(true)
-      console.log('[Argentina] Cidade selecionada:', city)
+
     }
 
     setShowSuggestions(false)
@@ -739,11 +742,11 @@ export default function ClientIntakeForm() {
       if (match) {
         setForm(prev => ({ ...prev, city: match }))
         setLocationReady(true)
-        console.log('[Argentina] Cidade selecionada (via blur):', match)
+
       } else {
         setLocationReady(false)
         setFreightData(null)
-        console.log('[Argentina] Aguardando cidade válida')
+
       }
     }
   }
@@ -757,7 +760,7 @@ export default function ClientIntakeForm() {
         setFreightData(null)
         setIsCityManual(true)
         setIsStateManual(true)
-        console.log('[Argentina] Aguardando cidade válida (CPA modificado)')
+
       }
     } else {
       set('postalCode', value)
@@ -801,7 +804,7 @@ export default function ClientIntakeForm() {
     setShowSuggestions(false)
     setLocationReady(false)
     setFreightData(null)
-    console.log('[Argentina] Aguardando cidade válida (província alterada)')
+
   }
 
   // ── Step 1 validation ──────────────────────────────────────────────────
@@ -828,9 +831,13 @@ export default function ClientIntakeForm() {
       const h = parseFloat(form.height)
       if (!form.width || isNaN(w) || w < 3 || w > 100) errs.width = 'Largura deve ser entre 3m e 100m.'
       if (!form.height || isNaN(h) || h < 3 || h > 100) errs.height = 'Comprimento deve ser entre 3m e 100m.'
-      if (!errs.width && !errs.height && w * h > 700) {
-        errs.width = 'A área total não pode exceder 700m².'
-        errs.height = 'A área total não pode exceder 700m².'
+      
+      if (!errs.width && !errs.height) {
+        if (w * h > 700) {
+          errs.width = 'A área total não pode exceder 700m².'
+          errs.height = 'A área total não pode exceder 700m².'
+        }
+        
       }
     } else {
       if (!form.floorPlanFile) errs.floorPlanFile = 'Selecione uma imagem da planta baixa.'
@@ -839,8 +846,55 @@ export default function ClientIntakeForm() {
     return Object.keys(errs).length === 0
   }
 
-  const handleNext = () => {
-    if (validateStep1()) setStep(2)
+  const handleNext = async () => {
+    if (!validateStep1()) return
+    
+    setIsValidatingPhone(true)
+    setErrors(prev => {
+      const copy = { ...prev }
+      delete copy.phone
+      return copy
+    })
+    
+    try {
+      if (supabase) {
+        const { data: existing, error } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('phone', form.phone)
+          .maybeSingle()
+          
+        if (error) {
+          console.warn('Erro ao verificar telefone no Supabase:', error.message)
+        }
+        
+        if (existing) {
+          const inputName = form.clientName.trim().toLowerCase().replace(/\s+/g, ' ')
+          const dbName = (existing.name || '').trim().toLowerCase().replace(/\s+/g, ' ')
+          
+          if (inputName !== dbName) {
+            setErrors(prev => ({
+              ...prev,
+              phone: 'Este número de telefone já está cadastrado para outro cliente.'
+            }))
+            setIsValidatingPhone(false)
+            return
+          } else {
+            // Mesmo cliente retornando, reaproveitamos o profileId
+            setProfileId(existing.id)
+          }
+        } else {
+          // Novo cliente
+          setProfileId(null)
+        }
+      }
+      setStep(2)
+    } catch (err) {
+      console.warn('Erro na validação do telefone:', err)
+      setStep(2) // fallback
+    } finally {
+      setIsValidatingPhone(false)
+    }
   }
 
   const handleStep2Next = () => {
@@ -869,16 +923,16 @@ export default function ClientIntakeForm() {
 
     const selectedCountry = SUPPORTED_COUNTRIES.find(c => c.code === form.country)
 
-    // Generate a unique profileId for this lead
-    const profileId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+    // Reaproveita o ID existente ou gera um novo
+    const idToSave = profileId || ((typeof crypto !== 'undefined' && crypto.randomUUID) 
       ? crypto.randomUUID() 
-      : 'p_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      : 'p_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15))
 
-    // Try to save to Supabase profiles table
+    // Try to save/update in Supabase profiles table
     if (supabase) {
       try {
-        const { error } = await supabase.from('profiles').insert({
-          id: profileId,
+        const { error } = await supabase.from('profiles').upsert({
+          id: idToSave,
           name: form.clientName.trim(),
           pharmacyName: form.pharmacyName.trim(),
           phone: form.phone,
@@ -892,12 +946,11 @@ export default function ClientIntakeForm() {
           employees: form.employees,
           storeWidth: form.spaceMode === 'dimensions' ? parseFloat(form.width) : null,
           storeHeight: form.spaceMode === 'dimensions' ? parseFloat(form.height) : null,
-          role: 'user'
+          role: 'user',
+          updatedAt: new Date().toISOString()
         })
         if (error) {
           console.warn('⚠️ Erro ao salvar perfil no Supabase:', error.message)
-        } else {
-          console.log('✅ Perfil do lead salvo no Supabase:', profileId)
         }
       } catch (err) {
         console.warn('⚠️ Falha ao salvar perfil no Supabase:', err)
@@ -906,7 +959,7 @@ export default function ClientIntakeForm() {
 
     // Save client data to sessionStorage so Editor can consume it
     const intakeData = {
-      profileId,
+      profileId: idToSave,
       clientName: form.clientName.trim(),
       pharmacyName: form.pharmacyName.trim(),
       country: form.country,
@@ -956,6 +1009,7 @@ export default function ClientIntakeForm() {
       complement: form.complement.trim(),
       postalCode: form.postalCode.trim(),
       countryName: selectedCountry?.name || form.country,
+      profileId: idToSave
     }))
 
     // Small delay for UX
@@ -1176,7 +1230,7 @@ export default function ClientIntakeForm() {
                               }))
                               setLocationReady(false)
                               setFreightData(null)
-                              console.log('[Argentina] Aguardando cidade válida (digitando...)')
+
                             }
                             setShowSuggestions(true)
                             setActiveSuggestionIndex(0)
@@ -1397,12 +1451,21 @@ export default function ClientIntakeForm() {
               </div>
 
               <div className="cif-actions">
-                <button className="cif-btn-secondary" onClick={() => navigate('/')}>Cancelar</button>
-                <button className="cif-btn-primary" onClick={handleNext}>
-                  Próximo
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
+                <button className="cif-btn-secondary" onClick={() => navigate('/')} disabled={isValidatingPhone}>Cancelar</button>
+                <button className="cif-btn-primary" onClick={handleNext} disabled={isValidatingPhone}>
+                  {isValidatingPhone ? (
+                    <>
+                      Validando...
+                      <span className="cif-spinner-sm" style={{ borderLeftColor: 'white', marginLeft: 6, display: 'inline-block', verticalAlign: 'middle' }} />
+                    </>
+                  ) : (
+                    <>
+                      Próximo
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1499,10 +1562,13 @@ export default function ClientIntakeForm() {
                     </div>
                   </div>
                   {form.width && form.height && !errors.width && !errors.height && (
-                    <div className="cif-area-preview">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                      Área total: <strong>{(parseFloat(form.width) * parseFloat(form.height)).toFixed(1)} m²</strong>
-                    </div>
+                    <>
+
+                      <div className="cif-area-preview" style={{ marginTop: '20px' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                        Área útil total: <strong>{(parseFloat(form.width) * parseFloat(form.height)).toFixed(1)} m²</strong>
+                      </div>
+                    </>
                   )}
                 </div>
               )}

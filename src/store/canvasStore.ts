@@ -51,7 +51,10 @@ interface CanvasState {
   layoutName: string
   layoutId: string | null
   shareToken: string | null
+  profileId: string | null
+  isReadOnly: boolean
   isDirty: boolean
+  lastSavedAt: string | null
   freightData?: { distanceKm: number; freightCost: number } | null
   // === ACTIONS ===
   setStoreDimensions: (width: number, height: number) => void
@@ -85,8 +88,10 @@ interface CanvasState {
   clearCanvas: () => void
   loadLayout: (layoutData: Partial<CanvasState> & { items?: CanvasItem[]; id?: string }) => void
   setLayoutName: (name: string) => void
+  setProfileId: (id: string | null) => void
+  setReadOnly: (readOnly: boolean) => void
+  markSaved: () => void
   getSelectedItem: () => CanvasItem | null
-  getPillars: () => CanvasItem[]
   getStats: () => LayoutStats
   saveToHistory: () => void
   undo: () => void
@@ -133,7 +138,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   layoutName: 'Meu Layout',
   layoutId: null,
   shareToken: null,
+  profileId: null,
+  isReadOnly: false,
   isDirty: false,
+  lastSavedAt: null,
   freightData: null,
 
   // === ACTIONS ===
@@ -247,21 +255,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setFreightData: (data) => {
     set(state => ({ ...state, freightData: data, isDirty: true }))
   },
+  // pillars/entrance/emergencyExit/isConfigured não fazem parte do HistorySnapshot, então
+  // gravar histórico aqui só criava entradas redundantes que o undo nunca restaurava.
   setPillars: (newPillars) => {
     set(state => ({ ...state, pillars: newPillars, isDirty: true }))
-    get().saveToHistory()
   },
   setEntrance: (entrance) => {
     set(state => ({ ...state, entrance, isDirty: true }))
-    get().saveToHistory()
   },
   setEmergencyExit: (exit) => {
     set(state => ({ ...state, emergencyExit: exit, isDirty: true }))
-    get().saveToHistory()
   },
   setConfigured: (configured) => {
     set(state => ({ ...state, isConfigured: configured, isDirty: true }))
-    get().saveToHistory()
   },
   setStoreType: (type) => set({ storeType: type }),
   setLayoutDensity: (density) => set({ layoutDensity: density }),
@@ -299,18 +305,32 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   addItem: (itemTemplate, x, y) => {
     const { storeWidth, storeHeight } = get()
     const cleanedName = cleanItemName(itemTemplate.name)
+    
+    const initialX = (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
+      ? Math.max(0, Math.min(x, storeWidth))
+      : Math.max(0, Math.min(x, storeWidth - itemTemplate.width))
+    const initialY = (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
+      ? Math.max(0, Math.min(y, storeHeight))
+      : Math.max(0, Math.min(y, storeHeight - itemTemplate.height))
+
+    const clamped = clampItemPosition(
+      initialX,
+      initialY,
+      itemTemplate.width,
+      itemTemplate.height,
+      0,
+      storeWidth,
+      storeHeight
+    )
+
     const newItem: CanvasItem = {
       id: uuidv4(),
       itemId: itemTemplate.id,
       name: cleanedName,
       icon: itemTemplate.icon,
       category: itemTemplate.category,
-      x: (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
-        ? Math.max(0, Math.min(x, storeWidth))
-        : Math.max(0, Math.min(x, storeWidth - itemTemplate.width)),
-      y: (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
-        ? Math.max(0, Math.min(y, storeHeight))
-        : Math.max(0, Math.min(y, storeHeight - itemTemplate.height)),
+      x: clamped.x,
+      y: clamped.y,
       width: itemTemplate.width,
       height: itemTemplate.height,
       fillColor: itemTemplate.fillColor,
@@ -363,7 +383,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       newY = Math.round(y / gridSize) * gridSize
     }
 
-    const clamped = clampItemPosition(newX, newY, item.width, item.height, item.rotation || 0, storeWidth, storeHeight)
+    const clamped = clampItemPosition(
+      newX,
+      newY,
+      item.width,
+      item.height,
+      item.rotation || 0,
+      storeWidth,
+      storeHeight
+    )
 
     // Check collision
     const collides = checkItemsCollision(id, clamped.x, clamped.y, item.width, item.height, item.rotation || 0, items)
@@ -406,7 +434,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     if (!item) return
 
     const newRotation = ((item.rotation || 0) + angle) % 360
-    const clamped = clampItemPosition(item.x, item.y, item.width, item.height, newRotation, storeWidth, storeHeight)
+    const clamped = clampItemPosition(
+      item.x,
+      item.y,
+      item.width,
+      item.height,
+      newRotation,
+      storeWidth,
+      storeHeight
+    )
 
     // Check collision
     const collides = checkItemsCollision(id, clamped.x, clamped.y, item.width, item.height, newRotation, items)
@@ -481,7 +517,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   clearCanvas: () => {
-    set({ items: [], selectedItemId: null, isDirty: true })
+    set({
+      items: [],
+      selectedItemId: null,
+      isDirty: true
+    })
     get().saveToHistory()
   },
 
@@ -506,8 +546,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       layoutName: layoutData.layoutName ?? 'Layout',
       layoutId: layoutData.id || layoutData.layoutId || null,
       shareToken: layoutData.shareToken ?? null,
+      profileId: layoutData.profileId ?? null,
       selectedItemId: null,
       isDirty: false,
+      lastSavedAt: new Date().toISOString(),
     })
   },
 
@@ -515,13 +557,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({ layoutName: name, isDirty: true })
   },
 
+  setProfileId: (profileId) => {
+    set({ profileId })
+  },
+
+  setReadOnly: (readOnly) => {
+    set({ isReadOnly: readOnly })
+  },
+
+  // Marca o layout como salvo (limpa isDirty e registra o horário) — usado após salvar/autosave.
+  markSaved: () => {
+    set({ isDirty: false, lastSavedAt: new Date().toISOString() })
+  },
+
   getSelectedItem: () => {
     const { items, selectedItemId } = get()
     return items.find(i => i.id === selectedItemId) ?? null
-  },
-
-  getPillars: () => {
-    return get().items.filter(i => i.isPillar)
   },
 
   getStats: () => {
@@ -545,7 +596,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   saveToHistory: () => {
     const { items, storeWidth, storeHeight, history, historyIndex } = get()
-    const snapshot: HistorySnapshot = JSON.parse(JSON.stringify({ items, storeWidth, storeHeight }))
+    const snapshot: HistorySnapshot = JSON.parse(JSON.stringify({ 
+      items, 
+      storeWidth, 
+      storeHeight
+    }))
     const newHistory = history.slice(0, historyIndex + 1)
     newHistory.push(snapshot)
     if (newHistory.length > 50) newHistory.shift()

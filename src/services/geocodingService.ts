@@ -98,18 +98,15 @@ export async function getCoordinates(
 ): Promise<GeocodingResult> {
   const country = COUNTRY_NAMES_EN[countryCode] || countryCode
 
-  console.log('[Geocoding] Iniciando consulta...')
-  console.log({ country, state, city })
+
+
 
   let finalCity = city
   let finalState = state
   let finalCountry = country
 
   if (countryCode === 'UY' || country === 'Uruguay' || country === 'UY') {
-    console.log('[UY] Valores originais:', {
-      city,
-      state,
-    })
+
 
     const normalizedCity = normalizeUruguayLocation(city)
     const normalizedState = normalizeUruguayLocation(state)
@@ -118,10 +115,7 @@ export async function getCoordinates(
     finalState = normalizedState
     finalCountry = 'Uruguay'
 
-    console.log('[UY] Valores normalizados:', {
-      normalizedCity,
-      normalizedState,
-    })
+
   }
 
   // Monta a query: Cidade, Estado, País
@@ -194,11 +188,8 @@ export async function getCoordinates(
       }
     }
 
-    console.log('[Geocoding] Coordenadas encontradas:')
-    console.log({
-      latitude,
-      longitude,
-    })
+
+
 
     return {
       success: true,
