@@ -40,6 +40,29 @@ const WALL_COLORS = {
 // interior wall paint so a solid frontage looks like finished concrete, not the painted wall.
 const FACADE_CONCRETE = { color: 0xd9d4cc, roughness: 0.85, metalness: 0.05 }
 
+// A floor grid that matches the store's REAL rectangle (w × h) at ~1 m spacing. THREE.GridHelper is
+// always square (size × size), so a 10×12 store got a 12×12 grid overhanging the side walls and
+// reading as square/oversized. This draws lines exactly to the store bounds instead.
+const createFloorGrid = (w: number, h: number, color: number): THREE.LineSegments => {
+  const pts: number[] = []
+  const nx = Math.max(1, Math.round(w))
+  const nz = Math.max(1, Math.round(h))
+  for (let i = 0; i <= nx; i++) {
+    const x = Math.min(w / 2, -w / 2 + i)
+    pts.push(x, 0, -h / 2, x, 0, h / 2)
+  }
+  for (let j = 0; j <= nz; j++) {
+    const z = Math.min(h / 2, -h / 2 + j)
+    pts.push(-w / 2, 0, z, w / 2, 0, z)
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 })
+  const grid = new THREE.LineSegments(geo, mat)
+  grid.position.y = 0.01
+  return grid
+}
+
 const TOUR_SCENES = [
   { name: 'Fachada Principal', mode: 'orbit' as const },
   { name: 'Entrada da Loja', mode: 'first-person' as const },
@@ -345,7 +368,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
   // refs para meshes dinâmicas
   const floorMeshRef = useRef<THREE.Mesh | null>(null)
-  const floorGridRef = useRef<THREE.GridHelper | null>(null)
+  const floorGridRef = useRef<THREE.LineSegments | null>(null)
   const ceilingMeshRef = useRef<THREE.Mesh | null>(null)
   const wallsRef = useRef<THREE.Mesh[]>([])
   // Orientation of the entrance / corner door walls, so the per-frame "dollhouse" cutaway
@@ -623,9 +646,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       scene.add(floor)
       floorMeshRef.current = floor
 
-      // Grid helper (placeholder size, atualizado no Effect 2)
-      const gridHelper = new THREE.GridHelper(10, 10, 0x10b981, 0x112b1c)
-      gridHelper.position.y = 0.01
+      // Grid de piso (tamanho placeholder, redimensionado no Effect 2 para o retângulo real da loja)
+      const gridHelper = createFloorGrid(10, 12, 0x10b981)
       scene.add(gridHelper)
       floorGridRef.current = gridHelper
 
@@ -1258,10 +1280,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               target.x += panVector.x
               target.z += panVector.z
               
-              // Bound checking for orbit target
               const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
-              const wVal = Math.max(4, Number(currentWidth) || 10)
-              const hVal = Math.max(4, Number(currentHeight) || 12)
+              const wVal = Math.max(3, Number(currentWidth) || 10)
+              const hVal = Math.max(3, Number(currentHeight) || 12)
               target.x = Math.max(-wVal / 2, Math.min(target.x, wVal / 2))
               target.z = Math.max(-hVal / 2, Math.min(target.z, hVal / 2))
             }
@@ -1364,8 +1385,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               if (isNaN(nextZ) || !isFinite(nextZ)) nextZ = cam.position.z
 
               const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
-              const wVal = Math.max(4, Number(currentWidth) || 10)
-              const hVal = Math.max(4, Number(currentHeight) || 12)
+              const wVal = Math.max(3, Number(currentWidth) || 10)
+              const hVal = Math.max(3, Number(currentHeight) || 12)
 
               const boundMargin = 0.3
               nextX = Math.max(-wVal / 2 + boundMargin, Math.min(nextX, wVal / 2 - boundMargin))
@@ -1408,7 +1429,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             if (isNaN(cam.position.x) || !isFinite(cam.position.x)) cam.position.x = 0
             if (isNaN(cam.position.z) || !isFinite(cam.position.z)) {
               const { storeHeight: currentHeight } = useCanvasStore.getState()
-              const hVal = Math.max(4, Number(currentHeight) || 12)
+              const hVal = Math.max(3, Number(currentHeight) || 12)
               cam.position.z = hVal / 2 - 1.2
             }
           }
@@ -1504,8 +1525,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           {
             const isOrbit = cameraModeRef.current === 'orbit'
             const dimsState = useCanvasStore.getState()
-            const wv = Math.max(4, Number(dimsState.storeWidth) || 10)
-            const hv = Math.max(4, Number(dimsState.storeHeight) || 12)
+            const wv = Math.max(3, Number(dimsState.storeWidth) || 10)
+            const hv = Math.max(3, Number(dimsState.storeHeight) || 12)
             const cutawayDist = Math.max(wv, hv) * 1.0
             const cutaway = isOrbit && !transitionRef.current && !tourActiveRef.current &&
               orbitDistanceRef.current < cutawayDist
@@ -2587,8 +2608,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     if (!initializedRef.current) return
     console.log("📏 [3D Viewer] Effect 2 (Dimensões) atualizando para:", storeWidth, "x", storeHeight)
 
-    const widthVal = Math.max(4, Number(storeWidth) || 10)
-    const heightVal = Math.max(4, Number(storeHeight) || 12)
+    const widthVal = Math.max(3, Number(storeWidth) || 10)
+    const heightVal = Math.max(3, Number(storeHeight) || 12)
 
     // Set camera default orbit look angle to be directly in front of the entrance showing the facade and part of the interior
     if (initialCameraView === 'aerial') {
@@ -2649,13 +2670,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       }
       
       const config = FLOOR_STYLES[floorStyle as keyof typeof FLOOR_STYLES] || FLOOR_STYLES.grid
-      const newGrid = new THREE.GridHelper(
-        Math.max(widthVal, heightVal), 
-        Math.max(widthVal, heightVal), 
-        config.gridColor || 0x10b981, 
-        0x112b1c
-      )
-      newGrid.position.y = 0.01
+      const newGrid = createFloorGrid(widthVal, heightVal, config.gridColor || 0x10b981)
       newGrid.visible = config.showGrid !== false
       scene.add(newGrid)
       floorGridRef.current = newGrid
@@ -3025,8 +3040,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
     lodObjectsRef.current = []
 
-    const widthVal = Math.max(4, Number(storeWidth) || 10)
-    const heightVal = Math.max(4, Number(storeHeight) || 12)
+    const widthVal = Math.max(3, Number(storeWidth) || 10)
+    const heightVal = Math.max(3, Number(storeHeight) || 12)
     const newFurnitureMeshes: { box: THREE.Box3; isObstacle: boolean }[] = []
 
     // 2. Popular móveis
@@ -3748,8 +3763,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     let endPitch = 0
 
     const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
-    const wVal = Math.max(4, Number(currentWidth) || 10)
-    const hVal = Math.max(4, Number(currentHeight) || 12)
+    const wVal = Math.max(3, Number(currentWidth) || 10)
+    const hVal = Math.max(3, Number(currentHeight) || 12)
 
     // Find Door and Counter
     const doorItem = items.find(i => i.isDoor && !i.isEmergency)
@@ -3884,8 +3899,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     let endPitch = 0
 
     const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
-    const wVal = Math.max(4, Number(currentWidth) || 10)
-    const hVal = Math.max(4, Number(currentHeight) || 12)
+    const wVal = Math.max(3, Number(currentWidth) || 10)
+    const hVal = Math.max(3, Number(currentHeight) || 12)
 
     // Find Door and Counter
     const doorItem = items.find(i => i.isDoor && !i.isEmergency)
