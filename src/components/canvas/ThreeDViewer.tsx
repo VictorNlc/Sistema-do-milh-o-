@@ -413,6 +413,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
   // Customization & Physics States
   const [showCustomizer, setShowCustomizer] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [floorStyle, setFloorStyle] = useState('grid')
   const [wallColor, setWallColor] = useState('mint') 
   // Real-time sun shadows ON by default on desktop for the premium hero shot; OFF on mobile
@@ -3989,20 +3990,31 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       
       {/* ─── UI CONTROLS / OVERLAY ─── */}
       <div className="three-hud">
-        <div className="hud-header">
+        <div className={`hud-header ${mobileMenuOpen ? 'menu-open' : ''}`}>
           <div className="hud-title">
             Visualização 3D
           </div>
           
-          <div className="hud-header-actions">
+          <button 
+            className="hud-burger-btn" 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
+
+          <div className={`hud-header-actions ${mobileMenuOpen ? 'mobile-visible' : ''}`}>
             <button 
               className={`btn btn-secondary btn-sm hud-toggle-customizer ${showCustomizer ? 'active' : ''}`}
-              onClick={() => setShowCustomizer(!showCustomizer)}
+              onClick={() => {
+                setShowCustomizer(!showCustomizer)
+                setMobileMenuOpen(false)
+              }}
             >
               ⚙️ {showCustomizer ? (
                 <>Fechar<span className="hide-mobile"> Ajustes</span></>
               ) : (
-                <><span className="hide-mobile">Customizar projeto</span><span className="show-mobile-inline">Customizar</span></>
+                <><span className="hide-mobile">Customizar projeto</span><span className="show-mobile-inline">Customizar projeto</span></>
               )}
             </button>
 
@@ -4014,6 +4026,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
                 tourHoldStartRef.current = null
                 setCameraMode('first-person')
                 cameraModeRef.current = 'first-person'
+                setMobileMenuOpen(false)
               }}
             >
               🚶‍♂️ Modo Livre
@@ -4031,13 +4044,20 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
                   tourActiveRef.current = true
                   triggerTourScene(0)
                 }
+                setMobileMenuOpen(false)
               }}
             >
               🎬 Modo Tour
             </button>
 
-            <button className="btn btn-secondary btn-sm hud-close" onClick={onClose}>
-              ✏️ <span className="hide-mobile">Editar planta baixa</span><span className="show-mobile-inline">Editar Planta</span>
+            <button 
+              className="btn btn-secondary btn-sm hud-close" 
+              onClick={() => {
+                onClose?.()
+                setMobileMenuOpen(false)
+              }}
+            >
+              ✏️ <span className="hide-mobile">Editar planta baixa</span><span className="show-mobile-inline">Editar planta baixa</span>
             </button>
           </div>
         </div>

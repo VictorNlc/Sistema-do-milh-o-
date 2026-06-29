@@ -152,23 +152,33 @@
   padding-right: var(--s5);
 }
 
-.hide-mobile {
-  display: none !important;
-}
-
-@media (min-width: 768px) {
-  .hide-mobile {
-    display: flex !important;
-  }
-}
-
-.hide-desktop {
+.hide-tablet-mobile {
   display: flex !important;
 }
 
-@media (min-width: 768px) {
-  .hide-desktop {
+@media (max-width: 1024px) {
+  .hide-tablet-mobile {
     display: none !important;
+  }
+}
+
+.show-tablet-only {
+  display: none !important;
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .show-tablet-only {
+    display: block !important;
+  }
+}
+
+.show-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .show-mobile-only {
+    display: block !important;
   }
 }
 
