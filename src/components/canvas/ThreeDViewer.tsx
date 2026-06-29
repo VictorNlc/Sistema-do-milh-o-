@@ -1489,6 +1489,52 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             })
           }
 
+          // --- Animar Portas Automáticas por Proximidade da Câmera ---
+          if (frontFacadeGroupRef.current || sideFacadeGroupRef.current) {
+            const doorPanels: THREE.Mesh[] = []
+            const collectPanels = (group: THREE.Group | null) => {
+              if (!group) return
+              group.traverse((child) => {
+                if (child instanceof THREE.Mesh && child.userData && child.userData.isDoorPanel) {
+                  doorPanels.push(child)
+                }
+              })
+            }
+            collectPanels(frontFacadeGroupRef.current)
+            collectPanels(sideFacadeGroupRef.current)
+
+            doorPanels.forEach((panel) => {
+              // Obtém posição absoluta do painel no mundo 3D
+              const panelWorldPos = new THREE.Vector3()
+              panel.getWorldPosition(panelWorldPos)
+              
+              // Distância horizontal (X-Z) até a câmera
+              const dx = cam.position.x - panelWorldPos.x
+              const dz = cam.position.z - panelWorldPos.z
+              const dist = Math.sqrt(dx * dx + dz * dz)
+              
+              // Abre a porta se a câmera estiver a menos de 2.8 metros (ideal para dar tempo de abrir no tour e caminhada)
+              const isNear = dist < 2.8
+              
+              // Interpolação suave de abertura (LERP)
+              const animSpeed = 4.5
+              panel.userData.currentOpenness = THREE.MathUtils.lerp(
+                panel.userData.currentOpenness || 0,
+                isNear ? 1.0 : 0.0,
+                animSpeed * deltaTime
+              )
+
+              const { panelSide, doorX3d, sheetW } = panel.userData
+              const slideOffset = (sheetW - 0.12) * panel.userData.currentOpenness
+              
+              if (panelSide === 'left') {
+                panel.position.x = doorX3d - sheetW / 2 - slideOffset
+              } else {
+                panel.position.x = doorX3d + sheetW / 2 + slideOffset
+              }
+            })
+          }
+
           // --- Dollhouse híbrido ---
           // Longe (zoom afastado) ou durante tour/transição = prédio fechado (hero shot da fachada).
           // Perto, em órbita livre = esconde o teto e as paredes/fachada entre a câmera e o interior,
@@ -1866,20 +1912,32 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     headerMesh.position.set(doorX3d, doorHeight + 0.06, facadeZ)
     frontFacadeGroup.add(headerMesh)
 
-    // Sliding Glass Panels (two sheets, slightly open or closed)
+    // Sliding Glass Panels (two sheets, starting fully closed and animated)
     const sheetW = doorW / 2 - 0.02
     const sheetGeo = new THREE.BoxGeometry(sheetW, doorHeight - 0.06, 0.02)
     
-    // Left sheet (center to left, slightly open for realism, e.g. offset 10cm)
-    const leftSheetX = doorX3d - sheetW / 2 - 0.10
+    // Left sheet (center to left)
     const leftSheetMesh = new THREE.Mesh(sheetGeo, glassMat)
-    leftSheetMesh.position.set(leftSheetX, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
+    leftSheetMesh.userData = {
+      isDoorPanel: true,
+      panelSide: 'left',
+      doorX3d: doorX3d,
+      sheetW: sheetW,
+      currentOpenness: 0.0
+    }
+    leftSheetMesh.position.set(doorX3d - sheetW / 2, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
     frontFacadeGroup.add(leftSheetMesh)
 
-    // Right sheet (center to right, slightly open)
-    const rightSheetX = doorX3d + sheetW / 2 + 0.10
+    // Right sheet (center to right)
     const rightSheetMesh = new THREE.Mesh(sheetGeo, glassMat)
-    rightSheetMesh.position.set(rightSheetX, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
+    rightSheetMesh.userData = {
+      isDoorPanel: true,
+      panelSide: 'right',
+      doorX3d: doorX3d,
+      sheetW: sheetW,
+      currentOpenness: 0.0
+    }
+    rightSheetMesh.position.set(doorX3d + sheetW / 2, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
     frontFacadeGroup.add(rightSheetMesh)
 
     // 4. Upper Canopy (Marquise) - projecting forward by 0.5m in Z
