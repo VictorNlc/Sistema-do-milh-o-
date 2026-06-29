@@ -73,50 +73,7 @@ const FEATURES = [
   },
 ]
 
-const STORE_TYPES = [
-  {
-    id: 'popular',
-    label: 'Farmácia Popular',
-    icon: (
-      <svg className="store-type-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m10.5 13.5 3-3" />
-        <path d="M17.5 13.5a4.95 4.95 0 1 0-7-7l-7 7a4.95 4.95 0 1 0 7 7l7-7Z" />
-      </svg>
-    ),
-    color: '#00843D'
-  },
-  {
-    id: 'premium',
-    label: 'Farmácia Premium',
-    icon: (
-      <svg className="store-type-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-      </svg>
-    ),
-    color: '#7C3AED'
-  },
-  {
-    id: 'manipulacao',
-    label: 'Manipulação',
-    icon: (
-      <svg className="store-type-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 3h6M10 3v5.8a2 2 0 0 1-.5 1.3L4.35 17.5a2 2 0 0 0 1.65 3h12a2 2 0 0 0 1.65-3L14.5 10.1a2 2 0 0 1-.5-1.3V3" />
-      </svg>
-    ),
-    color: '#0891B2'
-  },
-  {
-    id: 'completa',
-    label: 'Farmácia Completa',
-    icon: (
-      <svg className="store-type-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path d="M12 8v8M8 12h8" />
-      </svg>
-    ),
-    color: '#DC2626'
-  },
-]
+
 
 const TESTIMONIALS = [
   { name: 'Ana Paula R.', city: 'São Paulo, SP', text: 'Consegui planejar toda a minha farmácia em menos de 1 hora! O consultor ficou impressionado com o projeto já pronto.', rating: 5 },
@@ -261,31 +218,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* STORE TYPES */}
-      <section className="store-types" id="tipos">
-        <div className="container">
-          <p className="section-eyebrow reveal">Para todos os modelos</p>
-          <h2 className="section-title reveal">Qual é o seu tipo de farmácia?</h2>
-          <div className="store-types-grid">
-            {STORE_TYPES.map((type, i) => (
-              <button
-                key={type.id}
-                id={`btn-tipo-${type.id}`}
-                className="store-type-card reveal"
-                onClick={() => navigate(`/editor?type=${type.id}`)}
-                style={{
-                  '--type-color': type.color,
-                  transitionDelay: `${i * 80}ms`
-                } as React.CSSProperties}
-              >
-                <span className="store-type-icon">{type.icon}</span>
-                <span className="store-type-label">{type.label}</span>
-                <span className="store-type-arrow">→</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* FEATURES */}
       <section className="features" id="features">
