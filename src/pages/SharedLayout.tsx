@@ -256,11 +256,7 @@ export default function SharedLayout() {
               </svg>
               Abrir Planta Interativa 3D
             </button>
-            <p style={{ marginTop: 12 }}>Gostou do layout? Agende uma consulta gratuita com a Projefarma!</p>
-            <button className="btn btn-primary btn-full" onClick={() => navigate(`/agendar/${layout.id}`)}>
-              <I.Calendar style={{ marginRight: 6 }} /> Agendar Consultoria
-            </button>
-            <button className="btn btn-secondary btn-full" onClick={() => navigate('/editor')}>
+            <button className="btn btn-secondary btn-full" style={{ marginTop: 12 }} onClick={() => navigate('/editor')}>
               Criar meu próprio layout
             </button>
           </div>

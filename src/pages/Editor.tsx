@@ -559,10 +559,6 @@ export default function Editor() {
     }
   }, [routeId, shareToken, handleSave])
 
-  const handleSchedule = async () => {
-    const saved = await handleSave()
-    if (saved) navigate(`/agendar/${saved.id}`)
-  }
 
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
@@ -893,11 +889,7 @@ export default function Editor() {
             </span>
           )}
 
-          {!isReadOnly ? (
-            <button id="btn-schedule" className="tb-btn tb-btn-primary desktop-only" onClick={handleSchedule}>
-              <I.Cal /> <span className="hide-tablet-text">Agendar</span>
-            </button>
-          ) : (
+          {isReadOnly && (
             <button id="btn-create-own" className="tb-btn tb-btn-primary desktop-only" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981', borderColor: '#10b981' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -1107,13 +1099,12 @@ export default function Editor() {
             </button>
           </div>
 
-          {/* Mobile save/schedule button */}
+          {/* Mobile save button */}
           <div className="mobile-save-action">
             {!isReadOnly ? (
-              <button className="btn btn-primary btn-lg btn-full" onClick={handleSchedule} style={{ background: '#10b981' }}>
-                <I.Cal />
-                <span>Salvar / Agendar</span>
-                <span style={{ marginLeft: 'auto' }}>▾</span>
+              <button className="btn btn-primary btn-lg btn-full" onClick={() => handleSave()} style={{ background: '#10b981' }}>
+                <I.Save />
+                <span>Salvar Layout</span>
               </button>
             ) : (
               <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981' }}>

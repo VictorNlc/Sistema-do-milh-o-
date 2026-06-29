@@ -4,7 +4,6 @@ import { Toaster } from './components/ui/Toaster'
 import { syncAllWithSupabase } from './services/storage'
 import Home from './pages/Home'
 import Editor from './pages/Editor'
-import Schedule from './pages/Schedule'
 import SharedLayout from './pages/SharedLayout'
 import Projects from './pages/Projects'
 import ClientIntakeForm from './pages/ClientIntakeForm'
@@ -24,8 +23,6 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/editor" element={<Editor />} />
         <Route path="/editor/:id" element={<Editor />} />
-        <Route path="/agendar" element={<Schedule />} />
-        <Route path="/agendar/:layoutId" element={<Schedule />} />
         <Route path="/layout/:token" element={<SharedLayout />} />
         <Route path="/meus-projetos" element={<Projects />} />
         <Route path="/novo-layout" element={<ClientIntakeForm />} />
