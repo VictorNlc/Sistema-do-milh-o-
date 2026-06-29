@@ -413,7 +413,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
   // Customization & Physics States
   const [showCustomizer, setShowCustomizer] = useState(false)
-  const [floorStyle, setFloorStyle] = useState('marble')
+  const [floorStyle, setFloorStyle] = useState('grid')
   const [wallColor, setWallColor] = useState('mint') 
   // Real-time sun shadows ON by default on desktop for the premium hero shot; OFF on mobile
   // (perf). The fake contact-shadow planes still ground objects when this is off.
@@ -505,16 +505,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   // --- EFFECT 5: TEMATIZAÇÃO PADRÃO COM BASE NO STORETYPE ---
   useEffect(() => {
     if (storeType === 'premium') {
-      setFloorStyle('marble')
       setWallColor('blue') // Azul Royal
     } else if (storeType === 'manipulacao') {
-      setFloorStyle('concrete')
       setWallColor('white') // Branco Clean
     } else if (storeType === 'completa') {
-      setFloorStyle('wood')
       setWallColor('gray') // Cinza Industrial
     } else {
-      setFloorStyle('marble')
       setWallColor('white')
     }
   }, [storeType])
@@ -822,11 +818,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         if (!cam) return
         try {
           if (document.pointerLockElement === canvas || isDragging) {
-            if (tourActiveRef.current) {
-              setTourActive(false)
-              tourActiveRef.current = false
-              tourHoldStartRef.current = null
-            }
+            stopTourAndGoFree()
           }
           if (transitionRef.current && (document.pointerLockElement === canvas || isDragging)) {
             transitionRef.current = null
@@ -992,11 +984,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           const mode = cameraModeRef.current
           // Pinça com dois dedos = zoom no modo órbita (espelha o zoom do scroll do mouse)
           if (e.touches && e.touches.length === 2 && mode === 'orbit') {
-            if (tourActiveRef.current) {
-              setTourActive(false)
-              tourActiveRef.current = false
-              tourHoldStartRef.current = null
-            }
+            stopTourAndGoFree()
             const dx = e.touches[0].clientX - e.touches[1].clientX
             const dy = e.touches[0].clientY - e.touches[1].clientY
             const dist = Math.hypot(dx, dy)
@@ -1008,11 +996,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             return
           }
           if (isDragging && e.touches) {
-            if (tourActiveRef.current) {
-              setTourActive(false)
-              tourActiveRef.current = false
-              tourHoldStartRef.current = null
-            }
+            stopTourAndGoFree()
             if (mode === 'first-person' && e.touches.length === 1) {
               const clientX = e.touches[0].clientX ?? previousMouseX
               const clientY = e.touches[0].clientY ?? previousMouseY
@@ -1107,11 +1091,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         }
         setActivePreset(null)
         
-        if (tourActiveRef.current) {
-          setTourActive(false)
-          tourActiveRef.current = false
-          tourHoldStartRef.current = null
-        }
+        stopTourAndGoFree()
         if (keysRef.current) {
           keysRef.current[e.code] = true 
           if (e.key) keysRef.current[e.key.toLowerCase()] = true
@@ -1346,9 +1326,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           if (mode === 'first-person') {
             const moveSpeed = 3.0
             cam.getWorldDirection(cameraDirection)
-            cameraDirection.y = 0 
             
-            if (isNaN(cameraDirection.x) || isNaN(cameraDirection.z) || cameraDirection.lengthSq() < 0.0001) {
+            if (isNaN(cameraDirection.x) || isNaN(cameraDirection.y) || isNaN(cameraDirection.z) || cameraDirection.lengthSq() < 0.0001) {
               cameraDirection.set(0, 0, -1)
             } else {
               cameraDirection.normalize()
@@ -1376,9 +1355,11 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               moveVector.normalize().multiplyScalar(moveSpeed * deltaTime)
               
               let nextX = cam.position.x + moveVector.x
+              let nextY = cam.position.y + moveVector.y
               let nextZ = cam.position.z + moveVector.z
               
               if (isNaN(nextX) || !isFinite(nextX)) nextX = cam.position.x
+              if (isNaN(nextY) || !isFinite(nextY)) nextY = cam.position.y
               if (isNaN(nextZ) || !isFinite(nextZ)) nextZ = cam.position.z
 
               const { storeWidth: currentWidth, storeHeight: currentHeight } = useCanvasStore.getState()
@@ -1388,6 +1369,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               // Allow walking outside the store limits (e.g., up to 15 meters from store bounds)
               nextX = Math.max(-wVal / 2 - 15.0, Math.min(nextX, wVal / 2 + 15.0))
               nextZ = Math.max(-hVal / 2 - 15.0, Math.min(nextZ, hVal / 2 + 15.0))
+              nextY = Math.max(0.2, Math.min(nextY, 50.0))
 
               // Reduced collision radius (0.12) to navigate narrow corridors easily without getting stuck
               let collidedX = false
@@ -1421,6 +1403,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               if (!collidedZ) {
                 cam.position.z = nextZ
               }
+
+              cam.position.y = nextY
             }
 
             if (isNaN(cam.position.x) || !isFinite(cam.position.x)) cam.position.x = 0
@@ -3730,12 +3714,18 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     }
   }
 
-  const handleDpadStart = (dir: string) => {
+  const stopTourAndGoFree = () => {
     if (tourActiveRef.current) {
       setTourActive(false)
       tourActiveRef.current = false
       tourHoldStartRef.current = null
+      setCameraMode('first-person')
+      cameraModeRef.current = 'first-person'
     }
+  }
+
+  const handleDpadStart = (dir: string) => {
+    stopTourAndGoFree()
     dpadKeysRef.current[dir] = true
   }
   const handleDpadStop = (dir: string) => {
@@ -4001,24 +3991,55 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       <div className="three-hud">
         <div className="hud-header">
           <div className="hud-title">
-            <span className="hide-mobile">Visualização </span>3D
+            Visualização 3D
           </div>
           
-          <button 
-            className={`btn btn-secondary btn-sm hud-toggle-customizer ${showCustomizer ? 'active' : ''}`}
-            onClick={() => setShowCustomizer(!showCustomizer)}
-          >
-            ⚙️ {showCustomizer ? (
-              <>Fechar<span className="hide-mobile"> Ajustes</span></>
-            ) : (
-              <><span className="hide-mobile">Customizar</span><span className="show-mobile-inline">Ajustes</span></>
-            )}
-          </button>
+          <div className="hud-header-actions">
+            <button 
+              className={`btn btn-secondary btn-sm hud-toggle-customizer ${showCustomizer ? 'active' : ''}`}
+              onClick={() => setShowCustomizer(!showCustomizer)}
+            >
+              ⚙️ {showCustomizer ? (
+                <>Fechar<span className="hide-mobile"> Ajustes</span></>
+              ) : (
+                <><span className="hide-mobile">Customizar projeto</span><span className="show-mobile-inline">Customizar</span></>
+              )}
+            </button>
 
+            <button 
+              className={`btn btn-secondary btn-sm hud-free-mode ${(!tourActive && cameraMode === 'first-person') ? 'active' : ''}`}
+              onClick={() => {
+                setTourActive(false)
+                tourActiveRef.current = false
+                tourHoldStartRef.current = null
+                setCameraMode('first-person')
+                cameraModeRef.current = 'first-person'
+              }}
+            >
+              🚶‍♂️ Modo Livre
+            </button>
 
-          <button className="btn btn-secondary btn-sm hud-close" onClick={onClose}>
-            ✕ <span className="hide-mobile">Fechar Modo 3D</span><span className="show-mobile-inline">Fechar</span>
-          </button>
+            <button 
+              className={`btn btn-secondary btn-sm hud-tour-mode ${tourActive ? 'active' : ''}`}
+              onClick={() => {
+                if (tourActive) {
+                  setTourActive(false)
+                  tourActiveRef.current = false
+                  tourHoldStartRef.current = null
+                } else {
+                  setTourActive(true)
+                  tourActiveRef.current = true
+                  triggerTourScene(0)
+                }
+              }}
+            >
+              🎬 Modo Tour
+            </button>
+
+            <button className="btn btn-secondary btn-sm hud-close" onClick={onClose}>
+              ✏️ <span className="hide-mobile">Editar planta baixa</span><span className="show-mobile-inline">Editar Planta</span>
+            </button>
+          </div>
         </div>
 
         {/* ─── CUSTOMIZER SIDEBAR ─── */}
@@ -4088,56 +4109,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         </div>
         )}
 
-        {/* ─── CAMERA PRESETS (TOUR VIRTUAL) ─── */}
-        <div className="camera-presets pointer-events-auto">
-          <div className="preset-title">📸 Tour</div>
-          <button 
-            className={`preset-btn tour-toggle-btn ${tourActive ? 'active' : ''}`}
-            onClick={() => {
-              if (tourActive) {
-                setTourActive(false)
-                tourActiveRef.current = false
-                tourHoldStartRef.current = null
-              } else {
-                setTourActive(true)
-                tourActiveRef.current = true
-                triggerTourScene(0)
-              }
-            }}
-            style={{
-              background: tourActive ? 'var(--primary)' : 'rgba(16, 185, 129, 0.08)',
-              color: tourActive ? 'white' : 'var(--text-1)',
-              borderColor: 'rgba(16, 185, 129, 0.3)',
-              fontWeight: 800
-            }}
-          >
-            {tourActive ? '⏸️ Pausar Tour' : '▶️ Tour Automático'}
-          </button>
-          <button 
-            className={`preset-btn ${activePreset === 'entrada' ? 'active' : ''}`}
-            onClick={() => triggerPresetTransition('entrada')}
-          >
-            👁️ Entrada
-          </button>
-          <button 
-            className={`preset-btn ${activePreset === 'geral' ? 'active' : ''}`}
-            onClick={() => triggerPresetTransition('geral')}
-          >
-            🏪 Geral
-          </button>
-          <button 
-            className={`preset-btn ${activePreset === 'farmaceutico' ? 'active' : ''}`}
-            onClick={() => triggerPresetTransition('farmaceutico')}
-          >
-            💊 Farmacêutico
-          </button>
-          <button 
-            className={`preset-btn ${activePreset === 'aereo' ? 'active' : ''}`}
-            onClick={() => triggerPresetTransition('aereo')}
-          >
-            🐦 Aéreo
-          </button>
-        </div>
+
 
         {/* ─── ON-SCREEN D-PAD CONTROLLER ─── */}
         <div className="three-dpad pointer-events-auto">
