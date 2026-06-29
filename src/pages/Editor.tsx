@@ -1144,11 +1144,11 @@ export default function Editor() {
 
       {/* ─── STATUSBAR ─── */}
       <div className="statusbar desktop-only">
-        <div className="statusbar-item">
+        <div className="statusbar-item hide-tablet-item">
           <div className="statusbar-dot" />
           <span>{storeWidth}×{storeHeight}m · {(storeWidth * storeHeight).toFixed(0)}m²</span>
         </div>
-        <div className="statusbar-item">
+        <div className="statusbar-item hide-tablet-item">
           <span>{stats.itemCount} itens (R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) · {stats.pillars} pilares · {stats.occupancyRate}% ocupado</span>
         </div>
         <div className="statusbar-tools">
@@ -1165,7 +1165,7 @@ export default function Editor() {
             <span>Auditoria</span>
           </button>
         </div>
-        <div className="statusbar-item statusbar-right">
+        <div className="statusbar-item statusbar-right hide-tablet-item">
           <span>Scroll = zoom · Arrastar canvas = mover · Del = remover</span>
         </div>
       </div>
