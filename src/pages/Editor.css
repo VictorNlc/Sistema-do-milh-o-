@@ -1390,4 +1390,10 @@
     font-size: 14px !important;
     bottom: 76px !important;
   }
+  .props-panel {
+    width: 245px !important;
+  }
+  .editor-sidebar-left {
+    width: 235px !important;
+  }
 }
