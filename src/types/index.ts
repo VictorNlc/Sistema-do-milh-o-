@@ -107,10 +107,13 @@ export interface SavedLayout {
   createdAt: string
   updatedAt: string
   layoutId?: string | null
+  profileId?: string | null
   freightData?: {
     distanceKm: number
     freightCost: number
   } | null
+  isDirty?: boolean
+  isConfigured?: boolean
 }
 
 // ─── Agendamento ──────────────────────────────────────────────────────────────

@@ -59,18 +59,8 @@ export async function calculateDistance(
     }
   }
 
-  console.log('[Freight] Calculando distância...')
-  console.log({
-    origem: {
-      latitude: FACTORY_LOCATION.latitude,
-      longitude: FACTORY_LOCATION.longitude,
-      descricao: 'Fábrica — Teutônia, RS',
-    },
-    destino: {
-      latitude: destinationLatitude,
-      longitude: destinationLongitude,
-    },
-  })
+
+
 
   // ORS espera [longitude, latitude]
   const body = {
@@ -149,10 +139,10 @@ export async function calculateDistance(
     // Calcular frete
     const shippingCost = Number((distanceKm * PRICE_PER_KM).toFixed(2))
 
-    console.log('[Freight] Resultado:')
-    console.log(`Distância: ${distanceKm} km`)
-    console.log(`Frete: R$ ${shippingCost.toFixed(2)}`)
-    console.log({ distanceKm, shippingCost })
+
+
+
+
 
     return {
       success: true,

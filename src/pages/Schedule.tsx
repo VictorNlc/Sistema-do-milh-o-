@@ -107,7 +107,7 @@ export default function Schedule() {
               if (error) {
                 console.warn('⚠️ Erro ao atualizar perfil com dados do agendamento:', error.message)
               } else {
-                console.log('✅ Perfil atualizado com dados do agendamento:', intake.profileId)
+
               }
             })
           }
@@ -133,7 +133,7 @@ export default function Schedule() {
           if (error) {
             console.warn('⚠️ Erro ao disparar e-mail de confirmação:', error.message)
           } else {
-            console.log('✅ E-mail de confirmação disparado com sucesso.')
+
           }
         }).catch(err => {
           console.warn('⚠️ Falha ao se conectar à função de e-mail:', err)

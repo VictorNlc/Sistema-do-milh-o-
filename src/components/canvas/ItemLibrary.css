@@ -313,3 +313,17 @@
     max-width: 163px !important;
   }
 }
+/* Spinner do botao "Otimizar Layout com IA" (#9) */
+.il-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 7px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: il-spin 0.7s linear infinite;
+}
+.btn[disabled] { opacity: 0.7; cursor: progress; }
+@keyframes il-spin { to { transform: rotate(360deg); } }

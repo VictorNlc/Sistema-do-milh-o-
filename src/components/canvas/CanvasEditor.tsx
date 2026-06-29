@@ -67,9 +67,9 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const stageX = useCanvasStore(state => state.stageX)
   const stageY = useCanvasStore(state => state.stageY)
   const gridSize = useCanvasStore(state => state.gridSize)
-  const activeTool = useCanvasStore(state => state.activeTool)
   const layoutId = useCanvasStore(state => state.layoutId)
   const recenterCount = useCanvasStore(state => state.recenterCount)
+  const isReadOnly = useCanvasStore(state => state.isReadOnly)
   
   const setSelectedItem = useCanvasStore(state => state.setSelectedItem)
   const setScale = useCanvasStore(state => state.setScale)
@@ -350,15 +350,17 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
 
   // Click/tap on empty area → deselect
   const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
+    if (isReadOnly) return
     if (e.target === e.target.getStage() || e.target.name() === 'floor') {
       setSelectedItem(null)
     }
-  }, [setSelectedItem])
+  }, [setSelectedItem, isReadOnly])
 
   // Drop from library (desktop drag)
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDraggingOver(false)
+    if (isReadOnly) return
     const data = e.dataTransfer?.getData('application/json')
     if (!data) return
     try {
@@ -378,7 +380,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     if (!showGrid) return null
     const step = gridSize * PIXELS_PER_METER
     const lines = []
-    for (let x = 0; x <= canvasW; x += step)
+
+    for (let x = 0; x <= canvasW; x += step) {
       lines.push(
         <Line
           key={`v${x}`}
@@ -388,7 +391,9 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           listening={false}
         />
       )
-    for (let y = 0; y <= canvasH; y += step)
+    }
+
+    for (let y = 0; y <= canvasH; y += step) {
       lines.push(
         <Line
           key={`h${y}`}
@@ -398,6 +403,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           listening={false}
         />
       )
+    }
     return lines
   }, [showGrid, gridSize, canvasW, canvasH])
 
@@ -697,9 +703,9 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               <Line points={[pX2 - 5, pY - 3, pX2, pY, pX2 - 5, pY + 3]} stroke="#C5A028" strokeWidth={1} opacity={0.65} />
               <Rect
                 x={foundX - 18} y={pY - 5} width={36} height={10} fill="#ffffff" cornerRadius={2} stroke="#C5A028" strokeWidth={0.5} opacity={0.9}
-                onClick={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, foundX, pY) }}
-                onTap={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, foundX, pY) }}
-                onMouseEnter={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
+                onClick={(e) => { e.cancelBubble = true; if (!isReadOnly) handleCorridorLabelClick(gap, foundX, pY) }}
+                onTap={(e) => { e.cancelBubble = true; if (!isReadOnly) handleCorridorLabelClick(gap, foundX, pY) }}
+                onMouseEnter={(e) => { if (isReadOnly) return; const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
                 onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default' }}
               />
               <Text listening={false} x={foundX - 18} y={pY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#0B3D2E" align="center" />
@@ -740,9 +746,9 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               <Line points={[pX - 3, pY2 - 5, pX, pY2, pX + 3, pY2 - 5]} stroke="#C5A028" strokeWidth={1} opacity={0.65} />
               <Rect
                 x={pX - 18} y={foundY - 5} width={36} height={10} fill="#ffffff" cornerRadius={2} stroke="#C5A028" strokeWidth={0.5} opacity={0.9}
-                onClick={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, pX, foundY) }}
-                onTap={(e) => { e.cancelBubble = true; handleCorridorLabelClick(gap, pX, foundY) }}
-                onMouseEnter={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
+                onClick={(e) => { e.cancelBubble = true; if (!isReadOnly) handleCorridorLabelClick(gap, pX, foundY) }}
+                onTap={(e) => { e.cancelBubble = true; if (!isReadOnly) handleCorridorLabelClick(gap, pX, foundY) }}
+                onMouseEnter={(e) => { if (isReadOnly) return; const s = e.target.getStage(); if (s) s.container().style.cursor = 'pointer' }}
                 onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default' }}
               />
               <Text listening={false} x={pX - 18} y={foundY - 3.5} width={36} text={`${gap.dist.toFixed(2)}m`} fontSize={7} fontStyle="bold" fill="#0B3D2E" align="center" />
@@ -761,9 +767,6 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     return elements
   }, [items, storeWidth, storeHeight, showMeasures, handleCorridorLabelClick])
 
-  // Unused but left for future: activeTool reference
-  void activeTool
-
   const shouldRenderStage = containerSize.width > 0 && containerSize.height > 0
 
   return (
@@ -771,7 +774,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
       ref={containerRef}
       className={`ce-wrap ${isDraggingOver ? 'ce-drop' : ''}`}
       onDrop={handleDrop}
-      onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
+      onDragOver={(e) => { if (isReadOnly) return; e.preventDefault(); setIsDraggingOver(true) }}
       onDragLeave={() => setIsDraggingOver(false)}
     >
       {isDraggingOver && (
@@ -789,7 +792,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           y={stageY}
           scaleX={scale}
           scaleY={scale}
-          draggable={!selectedItemId}
+          draggable={isReadOnly ? true : !selectedItemId}
           onMouseDown={handleStagePointerDown}
           onTouchStart={handleStagePointerDown}
           onDragEnd={handleStageDragEnd}
@@ -806,7 +809,6 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               fill="#FCF9F2"
               listening={false}
             />
-            {/* Floor */}
             <Rect
               name="floor"
               x={0} y={0} width={canvasW} height={canvasH}
@@ -877,10 +879,10 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               <CanvasItem
                 key={item.id}
                 item={item}
-                isSelected={selectedItemId === item.id}
-                isDraggable={isMobileDevice ? true : selectedItemId === item.id}
-                onSelect={handleItemSelect}
-                onDragEnd={handleItemDragEnd}
+                isSelected={isReadOnly ? false : selectedItemId === item.id}
+                isDraggable={isReadOnly ? false : (isMobileDevice ? true : selectedItemId === item.id)}
+                onSelect={isReadOnly ? () => {} : handleItemSelect}
+                onDragEnd={isReadOnly ? () => {} : handleItemDragEnd}
               />
             ))}
           </Layer>

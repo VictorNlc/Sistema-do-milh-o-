@@ -139,8 +139,75 @@ export default function SharedLayout() {
             </div>
           </div>
 
-          {layout.thumbnail && (
-            <img src={layout.thumbnail} alt="Layout" className="shared-thumb" />
+          {layout.thumbnail ? (
+            <div 
+              className="shared-thumb-container" 
+              onClick={() => navigate(`/editor?id=${layout.id}&shared=1`)}
+              style={{ position: 'relative', cursor: 'pointer', overflow: 'hidden', borderRadius: 'var(--r-md)', border: '1px solid var(--border-xs)', marginTop: 8 }}
+            >
+              <img src={layout.thumbnail} alt="Layout" className="shared-thumb" style={{ width: '100%', display: 'block', transition: 'transform 0.3s ease', margin: 0 }} />
+              <div 
+                className="shared-thumb-overlay"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 8,
+                  color: 'white',
+                  opacity: 0,
+                  transition: 'opacity 0.2s ease',
+                  fontWeight: 600,
+                  fontSize: '0.9rem'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                  const img = e.currentTarget.previousSibling as HTMLImageElement;
+                  if (img) img.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0';
+                  const img = e.currentTarget.previousSibling as HTMLImageElement;
+                  if (img) img.style.transform = 'scale(1)';
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                  <polyline points="2 17 12 22 22 17"/>
+                  <polyline points="2 12 12 17 22 12"/>
+                </svg>
+                Abrir Visualizador Interativo 3D
+              </div>
+            </div>
+          ) : (
+            <div 
+              onClick={() => navigate(`/editor?id=${layout.id}&shared=1`)}
+              style={{
+                cursor: 'pointer',
+                background: 'var(--surface-input)',
+                border: '1.5px dashed var(--border-sm)',
+                borderRadius: 'var(--r-md)',
+                height: 180,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: 8,
+                color: 'var(--text-3)',
+                fontWeight: 600,
+                marginTop: 8
+              }}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+              <span>Visualizar Planta Interativa 2D/3D</span>
+            </div>
           )}
 
           <div className="shared-stats">
@@ -176,7 +243,20 @@ export default function SharedLayout() {
           </div>
 
           <div className="shared-cta">
-            <p>Gostou do layout? Agende uma consulta gratuita com a Projefarma!</p>
+            <p style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text-2)' }}>Quer interagir com o projeto em 2D/3D?</p>
+            <button 
+              className="btn btn-primary btn-full animate-pulse" 
+              onClick={() => navigate(`/editor?id=${layout.id}&shared=1`)}
+              style={{ background: '#2563eb', borderColor: '#2563eb', marginBottom: 16, fontWeight: 700, gap: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+              Abrir Planta Interativa 3D
+            </button>
+            <p style={{ marginTop: 12 }}>Gostou do layout? Agende uma consulta gratuita com a Projefarma!</p>
             <button className="btn btn-primary btn-full" onClick={() => navigate(`/agendar/${layout.id}`)}>
               <I.Calendar style={{ marginRight: 6 }} /> Agendar Consultoria
             </button>

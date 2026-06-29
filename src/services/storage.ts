@@ -23,15 +23,29 @@ type LayoutInput = {
   layoutName?: string
   thumbnail?: string | null
   layoutId?: string | null
+  profileId?: string | null
 }
 
 export function saveLayout(layoutData: LayoutInput): SavedLayout | null {
   const id = layoutData.id || uuidv4()
   const shareToken = layoutData.shareToken || `share_${uuidv4()}`
+  
+  let profileId = layoutData.profileId || null
+  if (!profileId) {
+    try {
+      const rawDetails = sessionStorage.getItem('projefarma_client_details')
+      if (rawDetails) {
+        const details = JSON.parse(rawDetails)
+        profileId = details.profileId || null
+      }
+    } catch {}
+  }
+
   const saved: SavedLayout = {
     ...(layoutData as SavedLayout),
     id,
     shareToken,
+    profileId: cleanUuid(profileId),
     layoutName: layoutData.layoutName || 'Layout sem nome',
     updatedAt: new Date().toISOString(),
     createdAt: layoutData.createdAt || new Date().toISOString(),
@@ -199,6 +213,19 @@ export function getLayoutStats(layout: { storeWidth: number; storeHeight: number
 
 // ─── Supabase Background Sync Helpers ──────────────────────────────────────────
 
+function cleanUuid(id: string | null | undefined): string | null {
+  if (!id) return null
+  const clean = String(id).trim()
+  if (clean.toLowerCase() === 'null' || clean.toLowerCase() === 'undefined' || clean === '') {
+    return null
+  }
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (uuidRegex.test(clean)) {
+    return clean
+  }
+  return null
+}
+
 function getValidUuid(id: string): string {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (uuidRegex.test(id)) {
@@ -207,8 +234,10 @@ function getValidUuid(id: string): string {
   return uuidv4()
 }
 
-export function syncLayoutToSupabase(layout: SavedLayout): void {
-  if (!supabase || !isSupabaseConfigured) return
+export async function syncLayoutToSupabase(layout: SavedLayout): Promise<{ success: boolean; error?: any }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: new Error('Supabase não está configurado.') }
+  }
   
   const validId = getValidUuid(layout.id)
   if (validId !== layout.id) {
@@ -230,23 +259,45 @@ export function syncLayoutToSupabase(layout: SavedLayout): void {
     shareToken: layout.shareToken,
     thumbnail: layout.thumbnail,
     createdAt: layout.createdAt,
-    updatedAt: layout.updatedAt
+    updatedAt: layout.updatedAt,
+    profileId: cleanUuid(layout.profileId)
   }
 
-  Promise.resolve(
-    supabase.from('layouts')
-      .upsert(dbData)
-  )
-    .then(({ error }) => {
-      if (error) {
-        console.warn('⚠️ Erro ao sincronizar layout com o Supabase:', error.message)
-      } else {
-        console.log('✅ Layout sincronizado com o Supabase:', layout.id)
+  try {
+    const { error } = await supabase.from('layouts').upsert(dbData)
+    if (error) {
+      if (error.code === '23503') {
+        console.warn('⚠️ profileId inexistente no banco. Limpando e salvando sem profileId...')
+        layout.profileId = null
+        const layouts = getLayouts()
+        if (layouts[layout.id]) {
+          layouts[layout.id].profileId = null
+          localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
+        }
+        try {
+          const rawDetails = sessionStorage.getItem('projefarma_client_details')
+          if (rawDetails) {
+            const details = JSON.parse(rawDetails)
+            details.profileId = null
+            sessionStorage.setItem('projefarma_client_details', JSON.stringify(details))
+          }
+        } catch {}
+        
+        const retryData = { ...dbData, profileId: null }
+        const { error: retryError } = await supabase.from('layouts').upsert(retryData)
+        if (retryError) {
+          return { success: false, error: retryError }
+        }
+        return { success: true }
       }
-    })
-    .catch(err => {
-      console.warn('⚠️ Falha de rede ao sincronizar layout:', err)
-    })
+      console.warn('⚠️ Erro ao sincronizar layout com o Supabase:', error.message)
+      return { success: false, error }
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn('⚠️ Falha de rede ao sincronizar layout:', err)
+    return { success: false, error: err }
+  }
 }
 
 export function deleteLayoutFromSupabase(id: string): void {
@@ -261,7 +312,7 @@ export function deleteLayoutFromSupabase(id: string): void {
       if (error) {
         console.warn('⚠️ Erro ao deletar layout no Supabase:', error.message)
       } else {
-        console.log('✅ Layout deletado no Supabase:', id)
+
       }
     })
     .catch(err => {
@@ -317,7 +368,7 @@ export function syncAppointmentToSupabase(appointment: Appointment): void {
       if (error) {
         console.warn('⚠️ Erro ao sincronizar agendamento com o Supabase:', error.message)
       } else {
-        console.log('✅ Agendamento sincronizado com o Supabase:', appointment.id)
+
       }
     })
     .catch(err => {
@@ -328,7 +379,7 @@ export function syncAppointmentToSupabase(appointment: Appointment): void {
 export async function syncAllWithSupabase(): Promise<void> {
   if (!supabase || !isSupabaseConfigured) return
 
-  console.log('🔄 Iniciando sincronização bidirecional com o Supabase...')
+
   try {
     // 1. Sincronizar Layouts
     const { data: remoteLayouts, error: layoutsErr } = await supabase.from('layouts').select('*')
@@ -505,7 +556,7 @@ export async function syncAllWithSupabase(): Promise<void> {
       }
     }
 
-    console.log('✅ Sincronização com o Supabase concluída.')
+
   } catch (err) {
     console.warn('⚠️ Falha crítica ao rodar sincronização com o Supabase:', err)
   }

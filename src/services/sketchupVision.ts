@@ -358,7 +358,7 @@ export function syncReferenceLayoutToSupabase(layout: ReferenceLayout): void {
       if (error) {
         console.warn('⚠️ Erro ao sincronizar layout de referência com o Supabase:', error.message)
       } else {
-        console.log('✅ Layout de referência sincronizado com o Supabase:', layout.id)
+
       }
     })
     .catch(err => {
@@ -378,7 +378,7 @@ export function deleteReferenceLayoutFromSupabase(id: string): void {
       if (error) {
         console.warn('⚠️ Erro ao deletar layout de referência no Supabase:', error.message)
       } else {
-        console.log('✅ Layout de referência deletado no Supabase:', id)
+
       }
     })
     .catch(err => {
