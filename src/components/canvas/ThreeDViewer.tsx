@@ -415,7 +415,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   }, [])
 
   // Customization & Physics States
-  const [showCustomizer, setShowCustomizer] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 767 : true))
+  const [showCustomizer, setShowCustomizer] = useState(false)
   const [floorStyle, setFloorStyle] = useState('marble')
   const [wallColor, setWallColor] = useState('mint') 
   // Real-time sun shadows ON by default on desktop for the premium hero shot; OFF on mobile
@@ -4132,9 +4132,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
                 setLayoutName(val)
               }} 
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: 'white',
+                background: '#ffffff',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                color: 'black',
                 padding: '6px 12px',
                 borderRadius: '4px',
                 width: '100%',
