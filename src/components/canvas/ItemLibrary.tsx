@@ -399,31 +399,20 @@ export default function ItemLibrary({
             )}
           </div>
 
-          {/* IA Layout banner card */}
-          <div className="lib-ia-card">
-            <div className="lib-ia-card-head">
-              <span className="lib-ia-sparkle">✨</span>
-              <span className="lib-ia-title">Inteligência Artificial</span>
-            </div>
-            <p className="lib-ia-desc">Importe sua planta baixa por foto ou otimize o layout atual.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-              <button 
-                id="btn-sidebar-floorplan"
-                className="btn btn-primary btn-sm btn-full" 
-                onClick={onOpenFloorPlanReader} 
-                style={{ background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                Importar Planta Baixa (IA)
-              </button>
-              <button className="btn btn-secondary btn-sm btn-full" onClick={handleAiGenerate} disabled={isGenerating}>
-                {isGenerating ? <><span className="il-spinner" />Gerando layout…</> : 'Otimizar Layout com IA'}
-              </button>
-            </div>
+          {/* IA Layout button */}
+          <div style={{ padding: 'var(--s4) var(--s3)', borderTop: '1px solid var(--border-sm)' }}>
+            <button 
+              id="btn-gen-layout" 
+              className="btn btn-primary btn-sm btn-full" 
+              onClick={handleAiGenerate} 
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <><span className="il-spinner" />Gerando projeto…</>
+              ) : (
+                <>Gerar Projeto com IA</>
+              )}
+            </button>
           </div>
         </div>
 
