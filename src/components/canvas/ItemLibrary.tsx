@@ -10,7 +10,6 @@ import './ItemLibrary.css'
 
 interface ItemLibraryProps {
   onItemAdded?: () => void
-  onOpenFloorPlanReader?: () => void
   isOpen?: boolean
   onToggleOpen?: (open: boolean) => void
 }
@@ -218,7 +217,6 @@ const getItemIcon = (category: string, id: string, name: string) => {
 
 export default function ItemLibrary({ 
   onItemAdded, 
-  onOpenFloorPlanReader,
   isOpen = false,
   onToggleOpen
 }: ItemLibraryProps) {
@@ -405,22 +403,9 @@ export default function ItemLibrary({
               <span className="lib-ia-sparkle">✨</span>
               <span className="lib-ia-title">Inteligência Artificial</span>
             </div>
-            <p className="lib-ia-desc">Importe sua planta baixa por foto ou otimize o layout atual.</p>
+            <p className="lib-ia-desc">Otimize o layout da sua farmácia com nossa Inteligência Artificial.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-              <button 
-                id="btn-sidebar-floorplan"
-                className="btn btn-primary btn-sm btn-full" 
-                onClick={onOpenFloorPlanReader} 
-                style={{ background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                Importar Planta Baixa (IA)
-              </button>
-              <button className="btn btn-secondary btn-sm btn-full" onClick={handleAiGenerate} disabled={isGenerating}>
+              <button className="btn btn-primary btn-sm btn-full" onClick={handleAiGenerate} disabled={isGenerating} style={{ background: '#10b981' }}>
                 {isGenerating ? <><span className="il-spinner" />Gerando layout…</> : 'Otimizar Layout com IA'}
               </button>
             </div>
