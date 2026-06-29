@@ -248,7 +248,7 @@ export async function syncLayoutToSupabase(layout: SavedLayout): Promise<{ succe
     localStorage.setItem(LAYOUTS_KEY, JSON.stringify(layouts))
   }
   
-  const dbData = {
+  const dbData: Record<string, unknown> = {
     id: layout.id,
     layoutName: layout.layoutName || 'Layout sem nome',
     storeWidth: layout.storeWidth,
@@ -262,6 +262,14 @@ export async function syncLayoutToSupabase(layout: SavedLayout): Promise<{ succe
     updatedAt: layout.updatedAt,
     profileId: cleanUuid(layout.profileId)
   }
+
+  // Inclui o user_id da sessão anônima/autenticada para proteção por RLS
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user?.id) {
+      dbData.user_id = session.user.id
+    }
+  } catch { /* não bloqueia o salvamento se falhar */ }
 
   try {
     const { error } = await supabase.from('layouts').upsert(dbData)

@@ -648,7 +648,10 @@ export default function Editor() {
 
         fetch('https://n8n.projefarma.online/webhook/happy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Secret': import.meta.env.VITE_WEBHOOK_SECRET || 'projefarma-happy-2025',
+          },
           body: JSON.stringify(webhookPayload),
         }).catch(err => console.warn('[Webhook] Falha ao notificar n8n:', err))
       } catch (webhookErr) {
