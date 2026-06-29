@@ -506,9 +506,9 @@
   padding: 6px 12px !important;
   font-size: var(--fs-xs) !important;
   font-weight: 700 !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: white !important;
+  background: rgba(11, 61, 46, 0.04) !important;
+  border: 1px solid rgba(11, 61, 46, 0.08) !important;
+  color: var(--text-2) !important;
   border-radius: var(--r-md) !important;
   cursor: pointer !important;
   box-shadow: none !important;
@@ -518,13 +518,15 @@
 }
 
 .hud-toggle-customizer:hover {
-  background: rgba(16, 185, 129, 0.08) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: rgba(11, 61, 46, 0.08) !important;
+  border-color: rgba(11, 61, 46, 0.2) !important;
+  color: var(--text-1) !important;
 }
 
 .hud-toggle-customizer.active {
   background: var(--primary) !important;
-  border: 1px solid var(--green-400) !important;
+  border: 1px solid var(--primary) !important;
+  color: #ffffff !important;
   box-shadow: var(--sh-green-sm) !important;
 }
 
