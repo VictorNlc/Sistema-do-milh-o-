@@ -1356,3 +1356,21 @@
     display: none !important;
   }
 }
+
+/* Tablet topbar optimization: Icon-only buttons */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hide-tablet-text {
+    display: none !important;
+  }
+  .tb-btn svg,
+  .tb-btn img {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  .tb-btn {
+    padding: 0 8px !important;
+    min-width: 32px !important;
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+}
