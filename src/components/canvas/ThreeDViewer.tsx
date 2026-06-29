@@ -385,9 +385,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const yawRef = useRef(0)
   const pitchRef = useRef(0)
 
-  // telemetry ref
-  const debugTextRef = useRef<HTMLDivElement>(null)
-
   // flags de inicialização
   const [initialized, setInitialized] = useState(false)
   const initializedRef = useRef(false)
@@ -1243,9 +1240,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
                 // Slow cinematic panning
                 if (cameraModeRef.current === 'orbit') {
-                  orbitYawRef.current += 0.04 * deltaTime
+                  orbitYawRef.current -= 0.04 * deltaTime
                 } else {
-                  yawRef.current += 0.02 * deltaTime
+                  yawRef.current -= 0.02 * deltaTime
                   cam.rotation.set(0, 0, 0)
                   cam.rotation.y = yawRef.current
                   cam.rotation.x = pitchRef.current
@@ -1388,9 +1385,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               const wVal = Math.max(3, Number(currentWidth) || 10)
               const hVal = Math.max(3, Number(currentHeight) || 12)
 
-              const boundMargin = 0.3
-              nextX = Math.max(-wVal / 2 + boundMargin, Math.min(nextX, wVal / 2 - boundMargin))
-              nextZ = Math.max(-hVal / 2 + boundMargin, Math.min(nextZ, hVal / 2 - boundMargin))
+              // Allow walking outside the store limits (e.g., up to 15 meters from store bounds)
+              nextX = Math.max(-wVal / 2 - 15.0, Math.min(nextX, wVal / 2 + 15.0))
+              nextZ = Math.max(-hVal / 2 - 15.0, Math.min(nextZ, hVal / 2 + 15.0))
 
               // Reduced collision radius (0.12) to navigate narrow corridors easily without getting stuck
               let collidedX = false
@@ -1435,17 +1432,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           }
 
           frameCount++
-          // Telemetria do HUD - Throttled to once every 15 frames to prevent layout reflow bottlenecks
-          if (debugTextRef.current && frameCount % 15 === 0) {
-            const mergedKeys = { ...keysRef.current, ...dpadKeysRef.current }
-            const activeKeys = Object.keys(mergedKeys)
-              .filter(k => mergedKeys[k])
-              .map(k => k.replace('Key', ''))
-              .join(', ') || 'Nenhuma'
-            
-            const currentItems = useCanvasStore.getState().items
-            debugTextRef.current.innerText = `Pos: ${cam.position.x.toFixed(2)}, ${cam.position.z.toFixed(2)} | Dir: ${(cam.rotation.y * 180 / Math.PI).toFixed(0)}° | Móveis: ${currentItems.length} | Init: ${initializedRef.current ? 'Sim' : 'Não'} | Teclas: ${activeKeys}`
-          }
 
           // Atualiza simulação de clientes 3D
           if (showSimulation && simulationDataRef.current.length > 0) {
@@ -3822,7 +3808,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         break
       case 2: // Corredor Central (Gôndolas)
         targetMode = 'first-person'
-        aimAtItem(gondolaItem, wVal * 0.2, hVal * 0.1, Math.PI * 0.8)
+        // Positioned along the main corridor path, looking forward and slightly angled
+        endPos.set(doorX, 1.6, hVal * 0.2)
+        endYaw = 0.15
         endPitch = -0.08
         break
       case 3: // Balcão de Medicamentos
@@ -4007,39 +3995,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       )}
       <div className="three-container" ref={containerRef} />
 
-      {/* ─── TOUR INDICATOR OVERLAY ─── */}
-      {tourActive && (
-        <div className="tour-indicator-overlay pointer-events-auto">
-          <div className="tour-badge">
-            <span className="tour-pulse-dot" />
-            MODO TOUR ATIVO
-          </div>
-          <div className="tour-scene-title">
-            {TOUR_SCENES[tourIndex]?.name}
-          </div>
-          <div className="tour-controls">
-            <button className="tour-control-btn" onClick={prevTourScene} title="Cena anterior">
-              ⏮️
-            </button>
-            <button className="tour-control-btn tour-stop-btn" onClick={() => {
-              setTourActive(false)
-              tourActiveRef.current = false
-              tourHoldStartRef.current = null
-            }} title="Parar Tour">
-              ⏹️ Parar Tour
-            </button>
-            <button className="tour-control-btn" onClick={advanceTour} title="Próxima cena">
-              ⏭️
-            </button>
-          </div>
-          <div className="tour-progress-bar-container">
-            <div 
-              className="tour-progress-bar" 
-              ref={tourProgressRef}
-            />
-          </div>
-        </div>
-      )}
+
       
       {/* ─── UI CONTROLS / OVERLAY ─── */}
       <div className="three-hud">
@@ -4059,21 +4015,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             )}
           </button>
 
-          <div className="hud-debug-telemetry" ref={debugTextRef} style={{
-            fontSize: 'var(--fs-2xs)',
-            fontFamily: 'monospace',
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-            padding: '4px 10px',
-            borderRadius: 'var(--r-md)',
-            color: 'var(--green-400)',
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-            minWidth: '220px',
-            textAlign: 'center'
-          }}>
-            Iniciando telemetria...
-          </div>
+
           <button className="btn btn-secondary btn-sm hud-close" onClick={onClose}>
             ✕ <span className="hide-mobile">Fechar Modo 3D</span><span className="show-mobile-inline">Fechar</span>
           </button>
