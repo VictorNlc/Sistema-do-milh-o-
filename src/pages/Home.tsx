@@ -162,7 +162,8 @@ export default function Home() {
               <span className="home-logo-by">by Projefarma</span>
             </div>
           </div>
-          <nav className="home-nav hide-mobile">
+          {/* Desktop view */}
+          <nav className="home-nav hide-tablet-mobile">
             <a href="#features">Funcionalidades</a>
             <a href="#como-funciona">Como funciona</a>
             <a href="#depoimentos">Depoimentos</a>
@@ -170,7 +171,14 @@ export default function Home() {
               Criar Projeto Grátis
             </button>
           </nav>
-          <button className="btn btn-primary btn-sm hide-desktop" onClick={() => navigate('/novo-layout')}>
+          
+          {/* Tablet view */}
+          <button className="btn btn-primary btn-sm show-tablet-only" onClick={() => navigate('/novo-layout')}>
+            Criar Projeto Grátis
+          </button>
+
+          {/* Mobile view */}
+          <button className="btn btn-primary btn-sm show-mobile-only" onClick={() => navigate('/novo-layout')}>
             Começar
           </button>
         </div>
