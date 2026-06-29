@@ -397,20 +397,6 @@ export default function ItemLibrary({
             )}
           </div>
 
-          {/* IA Layout button */}
-          <div style={{ padding: 'var(--s4) var(--s3)', borderTop: '1px solid var(--border-sm)' }}>
-            <button 
-              id="btn-gen-layout" 
-              className="btn btn-primary btn-sm btn-full" 
-              onClick={handleAiGenerate} 
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <><span className="il-spinner" />Gerando projeto…</>
-              ) : (
-                <>Gerar Projeto com IA</>
-              )}
-            </button>
           {/* IA Layout banner card */}
           <div className="lib-ia-card">
             <div className="lib-ia-card-head">
@@ -431,3 +417,4 @@ export default function ItemLibrary({
     </div>
   )
 }
+
