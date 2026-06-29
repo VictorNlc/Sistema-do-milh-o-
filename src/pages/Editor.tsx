@@ -1099,15 +1099,15 @@ export default function Editor() {
             </button>
           </div>
 
-          {/* Mobile save button */}
+          {/* Mobile email action button */}
           <div className="mobile-save-action">
             {!isReadOnly ? (
-              <button className="btn btn-primary btn-lg btn-full" onClick={() => handleSave()} style={{ background: '#10b981' }}>
-                <I.Save />
-                <span>Salvar Layout</span>
+              <button className="btn btn-primary btn-lg btn-full" onClick={() => setShowEmailModal(true)} style={{ background: '#2563eb', borderColor: '#2563eb' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <span>Receber por E-mail</span>
               </button>
             ) : (
-              <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981' }}>
+              <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981', borderColor: '#10b981' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 <span>Criar Meu Projeto</span>
               </button>
