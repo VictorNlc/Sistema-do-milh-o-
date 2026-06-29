@@ -488,3 +488,68 @@ export function exportLayoutToPDF(
     return false
   }
 }
+
+/**
+ * Gera o mesmo PDF da proposta, mas retorna o conteúdo como string base64
+ * (sem acionar o download do navegador). Usado para envio via webhook.
+ */
+export function exportLayoutToPDFBase64(
+  layout: {
+    storeWidth: number
+    storeHeight: number
+    storeType: string
+    items: CanvasItem[]
+    layoutName?: string
+    freightData?: { distanceKm: number; freightCost: number } | null
+  },
+  layoutImageDataUrl?: string
+): string | null {
+  try {
+    const { storeWidth, storeHeight, storeType, items, layoutName } = layout
+    const stats = getLayoutStats(layout)
+    if (!stats) return null
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    })
+
+    const pdfW = 210
+    const pdfH = 297
+    const margin = 15
+    const contentW = pdfW - margin * 2
+
+    const primaryColor: RgbTuple = [0, 132, 61]
+    const secondaryColor: RgbTuple = [26, 46, 30]
+    const grayText: RgbTuple = [84, 114, 96]
+    const lightBg: RgbTuple = [240, 251, 244]
+    const borderGray: RgbTuple = [217, 230, 221]
+
+    doc.setFillColor(...primaryColor)
+    doc.rect(0, 0, pdfW, 42, 'F')
+    doc.setFont('Helvetica', 'bold')
+    doc.setFontSize(22)
+    doc.setTextColor(255, 255, 255)
+    doc.text('ProjeLayout', margin, 20)
+    doc.setFont('Helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.setTextColor(217, 245, 229)
+    doc.text('RELATÓRIO DE PLANEJAMENTO · PROJEFARMA', margin, 27)
+    doc.setFont('Helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.text(new Date().toLocaleDateString('pt-BR'), pdfW - margin - 25, 25)
+
+    if (layoutImageDataUrl) {
+      try {
+        doc.addImage(layoutImageDataUrl, 'JPEG', margin, 50, contentW, contentW * (storeHeight / storeWidth))
+      } catch { /* silently skip if image fails */ }
+    }
+
+    // Return as base64 data URI
+    return doc.output('datauristring')
+  } catch (err) {
+    console.error('Error generating PDF base64:', err)
+    return null
+  }
+}

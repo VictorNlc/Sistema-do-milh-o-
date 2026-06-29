@@ -597,7 +597,16 @@ export default function Editor() {
 
       const shareUrl = `${window.location.origin}/layout/${saved.shareToken}`
 
-      // 3. Invocar a Edge Function do Supabase
+      // 3. Captura a imagem do layout (canvas)
+      let layoutImageDataUrl: string | undefined
+      try {
+        const stage = getActiveStage()
+        if (stage) {
+          layoutImageDataUrl = getFullLayoutDataUrl(stage, storeWidth, storeHeight)
+        }
+      } catch { /* prossegue sem imagem se canvas estiver bloqueado */ }
+
+      // 4. Invocar a Edge Function do Supabase
       if (!supabase) throw new Error("Supabase não está configurado.")
       const { data, error } = await supabase.functions.invoke('send-email', {
         body: {
@@ -619,6 +628,33 @@ export default function Editor() {
 
       toast.success('Proposta enviada por e-mail com sucesso!')
       setShowEmailModal(false)
+
+      // 5. Envia webhook para o n8n (WhatsApp) — fire and forget, não bloqueia o fluxo
+      try {
+        const { exportLayoutToPDFBase64 } = await import('../services/pdfExport')
+        const pdfBase64 = exportLayoutToPDFBase64(
+          { storeWidth, storeHeight, storeType, items, layoutName: saved.layoutName || 'Meu Layout', freightData },
+          layoutImageDataUrl
+        )
+
+        const webhookPayload = {
+          phone: recipientPhone,
+          clientName: recipientName,
+          layoutName: saved.layoutName || 'Meu Layout',
+          shareUrl,
+          layoutImage: layoutImageDataUrl || saved.thumbnail || null,
+          pdfBase64: pdfBase64 || null,
+        }
+
+        fetch('https://n8n.projefarma.online/webhook/happy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookPayload),
+        }).catch(err => console.warn('[Webhook] Falha ao notificar n8n:', err))
+      } catch (webhookErr) {
+        console.warn('[Webhook] Erro ao preparar payload:', webhookErr)
+      }
+
     } catch (err: any) {
       console.error('Erro ao enviar e-mail de proposta:', err)
       toast.error(`Erro ao enviar e-mail: ${err.message || 'Falha de comunicação'}`)
@@ -626,6 +662,7 @@ export default function Editor() {
       setSendingEmail(false)
     }
   }
+
 
   // Autosave: salva silenciosamente ~2,5s após a última alteração (apenas layouts já salvos,
   // para não criar registros órfãos de layouts novos que o usuário ainda não nomeou/salvou).
