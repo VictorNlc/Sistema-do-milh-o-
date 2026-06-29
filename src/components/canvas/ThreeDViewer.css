@@ -179,7 +179,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: -8vh; /* Shifts the card slightly higher */
+  margin-top: -8vh;
+  /* Shifts the card slightly higher */
   animation: scaleIn 0.3s var(--ease-spring);
 }
 
@@ -236,7 +237,8 @@
   justify-content: center;
   color: var(--text-2);
   font-family: var(--font);
-  z-index: 99999; /* Sit above everything */
+  z-index: 99999;
+  /* Sit above everything */
   pointer-events: auto;
 }
 
@@ -245,7 +247,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: 
+  background-image:
     linear-gradient(rgba(11, 61, 46, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(11, 61, 46, 0.04) 1px, transparent 1px);
   background-size: 30px 30px;
@@ -392,13 +394,25 @@
 
 /* Animations */
 @keyframes floatIcon {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-6px) rotate(3deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-6px) rotate(3deg);
+  }
 }
 
 @keyframes rotateRing {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ─── D-PAD CONTROLLER ─── */
@@ -674,7 +688,8 @@
   }
 
   .lock-card {
-    padding: var(--s4) var(--s5) !important; /* Smaller padding on mobile screens */
+    padding: var(--s4) var(--s5) !important;
+    /* Smaller padding on mobile screens */
   }
 
   .lock-icon {
@@ -758,7 +773,7 @@
     padding: var(--s2) !important;
     gap: 4px !important;
   }
-  
+
   .preset-title {
     width: 100%;
     border-right: none;
@@ -769,7 +784,7 @@
     margin-right: 0;
     margin-bottom: 4px;
   }
-  
+
   .preset-btn {
     flex: 1;
     min-width: 80px;
@@ -834,11 +849,13 @@
     transform: scale(0.8);
     opacity: 0.5;
   }
+
   50% {
     transform: scale(1.2);
     opacity: 1;
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
   }
+
   100% {
     transform: scale(0.8);
     opacity: 0.5;
@@ -916,6 +933,3 @@
   width: 0%;
   transition: width 0.1s linear;
 }
-
-
->>>>>>> 69b5a82 (feat: correcoes de portas, alinhamento 3D, sobreposicao de esquina e melhorias drag & drop)
