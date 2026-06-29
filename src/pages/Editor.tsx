@@ -674,7 +674,7 @@ export default function Editor() {
         {/* Store pill */}
         <button id="btn-store" className="tb-store" onClick={() => setShowSettings(s => !s)}>
           <span className="tb-store-val">{storeWidth}×{storeHeight}m</span>
-          <span className="tb-store-label desktop-only">Farmácia Premium</span>
+          <span className="tb-store-label desktop-only hide-tablet-text">Farmácia Premium</span>
           <span className="tb-store-arrow">▾</span>
         </button>
 
@@ -694,22 +694,22 @@ export default function Editor() {
         <ZoomControls />
 
         <button className="tb-btn desktop-only" onClick={recenter} title="Centralizar Visualização" style={{ height: 32 }}>
-          <I.Center /> Centralizar
+          <I.Center /> <span className="hide-tablet-text">Centralizar</span>
         </button>
 
         <button className="tb-btn tb-btn-danger desktop-only" onClick={() => { if (confirm('Limpar todo o layout?')) clearCanvas() }} title="Limpar todo o layout" style={{ height: 32 }}>
-          <I.Trash /> Limpar Layout
+          <I.Trash /> <span className="hide-tablet-text">Limpar Layout</span>
         </button>
 
         {/* Actions */}
         <div className="tb-right">
-          <div className="tb-status desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+          <div className="tb-status desktop-only hide-tablet-text" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
             <span>Project status: Connected</span>
           </div>
           <div className="tb-export-wrap desktop-only" style={{ position: 'relative' }}>
             <button className="tb-btn" onClick={() => setShowExportOptions(s => !s)}>
-              <I.Export /> Exportar ▾
+              <I.Export /> <span className="hide-tablet-text">Exportar ▾</span>
             </button>
             {showExportOptions && (
               <>
@@ -752,7 +752,7 @@ export default function Editor() {
 
           <button id="btn-3d" className="tb-btn desktop-only" onClick={handleOpen3D}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-            <span>Visualizar 3D</span>
+            <span className="hide-tablet-text">Visualizar 3D</span>
           </button>
           <button 
             id="btn-topbar-floorplan" 
@@ -765,14 +765,14 @@ export default function Editor() {
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            <span>Planta Baixa (IA)</span>
+            <span className="hide-tablet-text">Planta Baixa (IA)</span>
           </button>
           <button id="btn-save" className="tb-btn desktop-only" onClick={handleSave}>
             <I.Save />
-            <span className="desktop-only">Salvar</span>
+            <span className="hide-tablet-text">Salvar</span>
           </button>
           <button id="btn-schedule" className="tb-btn tb-btn-primary desktop-only" onClick={handleSchedule}>
-            <I.Cal /> Agendar
+            <I.Cal /> <span className="hide-tablet-text">Agendar</span>
           </button>
         </div>
       </header>
