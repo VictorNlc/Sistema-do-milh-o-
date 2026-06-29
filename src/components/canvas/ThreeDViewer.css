@@ -60,11 +60,22 @@
   /* sit above the lock screen overlay */
 }
 
+.hud-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
 .hud-title {
+  font-family: 'Outfit', sans-serif;
   font-size: var(--fs-md);
-  font-weight: 800;
-  color: var(--text-1);
-  letter-spacing: -0.01em;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, var(--verde-escuro) 0%, var(--green-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  white-space: nowrap;
 }
 
 .hud-close {
@@ -74,7 +85,7 @@
 /* ─── CUSTOMIZER SIDEBAR ─── */
 .three-customizer {
   position: absolute;
-  top: 100px;
+  top: 130px;
   left: var(--s6);
   width: 280px;
   background: rgba(252, 249, 242, 0.9);
@@ -499,7 +510,7 @@
 }
 
 /* ─── HUD TOGGLE CUSTOMIZER (DESKTOP DEFAULT) ─── */
-.hud-toggle-customizer {
+.hud-toggle-customizer, .hud-free-mode, .hud-tour-mode {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
@@ -517,13 +528,13 @@
   pointer-events: auto !important;
 }
 
-.hud-toggle-customizer:hover {
+.hud-toggle-customizer:hover, .hud-free-mode:hover, .hud-tour-mode:hover {
   background: rgba(11, 61, 46, 0.08) !important;
   border-color: rgba(11, 61, 46, 0.2) !important;
   color: var(--text-1) !important;
 }
 
-.hud-toggle-customizer.active {
+.hud-toggle-customizer.active, .hud-free-mode.active, .hud-tour-mode.active {
   background: var(--primary) !important;
   border: 1px solid var(--primary) !important;
   color: #ffffff !important;
