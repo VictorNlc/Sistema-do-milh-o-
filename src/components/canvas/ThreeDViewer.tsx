@@ -350,9 +350,10 @@ interface ThreeDViewerProps {
   onClose?: () => void
   showSimulation?: boolean
   initialCameraView?: 'normal' | 'aerial'
+  onSendEmail?: () => void
 }
 
-export default function ThreeDViewer({ onClose, showSimulation = false, initialCameraView = 'normal' }: ThreeDViewerProps) {
+export default function ThreeDViewer({ onClose, showSimulation = false, initialCameraView = 'normal', onSendEmail }: ThreeDViewerProps) {
   // Refs
   const containerRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -4116,6 +4117,16 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               }}
             >
               ✏️ <span className="hide-mobile">Editar planta baixa</span><span className="show-mobile-inline">Editar planta baixa</span>
+            </button>
+
+            <button 
+              className="btn btn-secondary btn-sm hud-email-btn"
+              onClick={() => {
+                onSendEmail?.()
+                setMobileMenuOpen(false)
+              }}
+            >
+              ✉️ <span className="hide-mobile">Receber Projeto por E-mail</span><span className="show-mobile-inline">Receber Projeto por E-mail</span>
             </button>
           </div>
         </div>

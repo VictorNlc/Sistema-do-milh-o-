@@ -1321,7 +1321,12 @@ export default function Editor() {
             </div>
           </div>
         }>
-          <ThreeDViewer onClose={() => setShow3D(false)} showSimulation={showSimulation} initialCameraView={initialCameraView} />
+          <ThreeDViewer 
+            onClose={() => setShow3D(false)} 
+            showSimulation={showSimulation} 
+            initialCameraView={initialCameraView} 
+            onSendEmail={() => setShowEmailModal(true)}
+          />
         </Suspense>
       )}
       {showAuditoria && (

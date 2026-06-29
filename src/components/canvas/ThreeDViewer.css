@@ -515,8 +515,7 @@
   user-select: none;
 }
 
-/* ─── HUD TOGGLE CUSTOMIZER (DESKTOP DEFAULT) ─── */
-.hud-toggle-customizer, .hud-free-mode, .hud-tour-mode {
+.hud-toggle-customizer, .hud-free-mode, .hud-tour-mode, .hud-email-btn {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
@@ -538,6 +537,22 @@
   background: rgba(11, 61, 46, 0.08) !important;
   border-color: rgba(11, 61, 46, 0.2) !important;
   color: var(--text-1) !important;
+}
+
+.hud-email-btn {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: 1px solid #1d4ed8 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+}
+
+.hud-email-btn:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
 }
 
 .hud-toggle-customizer.active, .hud-free-mode.active, .hud-tour-mode.active {
