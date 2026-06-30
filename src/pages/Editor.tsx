@@ -873,10 +873,6 @@ export default function Editor() {
 
         {/* Actions */}
         <div className="tb-right">
-          <div className="tb-status desktop-only hide-tablet-text" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
-            <span>Project status: Connected</span>
-          </div>
           <button className="tb-btn desktop-only" onClick={() => setShowEmailModal(true)} style={{ background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <span className="hide-tablet-text">Receber por E-mail</span>
