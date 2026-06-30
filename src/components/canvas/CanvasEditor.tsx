@@ -196,7 +196,10 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     const zoomX = containerSize.width / canvasW
     const zoomY = containerSize.height / canvasH
     const zoomInicial = Math.min(zoomX, zoomY)
-    const zoomFinal = zoomInicial * 0.83
+    
+    // Zoom slightly more out if horizontal space is the limiting factor (e.g. tablet sidebar open)
+    const marginFactor = zoomInicial === zoomX ? 0.71 : 0.83
+    const zoomFinal = zoomInicial * marginFactor
     const zoomClamped = Math.max(0.05, Math.min(5, zoomFinal))
 
     lastProgrammaticScale.current = zoomClamped
@@ -420,7 +423,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
 
   // Outer walls and dimension COTAs memoized
   const outerWallsAndDimensions = useMemo(() => {
-    const fs = Math.max(9, 12 / scale)
+    const fs = Math.max(9, 10.5 / scale) // slightly smaller font size on screen to fit tablet
     const textXStr = `${storeWidth.toFixed(2).replace('.', ',')} m`
     const textYStr = `${storeHeight.toFixed(2).replace('.', ',')} m`
     const textWidthX = textXStr.length * fs * 0.6
@@ -432,8 +435,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
     // Dynamically calculate the coordinate offsets so the dimensions push outwards as they grow.
     // Outer wall boundary is at -WALL_THICKNESS (top/left) and canvas size + WALL_THICKNESS (bottom/right).
     // Pushing them further out keeps them perfectly separated.
-    const lineY = -15 - rectHeight
-    const lineX = canvasW + 15 + rectHeight
+    const lineY = -10 - rectHeight
+    const lineX = canvasW + 10 + rectHeight
 
     return (
       <Group listening={false}>

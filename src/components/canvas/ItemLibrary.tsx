@@ -398,7 +398,7 @@ export default function ItemLibrary({
           </div>
 
           {/* IA Layout button */}
-          <div style={{ padding: 'var(--s4) var(--s3)', borderTop: '1px solid var(--border-sm)' }}>
+          <div className="lib-ia-btn-container" style={{ padding: 'var(--s4) var(--s3)', borderTop: '1px solid var(--border-sm)' }}>
             <button 
               id="btn-gen-layout" 
               className="btn btn-primary btn-sm btn-full" 

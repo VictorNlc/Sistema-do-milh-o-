@@ -312,6 +312,14 @@
     min-width: 163px !important;
     max-width: 163px !important;
   }
+  .lib-ia-btn-container {
+    padding: var(--s3) var(--s2) !important;
+  }
+  #btn-gen-layout {
+    font-size: 10px !important;
+    padding: 0 var(--s2) !important;
+    letter-spacing: -0.02em !important;
+  }
 }
 /* Spinner do botao "Otimizar Layout com IA" (#9) */
 .il-spinner {

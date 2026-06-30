@@ -130,6 +130,51 @@ export default function TutorialOverlay({ onClose }: TutorialOverlayProps) {
   };
 
   const getTooltipStyle = (): React.CSSProperties => {
+    const isMobile = window.innerWidth < 768
+
+    if (isMobile) {
+      const tooltipWidth = Math.min(window.innerWidth - 32, 420) // dynamic size up to 420px
+
+      if (!rect) {
+        return {
+          position: 'fixed',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: tooltipWidth,
+          zIndex: 10000,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }
+      }
+
+      // If there is a focused element, position card fixed at the top or bottom to prevent blocking the spotlighted area
+      const rectCenterY = rect.top + rect.height / 2
+      const isRectInLowerHalf = rectCenterY > window.innerHeight / 2
+      const left = (window.innerWidth - tooltipWidth) / 2
+
+      if (isRectInLowerHalf) {
+        return {
+          position: 'fixed',
+          left,
+          top: 20,
+          bottom: 'auto',
+          width: tooltipWidth,
+          zIndex: 10000,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }
+      } else {
+        return {
+          position: 'fixed',
+          left,
+          top: 'auto',
+          bottom: 20,
+          width: tooltipWidth,
+          zIndex: 10000,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }
+      }
+    }
+
     if (!rect) {
       return {
         position: 'fixed',
