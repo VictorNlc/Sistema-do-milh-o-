@@ -32,8 +32,8 @@ const STEPS: TutorialStep[] = [
   },
   {
     selector: '.editor-sidebar-right',
-    title: '3. Propriedades de Itens ⚙️',
-    description: 'Ao clicar em qualquer móvel no canvas, este painel (ou as abas de orçamento) permite alterar rótulos, girar 90°, duplicar, excluir ou ajustar as posições com precisão milimétrica.',
+    title: '3. Orçamento do Projeto 📊',
+    description: 'Aqui é gerada automaticamente a lista de móveis adicionados com quantidades, acabamentos e o valor estimado do seu projeto. O **Resumo do Orçamento** é atualizado em tempo real conforme você distribui os itens.',
     position: 'left'
   },
   {
@@ -50,8 +50,8 @@ const STEPS: TutorialStep[] = [
   },
   {
     selector: '.tb-right',
-    title: '6. Salvar, Exportar e Consultoria 📑',
-    description: 'No topo, salve seu projeto, exporte relatórios em PDF com imagens inclusas, planilhas Excel (orçamentos) e, quando pronto, clique em **Agendar** para falar com nossos especialistas.',
+    title: '6. Ações do Projeto 📑',
+    description: 'No topo direito você tem acesso às opções principais do seu layout: **Salvar** o projeto na nuvem, **Compartilhar** com outras pessoas, visualizar a farmácia em **3D** e **Receber o Orçamento por E-mail**.',
     position: 'bottom'
   }
 ]
