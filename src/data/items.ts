@@ -111,7 +111,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1036.39,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '11',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-12-premium',
@@ -132,7 +132,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1189.38,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '12',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-13-premium',
@@ -174,7 +174,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1270.05,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Com fundo todo canaletado. Contem rodapé na cor',
     code: '14',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-15-premium',
@@ -237,7 +237,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1008.64,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '21',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-22-premium',
@@ -258,7 +258,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 731.73,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '22',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-23-premium',
@@ -300,7 +300,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 2003.14,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 1 lado canaletado. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '31',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-32-premium',
@@ -321,7 +321,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 2635.63,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 2 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '32',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-33-premium',
@@ -433,42 +433,42 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'GONDOLAS',
     name: '[Premium] MIP DOR E FEBRE',
     icon: '💊',
-    description: 'Expositor de MIP DOR E FEBRE 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 43 | Preço: R$ 975.15',
+    description: 'Expositor de MIP DOR E FEBRE 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 43 | Preço: R$ 975.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 975.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '43',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-44-premium',
     category: 'GONDOLAS',
     name: '[Premium] MIP GRIPE E ALERGIA',
     icon: '💊',
-    description: 'Expositor de MIP GRIPE E ALERGIA 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 44 | Preço: R$ 975.15',
+    description: 'Expositor de MIP GRIPE E ALERGIA 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 44 | Preço: R$ 975.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 975.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '44',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-45-premium',
@@ -496,63 +496,63 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'GONDOLAS',
     name: '[Premium] MIP VIT E SUPLEMENTOS',
     icon: '💊',
-    description: 'Expositor de MIP VITAMINAS E SUPLEMENTOS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 46 | Preço: R$ 975.15',
+    description: 'Expositor de MIP VITAMINAS E SUPLEMENTOS 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 46 | Preço: R$ 975.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 975.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '46',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-47-premium',
     category: 'GONDOLAS',
     name: '[Premium] MIP PRIM SOCORROS',
     icon: '💊',
-    description: 'Expositor de MIP PRIMEIROS SOCORROS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 47 | Preço: R$ 975.15',
+    description: 'Expositor de MIP PRIMEIROS SOCORROS 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 47 | Preço: R$ 975.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 975.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '47',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-48-premium',
     category: 'GONDOLAS',
     name: '[Premium] MIP VITNATU',
     icon: '💊',
-    description: 'Expositor de MIP VITNATU 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 48 | Preço: R$ 975.15',
+    description: 'Expositor de MIP VITNATU 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 48 | Preço: R$ 975.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 975.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '48',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-51-premium',
@@ -762,7 +762,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 756.38,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado',
     code: '61',
-    height3d: 1.05
+    height3d: 1.36
   },
   {
     id: 'catalog-62-premium',
@@ -783,28 +783,28 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1245.0,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor',
     code: '62',
-    height3d: 1.05
+    height3d: 1.36
   },
   {
     id: 'catalog-63-premium',
     category: 'BALCOES',
     name: '[Premium] CX 100',
     icon: '💳',
-    description: 'Balcão de caixa com 1 prateleira 105x40x100cm | Cód: 63 | Preço: R$ 1610.91',
+    description: 'Balcão de caixa com 1 prateleira 136x42,8x100cm | Cód: 63 | Preço: R$ 1610.91',
     width: 1.0,
-    height: 0.4,
+    height: 0.428,
     color: '#2563EB',
     fillColor: '#DBEAFE',
     strokeColor: '#1D4ED8',
     minWidth: 1.0,
     maxWidth: 1.0,
-    minHeight: 0.4,
-    maxHeight: 0.4,
+    minHeight: 0.428,
+    maxHeight: 0.428,
     rotatable: true,
     price: 1610.91,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor',
     code: '63',
-    height3d: 1.05
+    height3d: 1.36
   },
   {
     id: 'catalog-71-premium',
@@ -825,7 +825,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 553.95,
     finish: 'MDP 15mm branco TX - Possui uma prateleira e 2 vista de vidro com expositor de preço. Rodape na cor',
     code: '71',
-    height3d: 0.85
+    height3d: 1.19
   },
   {
     id: 'catalog-72-premium',
@@ -846,7 +846,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 553.95,
     finish: 'MDP 15mm branco TX - modelo fechado. Expositor de preço. Rodape na cor',
     code: '72',
-    height3d: 0.85
+    height3d: 1.19
   },
   {
     id: 'catalog-81-premium',
@@ -909,7 +909,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1547.23,
     finish: 'MDP 15mm preto TX - rodapé 7,5 cm, testeira 30 cm. Possui 5 prateleiras de vidro, iluminação de LED ao fundo. Rodape na cor',
     code: '91',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-92-premium',
@@ -930,49 +930,49 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1111.23,
     finish: 'MDP 15mm branco TX - rodapé 7,5 cm, testeira 30 cm. Possui 5 prateleiras de vidro, iluminação de LED ao fundo. Rodape na cor',
     code: '92',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-101-premium',
     category: 'GONDOLAS',
     name: '[Premium] CTRL 50',
     icon: '📦',
-    description: 'Armário de controlados 50x190x21 | Cód: 101 | Preço: R$ 1131.01',
+    description: 'Armário de controlados 50x290x26,3 | Cód: 101 | Preço: R$ 1131.01',
     width: 0.5,
-    height: 0.21,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.21,
-    maxHeight: 0.21,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1131.01,
     finish: 'MDP 15mm branco TX - possui 9 prateleiras, uma porta e trava com chave testeira superior de 30cm e rodapé 7,5 cm. Rodape na cor',
     code: '101',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-102-premium',
     category: 'GONDOLAS',
     name: '[Premium] CTRL 100',
     icon: '📦',
-    description: 'Armário de controlados 100x190x21 | Cód: 102 | Preço: R$ 2262.02',
+    description: 'Armário de controlados 100x290x26,3 | Cód: 102 | Preço: R$ 2262.02',
     width: 1.0,
-    height: 0.21,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 1.0,
     maxWidth: 1.0,
-    minHeight: 0.21,
-    maxHeight: 0.21,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 2262.02,
     finish: 'MDP 15mm branco TX - possui 18 prateleiras, uma porta e trava com chave testeira superior de 30cm e rodapé 7,5 cm. Rodape na cor',
     code: '102',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-111-premium',
@@ -993,7 +993,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 963.29,
     finish: 'MDP 15mm preto TX - com 5 prateleiras fixa e painel canaletado superior. Testeira de 30cm com nomenclatura. Rodape na cor',
     code: '111',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-121-premium',
@@ -1014,7 +1014,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1158.3,
     finish: 'MDP 15mm Amadeirado – com 5 prateleiras e painel superior canaletado. Chapéu de 30cm com nomenclatura. Rodape na cor',
     code: '121',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-131-premium',
@@ -1357,42 +1357,42 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'PERFUMARIA',
     name: '[Premium] BOMB 57',
     icon: '🍬',
-    description: 'Expositor de bomboniere 57x15cm | Cód: 231 | Preço: R$ 347.82',
-    width: 0.57,
-    height: 0.15,
+    description: 'Expositor de bomboniere 60x105x25cm | Cód: 231 | Preço: R$ 347.82',
+    width: 0.6,
+    height: 0.25,
     color: '#DB2777',
     fillColor: '#FCE7F3',
     strokeColor: '#9D174D',
-    minWidth: 0.57,
-    maxWidth: 0.57,
-    minHeight: 0.15,
-    maxHeight: 0.15,
+    minWidth: 0.6,
+    maxWidth: 0.6,
+    minHeight: 0.25,
+    maxHeight: 0.25,
     rotatable: true,
     price: 347.82,
     finish: 'MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro',
     code: '231',
-    height3d: 1.9
+    height3d: 1.05
   },
   {
     id: 'catalog-232-premium',
     category: 'PERFUMARIA',
     name: '[Premium] BOMB 97',
     icon: '🍬',
-    description: 'Expositor de bomboniere 97x15cm | Cód: 232 | Preço: R$ 611.49',
-    width: 0.97,
-    height: 0.15,
+    description: 'Expositor de bomboniere 100x105x25cm | Cód: 232 | Preço: R$ 611.49',
+    width: 1.0,
+    height: 0.25,
     color: '#DB2777',
     fillColor: '#FCE7F3',
     strokeColor: '#9D174D',
-    minWidth: 0.97,
-    maxWidth: 0.97,
-    minHeight: 0.15,
-    maxHeight: 0.15,
+    minWidth: 1.0,
+    maxWidth: 1.0,
+    minHeight: 0.25,
+    maxHeight: 0.25,
     rotatable: true,
     price: 611.49,
     finish: 'MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro',
     code: '232',
-    height3d: 1.9
+    height3d: 1.05
   },
   {
     id: 'catalog-11-especial',
@@ -1413,7 +1413,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1066.14,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '11',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-12-especial',
@@ -1434,7 +1434,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1219.39,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '12',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-13-especial',
@@ -1476,7 +1476,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1300.05,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Com fundo todo canaletado. Contem rodapé na cor',
     code: '14',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-15-especial',
@@ -1539,7 +1539,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1038.47,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '21',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-22-especial',
@@ -1560,7 +1560,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 761.73,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '22',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-23-especial',
@@ -1602,7 +1602,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 2053.14,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 1 lado canaletado. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '31',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-32-especial',
@@ -1623,7 +1623,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 2685.14,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 2 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '32',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-33-especial',
@@ -1735,42 +1735,42 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'GONDOLAS',
     name: '[Especial] MIP 500mm',
     icon: '💊',
-    description: 'Expositor de MIP DOR E FEBRE 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 43 | Preço: R$ 1115.15',
+    description: 'Expositor de MIP DOR E FEBRE 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 43 | Preço: R$ 1115.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1115.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '43',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-44-especial',
     category: 'GONDOLAS',
     name: '[Especial] MIP 500mm',
     icon: '💊',
-    description: 'Expositor de MIP GRIPE E ALERGIA 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 44 | Preço: R$ 1115.15',
+    description: 'Expositor de MIP GRIPE E ALERGIA 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 44 | Preço: R$ 1115.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1115.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '44',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-45-especial',
@@ -1798,63 +1798,63 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'GONDOLAS',
     name: '[Especial] MIP 500mm',
     icon: '💊',
-    description: 'Expositor de MIP VITAMINAS E SUPLEMENTOS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 46 | Preço: R$ 1115.15',
+    description: 'Expositor de MIP VITAMINAS E SUPLEMENTOS 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 46 | Preço: R$ 1115.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1115.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '46',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-47-especial',
     category: 'GONDOLAS',
     name: '[Especial] MIP 500mm',
     icon: '💊',
-    description: 'Expositor de MIP PRIMEIROS SOCORROS 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 47 | Preço: R$ 1115.15',
+    description: 'Expositor de MIP PRIMEIROS SOCORROS 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 47 | Preço: R$ 1115.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1115.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '47',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-48-especial',
     category: 'GONDOLAS',
     name: '[Especial] MIP 500mm',
     icon: '💊',
-    description: 'Expositor de MIP VITNATU 50x1,90x26 cm, sendo cada vão com 6 prateleiras | Cód: 48 | Preço: R$ 1115.15',
+    description: 'Expositor de MIP VITNATU 50x2,90x26,3 cm, sendo cada vão com 6 prateleiras | Cód: 48 | Preço: R$ 1115.15',
     width: 0.5,
-    height: 0.26,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.26,
-    maxHeight: 0.26,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1115.15,
     finish: 'MDP 15mm branco TX - rodapé com 7,5 cm e testeira com 30 cm. 6 prateleiras. Todas as prateleiras com regulagem de altura. Possui vista frontal com identificação de categoria. Contem rodapé na cor e fundo adesivado',
     code: '48',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-51-especial',
@@ -2064,7 +2064,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 931.28,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado',
     code: '61',
-    height3d: 1.05
+    height3d: 1.36
   },
   {
     id: 'catalog-62-especial',
@@ -2085,28 +2085,28 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1280.0,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor',
     code: '62',
-    height3d: 1.05
+    height3d: 1.36
   },
   {
     id: 'catalog-63-especial',
     category: 'BALCOES',
     name: '[Especial] CAIXA 1000mm / CAIXA 800mm',
     icon: '💳',
-    description: 'Balcão de caixa com 1 prateleira 105x40x100cm | Cód: 63 | Preço: R$ 1645.61',
+    description: 'Balcão de caixa com 1 prateleira 136x42,8x100cm | Cód: 63 | Preço: R$ 1645.61',
     width: 1.0,
-    height: 0.4,
+    height: 0.428,
     color: '#2563EB',
     fillColor: '#DBEAFE',
     strokeColor: '#1D4ED8',
     minWidth: 1.0,
     maxWidth: 1.0,
-    minHeight: 0.4,
-    maxHeight: 0.4,
+    minHeight: 0.428,
+    maxHeight: 0.428,
     rotatable: true,
     price: 1645.61,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor',
     code: '63',
-    height3d: 1.05
+    height3d: 1.36
   },
   {
     id: 'catalog-71-especial',
@@ -2127,7 +2127,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 588.95,
     finish: 'MDP 15mm branco TX - Possui uma prateleira e 2 vista de vidro com expositor de preço. Rodape na cor',
     code: '71',
-    height3d: 0.85
+    height3d: 1.19
   },
   {
     id: 'catalog-72-especial',
@@ -2148,7 +2148,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 588.95,
     finish: 'MDP 15mm branco TX - modelo fechado. Expositor de preço. Rodape na cor',
     code: '72',
-    height3d: 0.85
+    height3d: 1.19
   },
   {
     id: 'catalog-81-especial',
@@ -2211,7 +2211,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1647.32,
     finish: 'MDP 15mm preto TX - rodapé 7,5 cm, testeira 30 cm. Possui 5 prateleiras de vidro, iluminação de LED ao fundo. Rodape na cor',
     code: '91',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-92-especial',
@@ -2232,56 +2232,56 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1171.23,
     finish: 'MDP 15mm branco TX - rodapé 7,5 cm, testeira 30 cm. Possui 5 prateleiras de vidro, iluminação de LED ao fundo. Rodape na cor',
     code: '92',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-101-especial',
     category: 'GONDOLAS',
     name: '[Especial] controlado 500mm',
     icon: '💊',
-    description: 'Armário de controlados 50x190x21 | Cód: 101 | Preço: R$ 1166.01',
+    description: 'Armário de controlados 50x290x26,3 | Cód: 101 | Preço: R$ 1166.01',
     width: 0.5,
-    height: 0.21,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 0.5,
     maxWidth: 0.5,
-    minHeight: 0.21,
-    maxHeight: 0.21,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 1166.01,
     finish: 'MDP 15mm branco TX - possui 9 prateleiras, uma porta e trava com chave testeira superior de 30cm e rodapé 7,5 cm. Rodape na cor',
     code: '101',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-102-especial',
     category: 'GONDOLAS',
     name: '[Especial] controlado 1000',
     icon: '💊',
-    description: 'Armário de controlados 100x190x21 | Cód: 102 | Preço: R$ 2322.02',
+    description: 'Armário de controlados 100x290x26,3 | Cód: 102 | Preço: R$ 2322.02',
     width: 1.0,
-    height: 0.21,
+    height: 0.263,
     color: '#8B7355',
     fillColor: '#D4B896',
     strokeColor: '#5C4A2A',
     minWidth: 1.0,
     maxWidth: 1.0,
-    minHeight: 0.21,
-    maxHeight: 0.21,
+    minHeight: 0.263,
+    maxHeight: 0.263,
     rotatable: true,
     price: 2322.02,
     finish: 'MDP 15mm branco TX - possui 18 prateleiras, uma porta e trava com chave testeira superior de 30cm e rodapé 7,5 cm. Rodape na cor',
     code: '102',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-111-especial',
     category: 'PERFUMARIA',
     name: '[Especial] esmaltes 500mm',
     icon: '💅',
-    description: 'Expositor de esmalteria 190x50x26cm | Cód: 111 | Preço: R$ 1589.00',
+    description: 'Expositor de esmalteria 290x50x26cm | Cód: 111 | Preço: R$ 1589.00',
     width: 0.5,
     height: 0.26,
     color: '#DB2777',
@@ -2295,14 +2295,14 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1589.0,
     finish: 'MDP 15mm preto TX - com 5 prateleiras fixa e painel canaletado superior. Testeira de 30cm com nomenclatura. Rodape na cor',
     code: '111',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-121-especial',
     category: 'PERFUMARIA',
     name: '[Especial] MAQ 500mm',
     icon: '🌸',
-    description: 'Expositor de maquiagem 190x50x26cm | Cód: 121 | Preço: R$ 1218.30',
+    description: 'Expositor de maquiagem 290x50x26cm | Cód: 121 | Preço: R$ 1218.30',
     width: 0.5,
     height: 0.26,
     color: '#DB2777',
@@ -2316,7 +2316,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 1218.3,
     finish: 'MDP 15mm Amadeirado – com 5 prateleiras e painel superior canaletado. Chapéu de 30cm com nomenclatura. Rodape na cor',
     code: '121',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-131-especial',
@@ -2660,20 +2660,20 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     name: '[Especial] BOMB 570',
     icon: '🍬',
     description: 'Expositor de bomboniere 57x15cm | Cód: 231 | Preço: R$ 347.82',
-    width: 0.57,
-    height: 0.15,
+    width: 0.6,
+    height: 0.25,
     color: '#DB2777',
     fillColor: '#FCE7F3',
     strokeColor: '#9D174D',
-    minWidth: 0.57,
-    maxWidth: 0.57,
-    minHeight: 0.15,
-    maxHeight: 0.15,
+    minWidth: 0.6,
+    maxWidth: 0.6,
+    minHeight: 0.25,
+    maxHeight: 0.25,
     rotatable: true,
     price: 347.82,
     finish: 'MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro',
     code: '231',
-    height3d: 1.9
+    height3d: 1.05
   },
   {
     id: 'catalog-232-especial',
@@ -2681,20 +2681,20 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     name: '[Especial] BOMB 970',
     icon: '🍬',
     description: 'Expositor de bomboniere 97x15cm | Cód: 232 | Preço: R$ 611.49',
-    width: 0.97,
-    height: 0.15,
+    width: 1.0,
+    height: 0.25,
     color: '#DB2777',
     fillColor: '#FCE7F3',
     strokeColor: '#9D174D',
-    minWidth: 0.97,
-    maxWidth: 0.97,
-    minHeight: 0.15,
-    maxHeight: 0.15,
+    minWidth: 1.0,
+    maxWidth: 1.0,
+    minHeight: 0.25,
+    maxHeight: 0.25,
     rotatable: true,
     price: 611.49,
     finish: 'MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro',
     code: '232',
-    height3d: 1.9
+    height3d: 1.05
   },
   {
     id: 'catalog-251-especial',

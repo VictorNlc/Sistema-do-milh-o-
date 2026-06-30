@@ -309,34 +309,53 @@ const createCarMesh = (color: number): THREE.Group => {
 const modelCache: Record<string, THREE.Group | undefined> = {}
 const loadingPromises: Record<string, Promise<THREE.Group> | undefined> = {}
 
+// Mapping from catalog item ID to 3D GLB model key
+const MODEL_KEY_FOR_ITEM: Record<string, string> = {
+  'catalog-71-premium': 'cestao', 'catalog-71-especial': 'cestao',
+  'catalog-72-premium': 'cestao', 'catalog-72-especial': 'cestao',
+  'catalog-53-premium': 'balcao070', 'catalog-53-especial': 'balcao070',
+  'catalog-58-premium': 'balcao070', 'catalog-58-especial': 'balcao070',
+  'catalog-52-premium': 'balcao080', 'catalog-52-especial': 'balcao080',
+  'catalog-57-premium': 'balcao080', 'catalog-57-especial': 'balcao080',
+  'catalog-51-premium': 'balcao100', 'catalog-51-especial': 'balcao100',
+  'catalog-55-premium': 'balcao100', 'catalog-55-especial': 'balcao100',
+  'catalog-56-premium': 'balcao100', 'catalog-56-especial': 'balcao100',
+  'catalog-231-premium': 'bomboniere060', 'catalog-231-especial': 'bomboniere060',
+  'catalog-232-premium': 'bomboniere100', 'catalog-232-especial': 'bomboniere100',
+  'catalog-63-premium': 'caixa100', 'catalog-63-especial': 'caixa100',
+  'catalog-61-premium': 'pdv060', 'catalog-61-especial': 'pdv060',
+  'catalog-62-premium': 'pdv060', 'catalog-62-especial': 'pdv060',
+  'catalog-101-premium': 'controlado050', 'catalog-101-especial': 'controlado050',
+  'catalog-102-premium': 'controlado100', 'catalog-102-especial': 'controlado100',
+  'catalog-91-premium': 'dermo050', 'catalog-91-especial': 'dermo050',
+  'catalog-92-premium': 'dermo050', 'catalog-92-especial': 'dermo050',
+  'catalog-111-premium': 'esmalte050', 'catalog-111-especial': 'esmalte050',
+  'catalog-31-premium': 'gondola170', 'catalog-31-especial': 'gondola170',
+  'catalog-32-premium': 'gondola220', 'catalog-32-especial': 'gondola220',
+  'catalog-121-premium': 'maquiagem050', 'catalog-121-especial': 'maquiagem050',
+  'catalog-21-premium': 'medicamento080', 'catalog-21-especial': 'medicamento080',
+  'catalog-22-premium': 'medicamento050', 'catalog-22-especial': 'medicamento050',
+  'catalog-11-premium': 'perfumaria080', 'catalog-11-especial': 'perfumaria080',
+  'catalog-12-premium': 'perfumariafraldas', 'catalog-12-especial': 'perfumariafraldas',
+  'catalog-14-premium': 'perfumariacanal080', 'catalog-14-especial': 'perfumariacanal080',
+  'catalog-45-premium': 'mipsistdigestivo', 'catalog-45-especial': 'mipsistdigestivo',
+  'catalog-43-premium': 'mipdorfebre', 'catalog-43-especial': 'mipdorfebre',
+  'catalog-44-premium': 'mipgripealergia', 'catalog-44-especial': 'mipgripealergia',
+  'catalog-46-premium': 'mipvitaminas', 'catalog-46-especial': 'mipvitaminas',
+  'catalog-48-premium': 'mipvitaminas', 'catalog-48-especial': 'mipvitaminas',
+  'catalog-47-premium': 'mipprimeiros', 'catalog-47-especial': 'mipprimeiros',
+}
+
+// Gondola models are stored with their length along the GLB X axis — no Y rotation needed
+const NO_ROTATION_MODELS = new Set(['gondola170', 'gondola170cimed', 'gondola220', 'gondola220cimed'])
+
 const getRequiredModelKeys = (items: any[]): string[] => {
   const keys = new Set<string>()
   items.forEach(item => {
     if (!item) return
-    const nameUpper = (item.name || '').toUpperCase()
-    const idUpper = (item.itemId || item.id || '').toUpperCase()
-    
-    if (idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')) {
-      keys.add('cestao')
-    } else if (idUpper.includes('CATALOG-101') || idUpper.includes('CATALOG-102') || nameUpper.includes('CONTROLADO') || nameUpper.includes('CTRL')) {
-      keys.add('controlado')
-    } else if (idUpper.includes('CATALOG-91') || idUpper.includes('CATALOG-92') || nameUpper.includes('DERMO')) {
-      keys.add('dermo')
-    } else if (idUpper.includes('CATALOG-111') || nameUpper.includes('ESMALTE') || nameUpper.includes('ESMALTES')) {
-      keys.add('esmalte')
-    } else if (idUpper.includes('CATALOG-14-') || nameUpper.includes('CANALETADO') || nameUpper.includes('CANAL')) {
-      keys.add('canaletado')
-    } else if (nameUpper.includes('FILA') || nameUpper.includes('FILA INTELIGENTE') || nameUpper.includes('FILA_INTELIGENTE')) {
-      keys.add('fila')
-    } else if (nameUpper.includes('MED ') || nameUpper.includes('MED 807') || nameUpper.includes('MED 500') || nameUpper.includes('MED DUPLO') || nameUpper.includes('MEDICAMENTO') || (item.category === 'GONDOLAS' && nameUpper.includes('MED'))) {
-      keys.add('medicamento')
-    } else if (item.category === 'PERFUMARIA') {
-      keys.add('perfumaria')
-    } else if (item.category === 'GONDOLAS' && (nameUpper.includes('GOND') || nameUpper.includes('GÔNDOLA') || nameUpper.includes('GONDOLA'))) {
-      keys.add('gondolabranca')
-    } else if (nameUpper.includes('MIP SIST') || nameUpper.includes('DIGESTIVO') || idUpper.includes('MIP-SIST') || idUpper.includes('MIP_SIST')) {
-      keys.add('mipsistdigestivo')
-    }
+    const itemId = item.itemId || item.id || ''
+    const key = MODEL_KEY_FOR_ITEM[itemId]
+    if (key) keys.add(key)
   })
   return Array.from(keys)
 }
@@ -437,15 +456,32 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const carsRef = useRef<{ mesh: THREE.Group; speed: number; dir: number }[]>([])
   const [loadedModelsCount, setLoadedModelsCount] = useState(0)
   const cestaoModelRef = useRef<THREE.Group | null>(null)
-  const controladoModelRef = useRef<THREE.Group | null>(null)
-  const dermoModelRef = useRef<THREE.Group | null>(null)
-  const esmalteModelRef = useRef<THREE.Group | null>(null)
-  const gondolabrancaModelRef = useRef<THREE.Group | null>(null)
-  const canaletadoModelRef = useRef<THREE.Group | null>(null)
-  const filaModelRef = useRef<THREE.Group | null>(null)
-  const medicamentoModelRef = useRef<THREE.Group | null>(null)
-  const perfumariaModelRef = useRef<THREE.Group | null>(null) 
+  const balcao070ModelRef = useRef<THREE.Group | null>(null)
+  const balcao080ModelRef = useRef<THREE.Group | null>(null)
+  const balcao100ModelRef = useRef<THREE.Group | null>(null)
+  const bomboniere060ModelRef = useRef<THREE.Group | null>(null)
+  const bomboniere100ModelRef = useRef<THREE.Group | null>(null)
+  const caixa100ModelRef = useRef<THREE.Group | null>(null)
+  const controlado050ModelRef = useRef<THREE.Group | null>(null)
+  const controlado100ModelRef = useRef<THREE.Group | null>(null)
+  const dermo050ModelRef = useRef<THREE.Group | null>(null)
+  const esmalte050ModelRef = useRef<THREE.Group | null>(null)
+  const gondola170ModelRef = useRef<THREE.Group | null>(null)
+  const gondola170cimedModelRef = useRef<THREE.Group | null>(null)
+  const gondola220ModelRef = useRef<THREE.Group | null>(null)
+  const gondola220cimedModelRef = useRef<THREE.Group | null>(null)
+  const maquiagem050ModelRef = useRef<THREE.Group | null>(null)
+  const medicamento050ModelRef = useRef<THREE.Group | null>(null)
+  const medicamento080ModelRef = useRef<THREE.Group | null>(null)
+  const pdv060ModelRef = useRef<THREE.Group | null>(null)
+  const perfumaria080ModelRef = useRef<THREE.Group | null>(null)
+  const perfumariacanal080ModelRef = useRef<THREE.Group | null>(null)
+  const perfumariafraldaModelRef = useRef<THREE.Group | null>(null)
   const mipsistdigestivoModelRef = useRef<THREE.Group | null>(null)
+  const mipdorfebreModelRef = useRef<THREE.Group | null>(null)
+  const mipgripeAlergiaModelRef = useRef<THREE.Group | null>(null)
+  const mipPrimeirosModelRef = useRef<THREE.Group | null>(null)
+  const mipVitaminasModelRef = useRef<THREE.Group | null>(null)
   const [showSignage, setShowSignage] = useState(false)
   const [noclip, setNoclip] = useState(true) // Toggle physics/collisions
  
@@ -717,30 +753,64 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       // Map keys to local refs
       const refMap: Record<string, React.MutableRefObject<THREE.Group | null>> = {
         cestao: cestaoModelRef,
-        controlado: controladoModelRef,
-        dermo: dermoModelRef,
-        esmalte: esmalteModelRef,
-        gondolabranca: gondolabrancaModelRef,
-        canaletado: canaletadoModelRef,
-        fila: filaModelRef,
-        medicamento: medicamentoModelRef,
-        perfumaria: perfumariaModelRef,
-        mipsistdigestivo: mipsistdigestivoModelRef
+        balcao070: balcao070ModelRef,
+        balcao080: balcao080ModelRef,
+        balcao100: balcao100ModelRef,
+        bomboniere060: bomboniere060ModelRef,
+        bomboniere100: bomboniere100ModelRef,
+        caixa100: caixa100ModelRef,
+        controlado050: controlado050ModelRef,
+        controlado100: controlado100ModelRef,
+        dermo050: dermo050ModelRef,
+        esmalte050: esmalte050ModelRef,
+        gondola170: gondola170ModelRef,
+        gondola170cimed: gondola170cimedModelRef,
+        gondola220: gondola220ModelRef,
+        gondola220cimed: gondola220cimedModelRef,
+        maquiagem050: maquiagem050ModelRef,
+        medicamento050: medicamento050ModelRef,
+        medicamento080: medicamento080ModelRef,
+        pdv060: pdv060ModelRef,
+        perfumaria080: perfumaria080ModelRef,
+        perfumariacanal080: perfumariacanal080ModelRef,
+        perfumariafraldas: perfumariafraldaModelRef,
+        mipsistdigestivo: mipsistdigestivoModelRef,
+        mipdorfebre: mipdorfebreModelRef,
+        mipgripealergia: mipgripeAlergiaModelRef,
+        mipprimeiros: mipPrimeirosModelRef,
+        mipvitaminas: mipVitaminasModelRef,
       }
 
       // Load only required 3D Models
       const gltfLoader = new GLTFLoader()
       const modelsToLoad = [
-        { key: 'cestao', path: '/models/cestao.glb' },
-        { key: 'controlado', path: '/models/Controlado.glb' },
-        { key: 'dermo', path: '/models/Dermo.glb' },
-        { key: 'esmalte', path: '/models/Esmalte.glb' },
-        { key: 'gondolabranca', path: '/models/Gondolabranca.glb' },
-        { key: 'canaletado', path: '/models/Pf canaletado.glb' },
-        { key: 'fila', path: '/models/fila inteligente.glb' },
-        { key: 'medicamento', path: '/models/medicamento.glb' },
-        { key: 'perfumaria', path: '/models/perfumaria.glb' },
+        { key: 'cestao', path: '/models/Cestão 0,40x0,40.glb' },
+        { key: 'balcao070', path: '/models/Balcão mdf 0,70.glb' },
+        { key: 'balcao080', path: '/models/Balcão mdf 0,80.glb' },
+        { key: 'balcao100', path: '/models/Balcão mdf 1,00.glb' },
+        { key: 'bomboniere060', path: '/models/Bomboniere 0,60.glb' },
+        { key: 'bomboniere100', path: '/models/Bomboniere 1,00.glb' },
+        { key: 'caixa100', path: '/models/Caixa 1,00.glb' },
+        { key: 'controlado050', path: '/models/Controlado 0,50.glb' },
+        { key: 'controlado100', path: '/models/Controlado 1,00.glb' },
+        { key: 'dermo050', path: '/models/Dermo 0,50.glb' },
+        { key: 'esmalte050', path: '/models/Esmaltes 0,50.glb' },
+        { key: 'gondola170', path: '/models/Gôndola 1,70.glb' },
+        { key: 'gondola170cimed', path: '/models/Gôndola 1,70 com ponta cimed.glb' },
+        { key: 'gondola220', path: '/models/Gôndola 2,20.glb' },
+        { key: 'gondola220cimed', path: '/models/Gôndola 2,20 com ponta cimed.glb' },
+        { key: 'maquiagem050', path: '/models/Maquiagens 0,50.glb' },
+        { key: 'medicamento050', path: '/models/Medicamento 0,50.glb' },
+        { key: 'medicamento080', path: '/models/Medicamento 0,80.glb' },
+        { key: 'pdv060', path: '/models/PDV 0,60.glb' },
+        { key: 'perfumaria080', path: '/models/Perfumaria 0,80.glb' },
+        { key: 'perfumariacanal080', path: '/models/Perfumaria canaletado 0,80.glb' },
+        { key: 'perfumariafraldas', path: '/models/Perfumaria fraldas.glb' },
         { key: 'mipsistdigestivo', path: '/models/mip sistema digestivo.glb' },
+        { key: 'mipdorfebre', path: '/models/mip dor e febre.glb' },
+        { key: 'mipgripealergia', path: '/models/mip gripe e alergia.glb' },
+        { key: 'mipprimeiros', path: '/models/mip Primeiros Socorros.glb' },
+        { key: 'mipvitaminas', path: '/models/mip Vitaminas e Minerais.glb' },
       ]
 
       requiredKeys.forEach((key) => {
@@ -3241,50 +3311,49 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         subGroup.add(modelClone)
       }
 
-      // Match items to custom GLB 3D models added by the user
-      let matchedModel: THREE.Group | null = null
-
-      if (idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')) {
-        matchedModel = cestaoModelRef.current
-      } else if (idUpper.includes('CATALOG-101') || idUpper.includes('CATALOG-102') || nameUpper.includes('CONTROLADO') || nameUpper.includes('CTRL')) {
-        matchedModel = controladoModelRef.current
-      } else if (idUpper.includes('CATALOG-91') || idUpper.includes('CATALOG-92') || nameUpper.includes('DERMO')) {
-        matchedModel = dermoModelRef.current
-      } else if (idUpper.includes('CATALOG-111') || nameUpper.includes('ESMALTE') || nameUpper.includes('ESMALTES')) {
-        matchedModel = esmalteModelRef.current
-      } else if (idUpper.includes('CATALOG-14-') || nameUpper.includes('CANALETADO') || nameUpper.includes('CANAL')) {
-        matchedModel = canaletadoModelRef.current
-      } else if (nameUpper.includes('FILA') || nameUpper.includes('FILA INTELIGENTE') || nameUpper.includes('FILA_INTELIGENTE')) {
-        matchedModel = filaModelRef.current
-      } else if (nameUpper.includes('MED ') || nameUpper.includes('MED 807') || nameUpper.includes('MED 500') || nameUpper.includes('MED DUPLO') || nameUpper.includes('MEDICAMENTO') || (item.category === 'GONDOLAS' && nameUpper.includes('MED'))) {
-        matchedModel = medicamentoModelRef.current
-      } else if (item.category === 'PERFUMARIA') {
-        matchedModel = perfumariaModelRef.current
-      } else if (item.category === 'GONDOLAS' && (nameUpper.includes('GOND') || nameUpper.includes('GÔNDOLA') || nameUpper.includes('GONDOLA'))) {
-        matchedModel = gondolabrancaModelRef.current
-      } else if (nameUpper.includes('MIP SIST') || nameUpper.includes('DIGESTIVO') || idUpper.includes('MIP-SIST') || idUpper.includes('MIP_SIST')) {
-        matchedModel = mipsistdigestivoModelRef.current
+      // Match catalog item to GLB 3D model by ID
+      const itemId = item.itemId || item.id || ''
+      const matchedKey = MODEL_KEY_FOR_ITEM[itemId]
+      const modelRefLookup: Record<string, React.MutableRefObject<THREE.Group | null>> = {
+        cestao: cestaoModelRef,
+        balcao070: balcao070ModelRef,
+        balcao080: balcao080ModelRef,
+        balcao100: balcao100ModelRef,
+        bomboniere060: bomboniere060ModelRef,
+        bomboniere100: bomboniere100ModelRef,
+        caixa100: caixa100ModelRef,
+        controlado050: controlado050ModelRef,
+        controlado100: controlado100ModelRef,
+        dermo050: dermo050ModelRef,
+        esmalte050: esmalte050ModelRef,
+        gondola170: gondola170ModelRef,
+        gondola170cimed: gondola170cimedModelRef,
+        gondola220: gondola220ModelRef,
+        gondola220cimed: gondola220cimedModelRef,
+        maquiagem050: maquiagem050ModelRef,
+        medicamento050: medicamento050ModelRef,
+        medicamento080: medicamento080ModelRef,
+        pdv060: pdv060ModelRef,
+        perfumaria080: perfumaria080ModelRef,
+        perfumariacanal080: perfumariacanal080ModelRef,
+        perfumariafraldas: perfumariafraldaModelRef,
+        mipsistdigestivo: mipsistdigestivoModelRef,
+        mipdorfebre: mipdorfebreModelRef,
+        mipgripealergia: mipgripeAlergiaModelRef,
+        mipprimeiros: mipPrimeirosModelRef,
+        mipvitaminas: mipVitaminasModelRef,
       }
-
-      const isCestao = idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')
-      const isMipDigestivo = nameUpper.includes('MIP SIST') || nameUpper.includes('DIGESTIVO') || idUpper.includes('MIP-SIST') || idUpper.includes('MIP_SIST')
+      const matchedModel = matchedKey ? (modelRefLookup[matchedKey]?.current ?? null) : null
 
       if (matchedModel) {
         try {
-          // mipsistdigestivo needs a 90° Y correction: its GLB front faces +X but Three.js
-          // expects -Z as the "forward" direction for a canvas item at rotation=0.
-          const rotCorrection = isMipDigestivo ? Math.PI / 2 : 0
-          applyModelToSubGroup(matchedModel, isMipDigestivo, rotCorrection)
+          // Gondola models are stored with length along GLB X — no Y rotation needed.
+          // All other models have their depth along GLB X and need 90° Y correction.
+          const rotCorrection = NO_ROTATION_MODELS.has(matchedKey!) ? 0 : Math.PI / 2
+          applyModelToSubGroup(matchedModel, true, rotCorrection)
         } catch (e) {
           console.error(`⚠️ [3D Viewer] Erro ao clonar/renderizar modelo 3D para ${item.name}:`, e)
         }
-      } else if (isCestao) {
-        const basketGeo = new THREE.CylinderGeometry(itemW / 2, itemW / 2, itemH, 12, 1, true)
-        const basketMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.2, metalness: 0.8, side: THREE.DoubleSide, wireframe: true })
-        const basketMesh = new THREE.Mesh(basketGeo, basketMat)
-        basketMesh.position.y = itemH / 2
-        basketMesh.castShadow = true
-        subGroup.add(basketMesh)
       } else {
         const itemColor = new THREE.Color(0x4b5563)
         try {
