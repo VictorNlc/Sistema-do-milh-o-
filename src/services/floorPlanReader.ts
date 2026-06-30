@@ -51,40 +51,48 @@ export function fileToBase64(file: File): Promise<string> {
  * A IA identifica a largura, comprimento, portas, pilares e salas internas.
  */
 export async function readFloorPlanImage(base64Image: string, mimeType: string = 'image/jpeg'): Promise<FloorPlanResult> {
-  const prompt = `Você é um Engenheiro e Arquiteto de Layout especialista em leitura de plantas baixas físicas de farmácias comerciais.
-Sua tarefa é analisar o arquivo de imagem enviado (que pode ser um desenho à mão livre/croqui ou uma planta técnica feita por engenheiro) e extrair os dados estruturais e as dimensões reais do local para que possamos representá-lo no nosso editor digital 2D.
+  const prompt = `Você é um Engenheiro e Arquiteto de Layout ultra-preciso especialista em conversão e vetorização de plantas baixas e croquis para farmácias.
+Sua tarefa é analisar a imagem enviada (que pode ser um desenho à mão livre/croqui ou uma planta técnica de engenharia) e extrair os dados estruturais e as dimensões físicas com assertividade absoluta e precisão máxima (tolerância de erro matemática próxima de zero, ex: 0.0000000001m se necessário).
 
-Instruções para o sistema de coordenadas:
-- A origem (0,0) fica no canto superior esquerdo da loja.
-- O eixo X corre na horizontal (largura da loja).
-- O eixo Y corre na vertical (comprimento da loja).
-- Todas as unidades de medida (posição, largura, comprimento) devem ser expressas em metros (float, ex: 12.5).
+Instruções Cruciais para Calibragem e Escala:
+1. IDENTIFIQUE AS COTAS: Encontre e leia atentamente os números textuais na imagem que marcam as dimensões (ex: "8m", "8.5", "12m", "4,20"). Use estas cotas reais como âncoras primárias.
+2. ESTABELEÇA UMA RÉGUA/ESCALA DE PIXELS: Calcule a proporção de pixels na imagem para cada metro linear com base nas maiores dimensões identificadas.
+3. SE FOR UM CROQUI (À mão livre): Croquis podem não ter proporções geométricas 100% fiéis de pixels. Por isso, use os valores numéricos explicitamente anotados pelo usuário na imagem para as dimensões das paredes, portas e cômodos, calculando suas coordenadas relativas com precisão matemática estrita de soma/subtração de cotas.
+4. SISTEMA DE COORDENADAS:
+   - Origem (0,0): Canto superior esquerdo da loja.
+   - Eixo X: Horizontal (largura da loja).
+   - Eixo Y: Vertical (comprimento da loja).
+   - Todas as medidas devem ser floats extremamente precisos (em metros).
 
-Você deve identificar na imagem:
-1. Dimensões gerais da loja: a largura total (storeWidth) e o comprimento total (storeHeight). Tente ler as cotas na imagem. Se não houver números explícitos, faça uma estimativa razoável baseada nas proporções usuais de estabelecimentos comerciais (por exemplo, 10m x 12m).
-2. Porta de entrada principal (entrance): sua coordenada central (x, y) e qual orientação ela está encostada na parede (N = Parede superior/Norte, S = Parede inferior/Sul, E = Parede direita/Leste, W = Parede esquerda/Oeste).
+Você deve mapear com assertividade absoluta:
+1. Dimensões totais: a largura exata (storeWidth) e o comprimento exato (storeHeight).
+2. Porta de entrada principal (entrance): a coordenada exata (x, y) de seu centro e a orientação em que está embutida na parede (N, S, E, W).
 3. Porta de saída de emergência (emergencyExit): se houver, indicar sua coordenada (x, y) e orientação (N, S, E, W).
-4. Pilares estruturais (pillars): lista de posições centralizadas (x, y) dos pilares que atrapalham o layout interno.
-5. Divisões internas ou salas fechadas (obstacles): como banheiros, consultórios, salas de injetáveis, copa ou paredes internas que já existam. Indicar para cada um: o nome ('Sala de Injeção', 'Parede Divisória', etc.), as coordenadas (x, y) do canto superior esquerdo do obstáculo, sua largura, sua profundidade/altura física e o ângulo de rotação (normalmente 0, 90, 180 ou 270).
+4. Pilares estruturais (pillars): posições exatas (x, y) de cada pilar existente.
+5. Cômodos internos, divisões ou obstáculos (obstacles): como banheiros, consultórios, copas ou paredes internas. Obtenha para cada um:
+   - "name": O rótulo exato (ex: 'Sanitário', 'Sala de Injeção', 'Paredes Internas').
+   - "x", "y": Coordenadas do canto superior esquerdo com máxima aproximação.
+   - "width": Largura exata.
+   - "height": Comprimento exato.
+   - "rotation": Rotação em graus (normalmente 0, 90, 180 ou 270).
 
-Responda APENAS com um objeto JSON válido. A resposta deve obedecer estritamente a esta estrutura:
+Sua resposta DEVE ser um objeto JSON sem blocos de texto externos. Siga estritamente a estrutura abaixo:
 
 {
-  "analysis": "Explicação detalhada dos elementos visíveis, escala/cotas detectadas na imagem e o raciocínio passo a passo para calcular as coordenadas das divisórias e portas.",
+  "analysis": "Seu memorial de cálculo descritivo detalhado: como você identificou a escala, as cotas de cada elemento, as somas que realizou para definir o X/Y de cada cômodo/pilar e a justificativa de suas posições geométricas.",
   "storeWidth": 10.0,
   "storeHeight": 12.0,
   "entrance": { "x": 5.0, "y": 12.0, "orientation": "S" },
   "emergencyExit": null,
   "pillars": [
-    { "x": 3.0, "y": 4.5 },
-    { "x": 7.0, "y": 4.5 }
+    { "x": 3.0, "y": 4.5 }
   ],
   "obstacles": [
     { "name": "Sala de Aplicação", "x": 0.0, "y": 0.0, "width": 2.5, "height": 3.0, "rotation": 0 }
   ]
 }
 
-Tenha extrema cautela para garantir que as coordenadas fiquem consistentes e dentro dos limites da largura (storeWidth) e do comprimento (storeHeight) definidos.`
+Seja cirúrgico e impecável. Garanta que todas as coordenadas fiquem perfeitamente dentro dos limites da largura (storeWidth) e comprimento (storeHeight) da loja.`
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 40000) // 40 segundos de timeout para visão
@@ -93,7 +101,7 @@ Tenha extrema cautela para garantir que as coordenadas fiquem consistentes e den
     if (!supabase) throw new Error("Supabase não está configurado.")
     const { data: responseData, error: edgeError } = await supabase.functions.invoke('openai-proxy', {
       body: {
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'user',
