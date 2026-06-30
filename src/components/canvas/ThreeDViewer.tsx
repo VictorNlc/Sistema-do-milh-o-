@@ -333,6 +333,8 @@ const getRequiredModelKeys = (items: any[]): string[] => {
       keys.add('perfumaria')
     } else if (item.category === 'GONDOLAS' && (nameUpper.includes('GOND') || nameUpper.includes('GÔNDOLA') || nameUpper.includes('GONDOLA'))) {
       keys.add('gondolabranca')
+    } else if (nameUpper.includes('MIP SIST') || nameUpper.includes('DIGESTIVO') || idUpper.includes('MIP-SIST') || idUpper.includes('MIP_SIST')) {
+      keys.add('mipsistdigestivo')
     }
   })
   return Array.from(keys)
@@ -442,6 +444,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const filaModelRef = useRef<THREE.Group | null>(null)
   const medicamentoModelRef = useRef<THREE.Group | null>(null)
   const perfumariaModelRef = useRef<THREE.Group | null>(null) 
+  const mipsistdigestivoModelRef = useRef<THREE.Group | null>(null)
   const [showSignage, setShowSignage] = useState(false)
   const [noclip, setNoclip] = useState(true) // Toggle physics/collisions
  
@@ -720,7 +723,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         canaletado: canaletadoModelRef,
         fila: filaModelRef,
         medicamento: medicamentoModelRef,
-        perfumaria: perfumariaModelRef
+        perfumaria: perfumariaModelRef,
+        mipsistdigestivo: mipsistdigestivoModelRef
       }
 
       // Load only required 3D Models
@@ -735,6 +739,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         { key: 'fila', path: '/models/fila inteligente.glb' },
         { key: 'medicamento', path: '/models/medicamento.glb' },
         { key: 'perfumaria', path: '/models/perfumaria.glb' },
+        { key: 'mipsistdigestivo', path: '/models/mip sistema digestivo.glb' },
       ]
 
       requiredKeys.forEach((key) => {
@@ -3209,6 +3214,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         matchedModel = perfumariaModelRef.current
       } else if (item.category === 'GONDOLAS' && (nameUpper.includes('GOND') || nameUpper.includes('GÔNDOLA') || nameUpper.includes('GONDOLA'))) {
         matchedModel = gondolabrancaModelRef.current
+      } else if (nameUpper.includes('MIP SIST') || nameUpper.includes('DIGESTIVO') || idUpper.includes('MIP-SIST') || idUpper.includes('MIP_SIST')) {
+        matchedModel = mipsistdigestivoModelRef.current
       }
 
       const isCestao = idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')
