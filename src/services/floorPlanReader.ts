@@ -67,19 +67,27 @@ Regras de Ouro para Assertividade e Precisão Absoluta:
      Exemplo 3: LAVABO com área 2.10 m² e altura 1.50m => Largura = 2.10 / 1.50 = 1.40m exatos.
    Use essa lógica para determinar a largura/comprimento exatos de cada cômodo!
 
-3. DETERMINAÇÃO DE COORDENADAS (X, Y) PRECISAS:
+3. DISTINÇÃO ENTRE ÁREAS LIVRES E CÔMODOS FECHADOS (OBSTÁCULOS):
+   - Áreas abertas para a circulação de clientes, fluxo ou apoio (como "CIRCULAÇÃO", "APOIO", "VENDAS", "ATENDIMENTO", "CORREDOR", "HALL") NUNCA devem ser adicionadas como obstáculos (obstacles) no JSON! Elas representam o espaço livre do chão por onde as pessoas e móveis se movem.
+   - Apenas cômodos fechados por paredes físicas reais (como "DEPÓSITO", "WC", "SANITÁRIO", "COPA", "ESCRITÓRIO", "CONSULTÓRIO", "SALA DE INJEÇÃO") é que devem ser mapeados como obstáculos, pois suas paredes físicas impedem o trânsito livre.
+
+4. ALINHAMENTO GEOMÉTRICO DAS PAREDES (CORREDORES RETOS):
+   - Observe que as divisórias internas que separam os cômodos fechados da área de circulação costumam formar uma parede reta e contínua.
+   - No Exemplo 1: O Depósito tem largura 3.60m. O WC e a Copa, embora tenham larguras ligeiramente diferentes calculadas pelas áreas teóricas, estão embutidos sob o corredor de circulação adjacente à mesma parede reta. Alinhe geometricamente a parede direita dos cômodos adjacentes (como WC e Copa) para que formem um corredor reto e contínuo (por exemplo, definindo para eles a mesma largura limite ou alinhamento vertical das divisórias).
+
+5. DETERMINAÇÃO DE COORDENADAS (X, Y) PRECISAS:
    - Origem (0,0) está no canto superior esquerdo interno da loja.
    - Posicione cada cômodo calculando a distância cumulativa em relação às paredes da origem.
      Exemplo (Imagem 2): Depósito (largura 3.0m) fica no canto superior direito. A loja tem 12m de largura total. O X inicial do Depósito é: 12.0 - 3.0 = 9.0m. O Y é 0.0m.
      Exemplo (Imagem 1): Depósito (largura 3.6m, altura 4.0m) fica no canto superior esquerdo. O X inicial é 0.0m. O Y inicial é 0.0m.
 
-4. PORTAS DE ACESSO E ENTRADAS:
+6. PORTAS DE ACESSO E ENTRADAS:
    - Identifique a indicação "ACESSO", "ACESSO PRINCIPAL" ou "ENTRADA".
    - Determine em qual parede está e sua coordenada central exata (X, Y) com base nas cotas próximas.
      Exemplo (Imagem 1): Acesso centralizado na parede inferior (Sul/S). A porta tem 2.00m de largura, e fica a 2.30m da parede direita. Largura da loja 10.60m. O X da porta é: 10.60 - 2.30 - (2.00/2) = 7.30m (ou calculando pela cota correspondente).
      Exemplo (Imagem 2): Acesso na parede inferior (Sul/S) a 1.80m do canto esquerdo.
 
-5. MEMORIAL DE CÁLCULO EXIGIDO:
+7. MEMORIAL DE CÁLCULO EXIGIDO:
    - Na propriedade "analysis" do JSON, você deve detalhar passo a passo todas as contas matemáticas e raciocínio lógico que utilizou para achar cada X, Y, largura e altura de cada cômodo, porta ou pilar.
 
 Sua resposta DEVE ser um objeto JSON sem blocos de texto externos. Siga estritamente a estrutura abaixo:
