@@ -22,10 +22,11 @@ const CATEGORY_HEIGHTS: Record<string, number> = {
 
 // Floor styling configurations
 const FLOOR_STYLES = {
-  grid: { color: 0x070f0b, roughness: 0.8, metalness: 0.1, showGrid: true, gridColor: 0x107c3f },
-  marble: { color: 0xf3f4f6, roughness: 0.15, metalness: 0.0, showGrid: true, gridColor: 0xd1d5db },
-  wood: { color: 0xb45309, roughness: 0.45, metalness: 0.0, showGrid: false, gridColor: 0x000000 },
-  concrete: { color: 0x4b5563, roughness: 0.9, metalness: 0.1, showGrid: false, gridColor: 0x000000 }
+  porcelanato: { color: 0xffffff, roughness: 0.02, metalness: 0.08, showGrid: true, gridColor: 0xe5e7eb },
+  epoxi: { color: 0xe5e7eb, roughness: 0.01, metalness: 0.12, showGrid: false, gridColor: 0x000000 },
+  vinilico: { color: 0xd7b183, roughness: 0.28, metalness: 0.02, showGrid: true, gridColor: 0xb58e61 },
+  cimento: { color: 0xa1a1aa, roughness: 0.55, metalness: 0.05, showGrid: false, gridColor: 0x000000 },
+  grid: { color: 0x070f0b, roughness: 0.8, metalness: 0.1, showGrid: true, gridColor: 0x107c3f }
 }
 
 // Wall color configurations
@@ -417,7 +418,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   // Customization & Physics States
   const [showCustomizer, setShowCustomizer] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [floorStyle, setFloorStyle] = useState('grid')
+  const [floorStyle, setFloorStyle] = useState('porcelanato')
   const [wallColor, setWallColor] = useState('mint') 
   // Real-time sun shadows ON by default on desktop for the premium hero shot; OFF on mobile
   // (perf). The fake contact-shadow planes still ground objects when this is off.
@@ -4197,17 +4198,20 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           <div className="cust-section">
             <label className="cust-label">Piso (Textura & Cor)</label>
             <div className="cust-grid">
+              <button className={`cust-btn ${floorStyle === 'porcelanato' ? 'active' : ''}`} onClick={() => setFloorStyle('porcelanato')}>
+                Porcelanato Polido
+              </button>
+              <button className={`cust-btn ${floorStyle === 'epoxi' ? 'active' : ''}`} onClick={() => setFloorStyle('epoxi')}>
+                Epóxi Espelhado
+              </button>
+              <button className={`cust-btn ${floorStyle === 'vinilico' ? 'active' : ''}`} onClick={() => setFloorStyle('vinilico')}>
+                Vinílico Amadeirado
+              </button>
+              <button className={`cust-btn ${floorStyle === 'cimento' ? 'active' : ''}`} onClick={() => setFloorStyle('cimento')}>
+                Cimento Cru
+              </button>
               <button className={`cust-btn ${floorStyle === 'grid' ? 'active' : ''}`} onClick={() => setFloorStyle('grid')}>
                 Grid Midnight
-              </button>
-              <button className={`cust-btn ${floorStyle === 'marble' ? 'active' : ''}`} onClick={() => setFloorStyle('marble')}>
-                Mármore Branco
-              </button>
-              <button className={`cust-btn ${floorStyle === 'wood' ? 'active' : ''}`} onClick={() => setFloorStyle('wood')}>
-                Madeira Carvalho
-              </button>
-              <button className={`cust-btn ${floorStyle === 'concrete' ? 'active' : ''}`} onClick={() => setFloorStyle('concrete')}>
-                Cimento Cru
               </button>
             </div>
           </div>
