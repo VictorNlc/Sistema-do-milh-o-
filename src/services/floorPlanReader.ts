@@ -52,47 +52,52 @@ export function fileToBase64(file: File): Promise<string> {
  */
 export async function readFloorPlanImage(base64Image: string, mimeType: string = 'image/jpeg'): Promise<FloorPlanResult> {
   const prompt = `Você é um Engenheiro e Arquiteto de Layout ultra-preciso especialista em conversão e vetorização de plantas baixas e croquis para farmácias.
-Sua tarefa é analisar a imagem enviada (que pode ser um desenho à mão livre/croqui ou uma planta técnica de engenharia) e extrair os dados estruturais e as dimensões físicas com assertividade absoluta e precisão máxima (tolerância de erro matemática próxima de zero, ex: 0.0000000001m se necessário).
+Sua tarefa é analisar a imagem enviada (que pode ser um desenho à mão livre/croqui ou uma planta técnica de engenharia) e extrair os dados estruturais e as dimensões físicas com assertividade absoluta e precisão máxima (tolerância de erro matemática próxima de zero, ex: 0.0000000001m).
 
-Instruções Cruciais para Calibragem e Escala:
-1. IDENTIFIQUE AS COTAS: Encontre e leia atentamente os números textuais na imagem que marcam as dimensões (ex: "8m", "8.5", "12m", "4,20"). Use estas cotas reais como âncoras primárias.
-2. ESTABELEÇA UMA RÉGUA/ESCALA DE PIXELS: Calcule a proporção de pixels na imagem para cada metro linear com base nas maiores dimensões identificadas.
-3. SE FOR UM CROQUI (À mão livre): Croquis podem não ter proporções geométricas 100% fiéis de pixels. Por isso, use os valores numéricos explicitamente anotados pelo usuário na imagem para as dimensões das paredes, portas e cômodos, calculando suas coordenadas relativas com precisão matemática estrita de soma/subtração de cotas.
-4. SISTEMA DE COORDENADAS:
-   - Origem (0,0): Canto superior esquerdo da loja.
-   - Eixo X: Horizontal (largura da loja).
-   - Eixo Y: Vertical (comprimento da loja).
-   - Todas as medidas devem ser floats extremamente precisos (em metros).
+Regras de Ouro para Assertividade e Precisão Absoluta:
+1. LEITURA DE TEXTOS E COTAS:
+   - Identifique todas as dimensões gerais (largura e comprimento totais da loja) nas cotas externas (ex: "10,60 x 12,00" ou "12,00 x 8,00").
+   - Identifique os nomes dos ambientes (ex: DEPÓSITO, WC, COPA, SALA DE APOIO) e as respectivas cotas lineares próximas.
 
-Você deve mapear com assertividade absoluta:
-1. Dimensões totais: a largura exata (storeWidth) e o comprimento exato (storeHeight).
-2. Porta de entrada principal (entrance): a coordenada exata (x, y) de seu centro e a orientação em que está embutida na parede (N, S, E, W).
-3. Porta de saída de emergência (emergencyExit): se houver, indicar sua coordenada (x, y) e orientação (N, S, E, W).
-4. Pilares estruturais (pillars): posições exatas (x, y) de cada pilar existente.
-5. Cômodos internos, divisões ou obstáculos (obstacles): como banheiros, consultórios, copas ou paredes internas. Obtenha para cada um:
-   - "name": O rótulo exato (ex: 'Sanitário', 'Sala de Injeção', 'Paredes Internas').
-   - "x", "y": Coordenadas do canto superior esquerdo com máxima aproximação.
-   - "width": Largura exata.
-   - "height": Comprimento exato.
-   - "rotation": Rotação em graus (normalmente 0, 90, 180 ou 270).
+2. CÁLCULO ARITMÉTICO DE DIMENSÕES OCULTAS (FÓRMULA DA ÁREA):
+   - Se um cômodo tiver a área em m² escrita (ex: "A: 3,00 m²" ou "A: 4,50 m²") e apenas uma cota linear indicada (ex: "1,50" de altura ou "2,50" de altura), calcule a outra dimensão obrigatoriamente usando a fórmula:
+     Dimensão Oculta = Área / Dimensão Indicada.
+     Exemplo 1: WC com área 3.00 m² e altura 1.50m => Largura = 3.00 / 1.50 = 2.00m exatos.
+     Exemplo 2: COPA com área 4.50 m² e altura 2.50m => Largura = 4.50 / 2.50 = 1.80m exatos.
+     Exemplo 3: LAVABO com área 2.10 m² e altura 1.50m => Largura = 2.10 / 1.50 = 1.40m exatos.
+   Use essa lógica para determinar a largura/comprimento exatos de cada cômodo!
+
+3. DETERMINAÇÃO DE COORDENADAS (X, Y) PRECISAS:
+   - Origem (0,0) está no canto superior esquerdo interno da loja.
+   - Posicione cada cômodo calculando a distância cumulativa em relação às paredes da origem.
+     Exemplo (Imagem 2): Depósito (largura 3.0m) fica no canto superior direito. A loja tem 12m de largura total. O X inicial do Depósito é: 12.0 - 3.0 = 9.0m. O Y é 0.0m.
+     Exemplo (Imagem 1): Depósito (largura 3.6m, altura 4.0m) fica no canto superior esquerdo. O X inicial é 0.0m. O Y inicial é 0.0m.
+
+4. PORTAS DE ACESSO E ENTRADAS:
+   - Identifique a indicação "ACESSO", "ACESSO PRINCIPAL" ou "ENTRADA".
+   - Determine em qual parede está e sua coordenada central exata (X, Y) com base nas cotas próximas.
+     Exemplo (Imagem 1): Acesso centralizado na parede inferior (Sul/S). A porta tem 2.00m de largura, e fica a 2.30m da parede direita. Largura da loja 10.60m. O X da porta é: 10.60 - 2.30 - (2.00/2) = 7.30m (ou calculando pela cota correspondente).
+     Exemplo (Imagem 2): Acesso na parede inferior (Sul/S) a 1.80m do canto esquerdo.
+
+5. MEMORIAL DE CÁLCULO EXIGIDO:
+   - Na propriedade "analysis" do JSON, você deve detalhar passo a passo todas as contas matemáticas e raciocínio lógico que utilizou para achar cada X, Y, largura e altura de cada cômodo, porta ou pilar.
 
 Sua resposta DEVE ser um objeto JSON sem blocos de texto externos. Siga estritamente a estrutura abaixo:
 
 {
   "analysis": "Seu memorial de cálculo descritivo detalhado: como você identificou a escala, as cotas de cada elemento, as somas que realizou para definir o X/Y de cada cômodo/pilar e a justificativa de suas posições geométricas.",
-  "storeWidth": 10.0,
-  "storeHeight": 12.0,
-  "entrance": { "x": 5.0, "y": 12.0, "orientation": "S" },
+  "storeWidth": 10.60,
+  "storeHeight": 12.00,
+  "entrance": { "x": 5.30, "y": 12.00, "orientation": "S" },
   "emergencyExit": null,
-  "pillars": [
-    { "x": 3.0, "y": 4.5 }
-  ],
+  "pillars": [],
   "obstacles": [
-    { "name": "Sala de Aplicação", "x": 0.0, "y": 0.0, "width": 2.5, "height": 3.0, "rotation": 0 }
+    { "name": "Depósito", "x": 0.0, "y": 0.0, "width": 3.6, "height": 4.0, "rotation": 0 },
+    { "name": "WC", "x": 0.0, "y": 4.0, "width": 2.0, "height": 1.5, "rotation": 0 }
   ]
 }
 
-Seja cirúrgico e impecável. Garanta que todas as coordenadas fiquem perfeitamente dentro dos limites da largura (storeWidth) e comprimento (storeHeight) da loja.`
+Seja cirúrgico e impecável. A precisão deve ser absoluta de 0.0000000001.`
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 40000) // 40 segundos de timeout para visão
