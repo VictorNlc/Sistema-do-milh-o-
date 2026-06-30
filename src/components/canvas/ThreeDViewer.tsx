@@ -437,7 +437,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   // Customization & Physics States
   const [showCustomizer, setShowCustomizer] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [floorStyle, setFloorStyle] = useState('porcelanato')
+  const [floorStyle, setFloorStyle] = useState('vinilico')
   const [wallColor, setWallColor] = useState('mint') 
   // Real-time sun shadows ON by default on desktop for the premium hero shot; OFF on mobile
   // (perf). The fake contact-shadow planes still ground objects when this is off.
