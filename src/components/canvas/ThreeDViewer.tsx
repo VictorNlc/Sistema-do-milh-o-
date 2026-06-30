@@ -634,9 +634,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       // Chão Mesh (placeholder geometry, redimensionado no Effect 2)
       const floorGeo = new THREE.PlaneGeometry(1, 1)
       const floorMat = new THREE.MeshStandardMaterial({
-        color: FLOOR_STYLES.marble.color,
-        roughness: FLOOR_STYLES.marble.roughness,
-        metalness: FLOOR_STYLES.marble.metalness
+        color: FLOOR_STYLES.porcelanato.color,
+        roughness: FLOOR_STYLES.porcelanato.roughness,
+        metalness: FLOOR_STYLES.porcelanato.metalness
       })
       const floor = new THREE.Mesh(floorGeo, floorMat)
       floor.rotation.x = -Math.PI / 2
