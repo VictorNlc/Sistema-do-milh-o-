@@ -51,7 +51,7 @@ const STEPS: TutorialStep[] = [
   {
     selector: '.tb-right',
     title: '6. Ações do Projeto 📑',
-    description: 'No topo direito você tem acesso às opções principais do seu layout: **Salvar** o projeto na nuvem, **Compartilhar** com outras pessoas, visualizar a farmácia em **3D** e **Receber o Orçamento por E-mail**.',
+    description: 'No topo direito você tem acesso às opções principais do seu layout: **Salvar** o projeto na nuvem, visualizar a farmácia em **3D** e **Receber o Orçamento por E-mail**.',
     position: 'bottom'
   }
 ]
