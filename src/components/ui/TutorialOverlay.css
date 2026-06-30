@@ -130,3 +130,19 @@
   height: auto !important;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
 }
+
+@media (max-width: 767px) {
+  .tut-card {
+    max-width: 95vw;
+    padding: 16px;
+    gap: 12px;
+  }
+  .tut-card-title {
+    font-size: 15px;
+  }
+  .tut-card-desc {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+

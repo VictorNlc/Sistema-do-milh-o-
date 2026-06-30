@@ -1426,4 +1426,7 @@
   .editor-sidebar-left {
     width: 235px !important;
   }
+  .tb-zoom {
+    display: none !important;
+  }
 }
