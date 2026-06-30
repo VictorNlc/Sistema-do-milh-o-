@@ -102,6 +102,7 @@ export default function Editor() {
   const stageRef = useRef<Konva.Stage | null>(null)
 
   const [activeMobileTab, setActiveMobileTab] = useState<'layout' | 'library' | 'ai' | 'budget'>('layout')
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [rightPanel, setRightPanel] = useState<'ai' | 'budget'>('budget')
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -919,6 +920,144 @@ export default function Editor() {
             </button>
           )}
         </div>
+
+        {/* Mobile View Selector Menu */}
+        <div className="mobile-only" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <button 
+            className="tb-btn" 
+            onClick={() => setShowMobileMenu(!showMobileMenu)} 
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.08)', 
+              border: '1px solid rgba(255, 255, 255, 0.15)', 
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              height: '32px'
+            }}
+          >
+            <span>
+              {activeMobileTab === 'layout' && '📐 Layout'}
+              {activeMobileTab === 'library' && '📦 Biblioteca'}
+              {activeMobileTab === 'ai' && '✨ Assistente'}
+              {activeMobileTab === 'budget' && '📋 Orçamento'}
+            </span>
+            <span style={{ fontSize: '10px', opacity: 0.8 }}>▾</span>
+          </button>
+
+          {showMobileMenu && (
+            <>
+              <div 
+                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                onClick={() => setShowMobileMenu(false)} 
+              />
+              <div 
+                style={{ 
+                  position: 'absolute', 
+                  top: '120%', 
+                  right: 0, 
+                  background: 'rgba(26, 46, 30, 0.98)', 
+                  border: '1.5px solid var(--dourado)', 
+                  borderRadius: '12px', 
+                  padding: '6px', 
+                  minWidth: '180px', 
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '4px', 
+                  zIndex: 1000,
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <button 
+                  onClick={() => { setActiveMobileTab('layout'); setShowMobileMenu(false); }}
+                  style={{ 
+                    background: activeMobileTab === 'layout' ? 'rgba(252, 211, 77, 0.15)' : 'transparent',
+                    border: 'none', 
+                    color: activeMobileTab === 'layout' ? 'var(--dourado)' : 'white', 
+                    padding: '10px 12px', 
+                    textAlign: 'left', 
+                    borderRadius: '8px', 
+                    fontSize: '12px', 
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>📐</span> <span>Visualizar Layout</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveMobileTab('library'); setShowMobileMenu(false); }}
+                  style={{ 
+                    background: activeMobileTab === 'library' ? 'rgba(252, 211, 77, 0.15)' : 'transparent',
+                    border: 'none', 
+                    color: activeMobileTab === 'library' ? 'var(--dourado)' : 'white', 
+                    padding: '10px 12px', 
+                    textAlign: 'left', 
+                    borderRadius: '8px', 
+                    fontSize: '12px', 
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>📦</span> <span>Visualizar Biblioteca</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveMobileTab('ai'); setShowMobileMenu(false); }}
+                  style={{ 
+                    background: activeMobileTab === 'ai' ? 'rgba(252, 211, 77, 0.15)' : 'transparent',
+                    border: 'none', 
+                    color: activeMobileTab === 'ai' ? 'var(--dourado)' : 'white', 
+                    padding: '10px 12px', 
+                    textAlign: 'left', 
+                    borderRadius: '8px', 
+                    fontSize: '12px', 
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>✨</span> <span>IA Assistant</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveMobileTab('budget'); setShowMobileMenu(false); }}
+                  style={{ 
+                    background: activeMobileTab === 'budget' ? 'rgba(252, 211, 77, 0.15)' : 'transparent',
+                    border: 'none', 
+                    color: activeMobileTab === 'budget' ? 'var(--dourado)' : 'white', 
+                    padding: '10px 12px', 
+                    textAlign: 'left', 
+                    borderRadius: '8px', 
+                    fontSize: '12px', 
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>📋</span> <span>Orçamento</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       {/* ─── SETTINGS POPOVER ─── */}
@@ -1277,46 +1416,7 @@ export default function Editor() {
         </>
       )}
 
-      {/* ─── MOBILE BOTTOM NAV ─── */}
-      <nav className="mobile-nav">
-        <button id="mnav-layout" className={`mnav-btn ${activeMobileTab === 'layout' ? 'active' : ''}`}
-          onClick={() => setActiveMobileTab('layout')}>
-          <div className="mnav-icon"><I.Layers /></div>
-          <span className="mnav-label">Layout</span>
-        </button>
-        {!isReadOnly && (
-          <button id="mnav-library" className={`mnav-btn ${activeMobileTab === 'library' ? 'active' : ''}`}
-            onClick={() => setActiveMobileTab('library')}>
-            <div className="mnav-icon"><BookIcon /></div>
-            <span className="mnav-label">Biblioteca</span>
-          </button>
-        )}
-        
-        {/* Center Plus FAB */}
-        {!isReadOnly && (
-          <button id="mnav-plus" className="mnav-btn" onClick={() => setActiveMobileTab('library')} style={{ marginTop: '-4px' }}>
-            <div className="mnav-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1.5px solid #10b981', width: '42px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </div>
-          </button>
-        )}
 
-        {!isReadOnly && (
-          <button id="mnav-ai" className={`mnav-btn ${activeMobileTab === 'ai' ? 'active' : ''}`}
-            onClick={() => setActiveMobileTab('ai')}>
-            <div className="mnav-icon"><SparklesIcon /></div>
-            <span className="mnav-label">IA Assistant</span>
-          </button>
-        )}
-        <button id="mnav-budget" className={`mnav-btn ${activeMobileTab === 'budget' ? 'active' : ''}`}
-          onClick={() => setActiveMobileTab('budget')}>
-          <div className="mnav-icon"><BudgetIcon /></div>
-          <span className="mnav-label">Orçamento</span>
-        </button>
-      </nav>
       
       {show3D && (
         <Suspense fallback={
