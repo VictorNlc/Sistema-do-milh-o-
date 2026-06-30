@@ -126,7 +126,6 @@ export default function Editor() {
   const [showAuditoria, setShowAuditoria] = useState(false)
   const [showFloorPlanReader, setShowFloorPlanReader] = useState(false)
   const [showWebGLWarning, setShowWebGLWarning] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
 
   const {
     storeWidth, storeHeight, storeType, layoutDensity, items, layoutName, selectedItemId,
@@ -540,27 +539,6 @@ export default function Editor() {
     return saved
   }, [storeWidth, storeHeight, storeType, items, getActiveStage, routeId, markSaved])
 
-  const handleShareClick = useCallback(async () => {
-    const currentId = useCanvasStore.getState().layoutId || routeId
-    const currentShareToken = useCanvasStore.getState().shareToken || shareToken
-    if (!currentId || !currentShareToken) {
-      toast.info("Salvando e publicando o projeto antes de compartilhar...")
-      try {
-        const saved = await handleSave(true)
-        if (saved && saved.shareToken) {
-          setShowShareModal(true)
-        } else {
-          toast.error("Erro ao salvar projeto para compartilhar.")
-        }
-      } catch (err: any) {
-        toast.error(`Falha ao compartilhar: ${err.message || 'Erro de conexão com a nuvem'}`)
-      }
-    } else {
-      setShowShareModal(true)
-    }
-  }, [routeId, shareToken, handleSave])
-
-
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
 
@@ -892,14 +870,6 @@ export default function Editor() {
             </button>
           )}
 
-          {!isReadOnly && (
-            <button id="btn-share" className="tb-btn desktop-only" onClick={handleShareClick} style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
-                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
-              <span className="hide-tablet-text">Compartilhar</span>
-            </button>
-          )}
 
           {!isReadOnly && (
             <span className="tb-save-status" aria-live="polite">
@@ -1242,14 +1212,7 @@ export default function Editor() {
               </div>
               <span>3D</span>
             </button>
-            <button className="mc-act-btn" onClick={handleShareClick}>
-              <div className="mc-act-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                </svg>
-              </div>
-              <span>Partilhar</span>
-            </button>
+
             <button className="mc-act-btn" onClick={toggleGrid}>
               <div className="mc-act-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
@@ -1703,80 +1666,7 @@ export default function Editor() {
         />
       )}
 
-      {showShareModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }} onClick={() => setShowShareModal(false)}>
-          <div style={{
-            background: 'var(--surface-card)',
-            border: '1px solid var(--border-xs)',
-            borderRadius: 'var(--r-lg)',
-            boxShadow: 'var(--sh-xl)',
-            width: '90%',
-            maxWidth: '480px',
-            padding: 'var(--s6)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--s4)'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>Compartilhar Projeto</h3>
-              <button 
-                onClick={() => setShowShareModal(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-3)',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  padding: '4px'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', margin: 0, lineHeight: 1.5 }}>
-              Qualquer pessoa com este link poderá visualizar a planta 2D, as estatísticas de corredores e o visualizador 3D do seu projeto.
-            </p>
-            <div style={{ display: 'flex', gap: 'var(--s2)' }}>
-              <input
-                type="text"
-                readOnly
-                value={`${window.location.origin}/layout/${useCanvasStore.getState().shareToken || shareToken || ''}`}
-                style={{
-                  flex: 1,
-                  background: 'var(--surface-input)',
-                  border: '1px solid var(--border-xs)',
-                  borderRadius: 'var(--r-md)',
-                  padding: '10px var(--s3)',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-2)',
-                  outline: 'none'
-                }}
-                onClick={e => (e.target as HTMLInputElement).select()}
-              />
-              <button
-                className="btn btn-primary"
-                style={{ padding: '0 var(--s4)', background: '#10b981', borderColor: '#10b981' }}
-                onClick={() => {
-                  const token = useCanvasStore.getState().shareToken || shareToken || ''
-                  navigator.clipboard.writeText(`${window.location.origin}/layout/${token}`)
-                  toast.success("Link copiado para a área de transferência!")
-                }}
-              >
-                Copiar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
       {showEmailModal && (
         <SendEmailModal
           isOpen={showEmailModal}
