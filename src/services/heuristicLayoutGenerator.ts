@@ -223,21 +223,40 @@ export async function generateAILayout(
     const rRight = rx + rw
     const rBottom = ry + rh
 
+    const occupiesMostWidth = rw >= storeWidth * 0.75
+    const occupiesMostHeight = rh >= storeHeight * 0.75
+
     // Encostado na esquerda
     if (rx <= 0.25 && rw >= 1.0) {
-      storeLeft = Math.max(storeLeft, rRight)
+      if (occupiesMostHeight) {
+        storeLeft = Math.max(storeLeft, rRight)
+      } else {
+        // Obstáculo parcial de canto esquerdo: empurra storeLeft localmente
+        // e o resto do layout contorna via colisão individual por item.
+        storeLeft = Math.max(storeLeft, rRight)
+      }
     }
     // Encostado na direita
     if (rRight >= storeWidth - 0.25 && rw >= 1.0) {
-      storeRight = Math.min(storeRight, rx)
+      if (occupiesMostHeight) {
+        storeRight = Math.min(storeRight, rx)
+      } else {
+        storeRight = Math.min(storeRight, rx)
+      }
     }
     // Encostado no topo
     if (ry <= 0.25 && rh >= 1.0) {
-      storeTop = Math.max(storeTop, rBottom)
+      // Só empurra o topo global se o obstáculo fechar a maior parte da largura da loja
+      if (occupiesMostWidth) {
+        storeTop = Math.max(storeTop, rBottom)
+      }
     }
     // Encostado no fundo
     if (rBottom >= storeHeight - 0.25 && rh >= 1.0) {
-      storeBottom = Math.min(storeBottom, ry)
+      // Só empurra o fundo global se o obstáculo fechar a maior parte da largura da loja
+      if (occupiesMostWidth) {
+        storeBottom = Math.min(storeBottom, ry)
+      }
     }
   })
 
