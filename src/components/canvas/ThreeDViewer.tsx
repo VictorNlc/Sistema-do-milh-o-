@@ -2674,10 +2674,11 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     ]
 
     if (isCorner) {
-      const laneX1 = sideWallX + sideSign * 3.5
-      const laneX2 = sideWallX + sideSign * 4.2
-      const laneX3 = sideWallX + sideSign * 7.8
-      const laneX4 = sideWallX + sideSign * 8.5
+      // Lanes offset from road edge (3.0m = sidewalk width) to match front road proportions
+      const laneX1 = sideWallX + sideSign * (3.0 + 3.5)
+      const laneX2 = sideWallX + sideSign * (3.0 + 4.2)
+      const laneX3 = sideWallX + sideSign * (3.0 + 7.8)
+      const laneX4 = sideWallX + sideSign * (3.0 + 8.5)
 
       carSpawns.push(
         { laneZ: laneX1, speed: 8.0, dir: -1, startX: -35, color: carColors[4], axis: 'z' } as any,
@@ -2698,9 +2699,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       } else {
         carGroup.position.set(spawn.laneZ, -0.15, spawn.startX)
         if (spawn.dir === 1) {
-          carGroup.rotation.y = 0 // Face positive Z
+          carGroup.rotation.y = -Math.PI / 2 // Face positive Z
         } else {
-          carGroup.rotation.y = Math.PI // Face negative Z
+          carGroup.rotation.y = Math.PI / 2 // Face negative Z
         }
       }
       urbanContextGroup.add(carGroup)
