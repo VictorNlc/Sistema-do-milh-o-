@@ -3131,64 +3131,111 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       productsGroup.name = "productsGroup"
       subGroup.add(productsGroup)
 
-      // Helper function to clone and scale model to fit the item's dimensions
-      const applyModelToSubGroup = (model: THREE.Group) => {
+      // Helper function to clone and scale model to fit the item's dimensions.
+      // useUniformScale=true: scales by Y (height) only, keeping X/Z proportional (no deformation).
+      // correctionRotY: rotation applied before bbox calculation to fix GLB axis orientation.
+      const applyModelToSubGroup = (model: THREE.Group, useUniformScale = false, correctionRotY = 0) => {
         const modelClone = model.clone()
+
+        // Apply orientation correction BEFORE computing the bounding box so centering is correct
+        if (correctionRotY !== 0) {
+          modelClone.rotation.y = correctionRotY
+          modelClone.updateMatrixWorld(true)
+        }
+
         const bbox = new THREE.Box3().setFromObject(modelClone)
         const size = new THREE.Vector3()
         bbox.getSize(size)
-        
-        const scaleX = size.x > 0 ? itemW / size.x : 1
-        const scaleY = size.y > 0 ? itemH / size.y : 1
-        const scaleZ = size.z > 0 ? itemD / size.z : 1
-        
+
+        let scaleX: number, scaleY: number, scaleZ: number
+        if (useUniformScale) {
+          // Scale by height (Y) and keep X/Z proportional — preserves GLB proportions exactly
+          const uniform = size.y > 0 ? itemH / size.y : 1
+          scaleX = uniform
+          scaleY = uniform
+          scaleZ = uniform
+        } else {
+          scaleX = size.x > 0 ? itemW / size.x : 1
+          scaleY = size.y > 0 ? itemH / size.y : 1
+          scaleZ = size.z > 0 ? itemD / size.z : 1
+        }
+
         modelClone.scale.set(scaleX, scaleY, scaleZ)
-        
+
         const localBbox = new THREE.Box3().setFromObject(modelClone)
         const minY = localBbox.min.y
         modelClone.position.y = -minY
-        
+
         // Centering the model relative to its boundaries in X and Z
         const centerX = (localBbox.max.x + localBbox.min.x) / 2
         const centerZ = (localBbox.max.z + localBbox.min.z) / 2
         modelClone.position.x = -centerX
         modelClone.position.z = -centerZ
-        
-        modelClone.traverse(child => {
-          if ((child as THREE.Mesh).isMesh) {
-            child.castShadow = true
-            child.receiveShadow = true
-          }
-        })
-        configureMeshShadows(modelClone)
 
-        // Separate products by volume (< 2 liters)
-        const smallMeshes: THREE.Mesh[] = []
-        const meshTempBox = new THREE.Box3()
-        const sizeVec = new THREE.Vector3()
+        const wallColorHex = WALL_COLORS[wallColor as keyof typeof WALL_COLORS] || WALL_COLORS.mint
 
         modelClone.traverse(child => {
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh
-            if (mesh.geometry) {
-              try {
-                mesh.geometry.computeBoundingBox()
-                if (mesh.geometry.boundingBox) {
-                  meshTempBox.copy(mesh.geometry.boundingBox)
-                  meshTempBox.getSize(sizeVec)
-                  const volume = sizeVec.x * sizeVec.y * sizeVec.z
-                  if (volume < 0.002) {
-                    smallMeshes.push(mesh)
+            mesh.castShadow = true
+            mesh.receiveShadow = true
+
+            // Detect and dynamically color parts matching top closure/canopy names
+            const nameLower = (mesh.name || '').toLowerCase()
+            const matNameLower = (mesh.material && !(mesh.material instanceof Array) && mesh.material.name ? mesh.material.name : '').toLowerCase()
+
+            if (
+              nameLower.includes('fechamento') || nameLower.includes('testeira') || nameLower.includes('canopy') ||
+              matNameLower.includes('fechamento') || matNameLower.includes('testeira') || matNameLower.includes('canopy')
+            ) {
+              if (mesh.material) {
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+                const newMaterials = materials.map(mat => {
+                  if (mat && 'color' in mat) {
+                    const clonedMat = mat.clone() as THREE.MeshStandardMaterial
+                    clonedMat.color.setHex(wallColorHex)
+                    return clonedMat
                   }
-                }
-              } catch {}
+                  return mat
+                })
+                mesh.material = Array.isArray(mesh.material) ? newMaterials : newMaterials[0]
+              }
             }
           }
         })
+        configureMeshShadows(modelClone)
 
-        smallMeshes.forEach(mesh => {
-          productsGroup.attach(mesh)
-        })
+        // For display units with preserved proportions (useUniformScale=true), skip the product
+        // mesh separation. Thin structural panels (top closure, back panel) have very small
+        // bounding-box volumes and would be incorrectly moved to the LOD-hidden productsGroup.
+        if (!useUniformScale) {
+          const smallMeshes: THREE.Mesh[] = []
+          const meshTempBox = new THREE.Box3()
+          const sizeVec = new THREE.Vector3()
+
+          modelClone.traverse(child => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh
+              if (mesh.geometry) {
+                try {
+                  mesh.geometry.computeBoundingBox()
+                  if (mesh.geometry.boundingBox) {
+                    meshTempBox.copy(mesh.geometry.boundingBox)
+                    meshTempBox.getSize(sizeVec)
+                    const volume = sizeVec.x * sizeVec.y * sizeVec.z
+                    if (volume < 0.002) {
+                      smallMeshes.push(mesh)
+                    }
+                  }
+                } catch {}
+              }
+            }
+          })
+
+          smallMeshes.forEach(mesh => {
+            productsGroup.attach(mesh)
+          })
+        }
 
         subGroup.add(modelClone)
       }
@@ -3219,10 +3266,14 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       }
 
       const isCestao = idUpper.includes('CATALOG-71') || idUpper.includes('CATALOG-72') || nameUpper.includes('CESTAO') || nameUpper.includes('CESTÃO')
+      const isMipDigestivo = nameUpper.includes('MIP SIST') || nameUpper.includes('DIGESTIVO') || idUpper.includes('MIP-SIST') || idUpper.includes('MIP_SIST')
 
       if (matchedModel) {
         try {
-          applyModelToSubGroup(matchedModel)
+          // mipsistdigestivo needs a 90° Y correction: its GLB front faces +X but Three.js
+          // expects -Z as the "forward" direction for a canvas item at rotation=0.
+          const rotCorrection = isMipDigestivo ? Math.PI / 2 : 0
+          applyModelToSubGroup(matchedModel, isMipDigestivo, rotCorrection)
         } catch (e) {
           console.error(`⚠️ [3D Viewer] Erro ao clonar/renderizar modelo 3D para ${item.name}:`, e)
         }
