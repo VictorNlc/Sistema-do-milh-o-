@@ -9,7 +9,7 @@ interface CanvasItemProps {
   item: CanvasItemType
   isSelected: boolean
   isDraggable: boolean
-  onSelect: (id: string) => void
+  onSelect: (id: string, isCtrl?: boolean) => void
   onDragEnd: (id: string, x: number, y: number) => void
 }
 
@@ -17,6 +17,9 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   const groupRef = useRef<any>(null)
   const drawingsGroupRef = useRef<any>(null)
   const [isDragging, setIsDragging] = useState(false)
+  
+  const selectedItemIds = useCanvasStore(state => state.selectedItemIds)
+  const selectedItemsStartPos = useRef<Record<string, { x: number; y: number }>>({})
 
   // Use selectors to prevent unnecessary re-renders when other state changes
   const snapToGrid = useCanvasStore(state => state.snapToGrid)
@@ -100,13 +103,15 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
 
   const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 767 || /Mobi|Android|iPhone/i.test(navigator.userAgent))
 
-  const handleSelect = useCallback(() => {
+  const handleSelect = useCallback((e: any) => {
     if (isMobileDevice) return
-    onSelect(item.id)
+    const isCtrl = e.evt?.ctrlKey || e.evt?.metaKey
+    onSelect(item.id, isCtrl)
   }, [item.id, onSelect, isMobileDevice])
 
-  const handleDblClick = useCallback(() => {
-    onSelect(item.id)
+  const handleDblClick = useCallback((e: any) => {
+    const isCtrl = e.evt?.ctrlKey || e.evt?.metaKey
+    onSelect(item.id, isCtrl)
   }, [item.id, onSelect])
 
   const [isOutsideThreshold, setIsOutsideThreshold] = useState(false)
@@ -117,9 +122,19 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     setIsDragging(true)
     setIsOutsideThreshold(false)
     if (!isMobileDevice) {
-      onSelect(item.id)
+      onSelect(item.id, false)
     }
-  }, [item.id, item.x, item.y, onSelect, isMobileDevice])
+
+    const allItems = useCanvasStore.getState().items
+    const startPositions: Record<string, { x: number; y: number }> = {}
+    selectedItemIds.forEach(id => {
+      const selectedItem = allItems.find(i => i.id === id)
+      if (selectedItem) {
+        startPositions[id] = { x: selectedItem.x ?? 0, y: selectedItem.y ?? 0 }
+      }
+    })
+    selectedItemsStartPos.current = startPositions
+  }, [item.id, item.x, item.y, onSelect, isMobileDevice, selectedItemIds])
 
   const handleDragMove = useCallback((e: any) => {
     const node = e.target
@@ -136,26 +151,43 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       storeHeight
     )
 
-    const dx = dragX - clamped.x
-    const dy = dragY - clamped.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
+    const dx = dragX - dragStartPos.current.x
+    const dy = dragY - dragStartPos.current.y
+    const dist = Math.sqrt((dragX - clamped.x) * (dragX - clamped.x) + (dragY - clamped.y) * (dragY - clamped.y))
 
     setIsOutsideThreshold(dist > 0.3)
-  }, [item.width, item.height, item.rotation, storeWidth, storeHeight])
+
+    const stage = node.getStage()
+    if (stage) {
+      selectedItemIds.forEach(id => {
+        if (id === item.id) return
+        const start = selectedItemsStartPos.current[id]
+        if (start) {
+          const otherNode = stage.findOne('.item-group-' + id)
+          if (otherNode) {
+            otherNode.position({
+              x: (start.x + dx) * PIXELS_PER_METER,
+              y: (start.y + dy) * PIXELS_PER_METER
+            })
+          }
+        }
+      })
+      stage.getLayer()?.batchDraw()
+    }
+  }, [item.id, item.width, item.height, item.rotation, storeWidth, storeHeight, selectedItemIds])
 
   const handleDragEnd = useCallback((e: any) => {
     setIsDragging(false)
     setIsOutsideThreshold(false)
     const node = e.target
-    const newX = node.x() / PIXELS_PER_METER
-    const newY = node.y() / PIXELS_PER_METER
+    const dragX = node.x() / PIXELS_PER_METER
+    const dragY = node.y() / PIXELS_PER_METER
 
     const stage = node.getStage()
     const container = stage?.container()
     const rect = container?.getBoundingClientRect()
     const pointerPos = stage?.getPointerPosition()
 
-    // 1. Check if dragged outside the visible container (viewport)
     let isOutsideViewport = false
     if (pointerPos && rect) {
       if (pointerPos.x < 0 || pointerPos.y < 0 || pointerPos.x > rect.width || pointerPos.y > rect.height) {
@@ -163,51 +195,50 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       }
     }
 
-    // 2. Check distance from clamped (meaning it broke resistance)
-    const clamped = clampItemPosition(
-      newX,
-      newY,
-      item.width,
-      item.height,
-      item.rotation || 0,
-      storeWidth,
-      storeHeight
-    )
+    const dx = dragX - dragStartPos.current.x
+    const dy = dragY - dragStartPos.current.y
 
-    const dx = newX - clamped.x
-    const dy = newY - clamped.y
-    const distOutside = Math.sqrt(dx * dx + dy * dy)
-
-    if (isOutsideViewport || distOutside > 0.3) {
-      // Dragged out of resistance -> delete item!
-      deleteItem(item.id)
+    if (isOutsideViewport) {
+      selectedItemIds.forEach(id => {
+        deleteItem(id)
+      })
       if (stage) stage.container().style.cursor = 'default'
-    } else {
-      // Check collision with other items
-      const allItems = useCanvasStore.getState().items
-      const collides = checkItemsCollision(
-        item.id,
-        clamped.x,
-        clamped.y,
-        item.width,
-        item.height,
-        item.rotation || 0,
-        allItems
-      )
+      return
+    }
 
-      if (collides) {
-        // Revert visually
-        node.position({
-          x: dragStartPos.current.x * PIXELS_PER_METER,
-          y: dragStartPos.current.y * PIXELS_PER_METER
+    const updates: { id: string; x: number; y: number }[] = []
+    selectedItemIds.forEach(id => {
+      const start = selectedItemsStartPos.current[id]
+      if (start) {
+        updates.push({
+          id,
+          x: start.x + dx,
+          y: start.y + dy
         })
-        node.getLayer()?.batchDraw()
-        onDragEnd(item.id, dragStartPos.current.x, dragStartPos.current.y)
-      } else {
-        onDragEnd(item.id, clamped.x, clamped.y)
+      }
+    })
+
+    const updateItemsPositions = useCanvasStore.getState().updateItemsPositions
+    const success = updateItemsPositions(updates)
+
+    if (!success) {
+      if (stage) {
+        selectedItemIds.forEach(id => {
+          const start = selectedItemsStartPos.current[id]
+          if (start) {
+            const otherNode = stage.findOne('.item-group-' + id)
+            if (otherNode) {
+              otherNode.position({
+                x: start.x * PIXELS_PER_METER,
+                y: start.y * PIXELS_PER_METER
+              })
+            }
+          }
+        })
+        stage.getLayer()?.batchDraw()
       }
     }
-  }, [item.id, item.width, item.height, item.rotation, storeWidth, storeHeight, onDragEnd, deleteItem])
+  }, [item.id, selectedItemIds, deleteItem])
 
   // Allow dragging outside the boundaries during the drag itself, but snap to grid
   const dragBoundFunc = useCallback((pos: { x: number; y: number }) => {
@@ -266,6 +297,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     return (
       <Group
         ref={groupRef}
+        name={`item-group-${item.id}`}
         x={x} y={y}
         draggable={isDraggable}
         onClick={handleSelect}
@@ -340,6 +372,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     return (
       <Group
         ref={groupRef}
+        name={`item-group-${item.id}`}
         x={x} y={y}
         draggable={isDraggable}
         onClick={handleSelect}
@@ -466,6 +499,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
     return (
       <Group
         ref={groupRef}
+        name={`item-group-${item.id}`}
         x={x} y={y}
         draggable={isDraggable}
         onClick={handleSelect}
@@ -635,6 +669,7 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   return (
     <Group
       ref={groupRef}
+      name={`item-group-${item.id}`}
       x={x} y={y}
       draggable={isDraggable}
       onClick={handleSelect}

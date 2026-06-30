@@ -61,6 +61,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const storeHeight = useCanvasStore(state => state.storeHeight)
   const items = useCanvasStore(state => state.items)
   const selectedItemId = useCanvasStore(state => state.selectedItemId)
+  const selectedItemIds = useCanvasStore(state => state.selectedItemIds)
   const showGrid = useCanvasStore(state => state.showGrid)
   const showMeasures = useCanvasStore(state => state.showMeasures)
   const scale = useCanvasStore(state => state.scale)
@@ -72,6 +73,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const isReadOnly = useCanvasStore(state => state.isReadOnly)
   
   const setSelectedItem = useCanvasStore(state => state.setSelectedItem)
+  const toggleSelectedItem = useCanvasStore(state => state.toggleSelectedItem)
   const setScale = useCanvasStore(state => state.setScale)
   const setStagePosition = useCanvasStore(state => state.setStagePosition)
   const updateItemPosition = useCanvasStore(state => state.updateItemPosition)
@@ -112,9 +114,20 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
   const lastProgrammaticScale = useRef<number | null>(null)
   const lastProgrammaticPos = useRef<{ x: number; y: number } | null>(null)
 
-  const handleItemSelect = useCallback((id: string | null) => {
-    setSelectedItem(id)
-  }, [setSelectedItem])
+  const handleItemSelect = useCallback((id: string | null, isCtrl = false) => {
+    if (id === null) {
+      setSelectedItem(null)
+      return
+    }
+    if (isCtrl) {
+      toggleSelectedItem(id)
+    } else {
+      const alreadySelected = useCanvasStore.getState().selectedItemIds.includes(id)
+      if (!alreadySelected) {
+        setSelectedItem(id)
+      }
+    }
+  }, [setSelectedItem, toggleSelectedItem])
 
   const handleItemDragEnd = useCallback((id: string, x: number, y: number) => {
     updateItemPosition(id, x, y)
@@ -795,7 +808,7 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
           y={stageY}
           scaleX={scale}
           scaleY={scale}
-          draggable={isReadOnly ? true : !selectedItemId}
+          draggable={isReadOnly ? true : selectedItemIds.length === 0}
           onMouseDown={handleStagePointerDown}
           onTouchStart={handleStagePointerDown}
           onDragEnd={handleStageDragEnd}
@@ -882,8 +895,8 @@ export default function CanvasEditor({ onItemSelect: _onItemSelect, stageRef: ex
               <CanvasItem
                 key={item.id}
                 item={item}
-                isSelected={isReadOnly ? false : selectedItemId === item.id}
-                isDraggable={isReadOnly ? false : (isMobileDevice ? true : selectedItemId === item.id)}
+                isSelected={isReadOnly ? false : selectedItemIds.includes(item.id)}
+                isDraggable={isReadOnly ? false : (isMobileDevice ? true : selectedItemIds.includes(item.id))}
                 onSelect={isReadOnly ? () => {} : handleItemSelect}
                 onDragEnd={isReadOnly ? () => {} : handleItemDragEnd}
               />

@@ -31,6 +31,7 @@ interface CanvasState {
   // === CANVAS ITEMS ===
   items: CanvasItem[]
   selectedItemId: string | null
+  selectedItemIds: string[]
   hoveredItemId: string | null
   // === TOOLS ===
   activeTool: ActiveTool
@@ -67,7 +68,10 @@ interface CanvasState {
   setConfigured: (configured: boolean) => void
   setActiveTool: (tool: ActiveTool) => void
   setSelectedItem: (id: string | null) => void
+  toggleSelectedItem: (id: string) => void
+  setSelectedItems: (ids: string[]) => void
   setHoveredItem: (id: string | null) => void
+  updateItemsPositions: (updates: { id: string; x: number; y: number }[]) => boolean
   toggleSnapToGrid: () => void
   toggleGrid: () => void
   toggleMeasures: () => void
@@ -114,6 +118,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   // === CANVAS ITEMS ===
   items: [],
   selectedItemId: null,
+  selectedItemIds: [],
   hoveredItemId: null,
 
   // === TOOLS ===
@@ -272,9 +277,31 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setStoreType: (type) => set({ storeType: type }),
   setLayoutDensity: (density) => set({ layoutDensity: density }),
 
-  setActiveTool: (tool) => set({ activeTool: tool, selectedItemId: null }),
+  setActiveTool: (tool) => set({ activeTool: tool, selectedItemId: null, selectedItemIds: [] }),
 
-  setSelectedItem: (id) => set({ selectedItemId: id }),
+  setSelectedItem: (id) => set({ 
+    selectedItemId: id, 
+    selectedItemIds: id ? [id] : [] 
+  }),
+
+  toggleSelectedItem: (id) => set(s => {
+    const list = [...s.selectedItemIds]
+    const idx = list.indexOf(id)
+    if (idx >= 0) {
+      list.splice(idx, 1)
+    } else {
+      list.push(id)
+    }
+    return {
+      selectedItemIds: list,
+      selectedItemId: list.length > 0 ? list[list.length - 1] : null
+    }
+  }),
+
+  setSelectedItems: (ids) => set({
+    selectedItemIds: ids,
+    selectedItemId: ids.length > 0 ? ids[ids.length - 1] : null
+  }),
 
   setHoveredItem: (id) => set({ hoveredItemId: id }),
 
@@ -407,6 +434,103 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     get().saveToHistory()
   },
 
+  updateItemsPositions: (updates) => {
+    const { storeWidth, storeHeight, snapToGrid, gridSize, items } = get()
+    
+    const updatedItemsMap = new Map<string, { x: number, y: number }>()
+    let hasCollisionOrOOB = false
+
+    const movingIds = new Set(updates.map(u => u.id))
+    const nonMovingItems = items.filter(i => !movingIds.has(i.id))
+
+    for (const update of updates) {
+      const item = items.find(i => i.id === update.id)
+      if (!item) continue
+
+      let newX = update.x
+      let newY = update.y
+
+      if (snapToGrid) {
+        newX = Math.round(update.x / gridSize) * gridSize
+        newY = Math.round(update.y / gridSize) * gridSize
+      }
+
+      const clamped = clampItemPosition(
+        newX,
+        newY,
+        item.width,
+        item.height,
+        item.rotation || 0,
+        storeWidth,
+        storeHeight
+      )
+
+      // Check collision with non-moving items
+      const collides = checkItemsCollision(
+        update.id,
+        clamped.x,
+        clamped.y,
+        item.width,
+        item.height,
+        item.rotation || 0,
+        nonMovingItems
+      )
+
+      if (collides) {
+        hasCollisionOrOOB = true
+        break
+      }
+
+      updatedItemsMap.set(update.id, { x: clamped.x, y: clamped.y })
+    }
+
+    if (!hasCollisionOrOOB) {
+      const temporaryItems = items.map(item => {
+        const update = updatedItemsMap.get(item.id)
+        if (update) {
+          return { ...item, x: update.x, y: update.y }
+        }
+        return item
+      })
+
+      for (const update of updates) {
+        const tempItem = temporaryItems.find(i => i.id === update.id)
+        if (!tempItem) continue
+        const collides = checkItemsCollision(
+          update.id,
+          tempItem.x,
+          tempItem.y,
+          tempItem.width,
+          tempItem.height,
+          tempItem.rotation || 0,
+          temporaryItems
+        )
+        if (collides) {
+          hasCollisionOrOOB = true
+          break
+        }
+      }
+    }
+
+    if (hasCollisionOrOOB) {
+      toast.error('Não é possível sobrepor os módulos!')
+      return false
+    }
+
+    set(s => ({
+      items: s.items.map(item => {
+        const update = updatedItemsMap.get(item.id)
+        if (update) {
+          return { ...item, x: update.x, y: update.y }
+        }
+        return item
+      }),
+      isDirty: true
+    }))
+    get().saveToHistory()
+    return true
+  },
+
   updateItemSize: (id, width, height) => {
     const { storeWidth, storeHeight, items } = get()
     const item = items.find(i => i.id === id)
@@ -472,14 +596,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set(s => ({
       items: s.items.filter(i => i.id !== id),
       selectedItemId: s.selectedItemId === id ? null : s.selectedItemId,
+      selectedItemIds: s.selectedItemIds.filter(i => i !== id),
       isDirty: true,
     }))
     get().saveToHistory()
   },
 
   deleteSelected: () => {
-    const { selectedItemId, deleteItem } = get()
-    if (selectedItemId) deleteItem(selectedItemId)
+    const { selectedItemIds } = get()
+    if (selectedItemIds.length > 0) {
+      set(s => ({
+        items: s.items.filter(i => !selectedItemIds.includes(i.id)),
+        selectedItemId: null,
+        selectedItemIds: [],
+        isDirty: true
+      }))
+      get().saveToHistory()
+    }
   },
 
   duplicateItem: (id) => {
@@ -496,6 +629,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set(s => ({
       items: [...s.items, newItem],
       selectedItemId: newItem.id,
+      selectedItemIds: [newItem.id],
       isDirty: true,
     }))
   },
@@ -520,6 +654,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({
       items: [],
       selectedItemId: null,
+      selectedItemIds: [],
       isDirty: true
     })
     get().saveToHistory()
@@ -548,6 +683,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       shareToken: layoutData.shareToken ?? null,
       profileId: layoutData.profileId ?? null,
       selectedItemId: null,
+      selectedItemIds: [],
       isDirty: false,
       lastSavedAt: new Date().toISOString(),
     })
