@@ -86,7 +86,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "11",
     "height3d": 2.9
   },
@@ -107,7 +107,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "12",
     "height3d": 2.9
   },
@@ -128,7 +128,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "13",
     "height3d": 2.9
   },
@@ -149,7 +149,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Com fundo todo canaletado. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Com fundo todo canaletado. Contem rodapé na cor",
     "code": "14",
     "height3d": 2.9
   },
@@ -170,7 +170,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "15",
     "height3d": 1.9
   },
@@ -191,7 +191,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "16",
     "height3d": 1.9
   },
@@ -212,7 +212,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.21,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "21",
     "height3d": 2.9
   },
@@ -233,7 +233,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.21,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "22",
     "height3d": 2.9
   },
@@ -254,7 +254,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.43,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 1 lado canaletado. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5cm. Com 1 lado canaletado. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "31",
     "height3d": 1.3
   },
@@ -275,7 +275,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.43,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 2 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5cm. Com 2 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "32",
     "height3d": 1.3
   },
@@ -296,7 +296,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.43,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "33",
     "height3d": 1.3
   },
@@ -443,7 +443,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
     "code": "51",
     "height3d": 1.05
   },
@@ -464,7 +464,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
     "code": "52",
     "height3d": 1.05
   },
@@ -485,7 +485,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
     "code": "53",
     "height3d": 1.05
   },
@@ -506,7 +506,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, Todo em MDP. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, Todo em MDP. Rodape na cor",
     "code": "55",
     "height3d": 1.05
   },
@@ -527,7 +527,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
     "code": "56",
     "height3d": 1.05
   },
@@ -548,7 +548,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
     "code": "57",
     "height3d": 1.05
   },
@@ -569,7 +569,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
     "code": "58",
     "height3d": 1.05
   },
@@ -590,7 +590,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado",
     "code": "61",
     "height3d": 1.36
   },
@@ -611,7 +611,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
     "code": "62",
     "height3d": 1.36
   },
@@ -632,7 +632,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.428,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
     "code": "63",
     "height3d": 1.36
   },
@@ -842,7 +842,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm Amadeirado – com 5 prateleiras e painel superior canaletado. Chapéu de 30cm com nomenclatura. Rodape na cor",
+    "finish": "MDP 15mm Amadeirado - com 5 prateleiras e painel superior canaletado. Chapéu de 30cm com nomenclatura. Rodape na cor",
     "code": "121",
     "height3d": 2.9
   },
@@ -868,6 +868,48 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "height3d": 1.9
   },
   {
+    "id": "catalog-131-premium",
+    "category": "BALCOES",
+    "name": "[Premium] CHECK OUT L",
+    "icon": "🏪",
+    "description": "Expositor em L check Out | Cód: 131 | Preço: R$ 0",
+    "width": 1,
+    "height": 0.4,
+    "color": "#2563EB",
+    "fillColor": "#DBEAFE",
+    "strokeColor": "#1D4ED8",
+    "minWidth": 1,
+    "maxWidth": 1,
+    "minHeight": 0.4,
+    "maxHeight": 0.4,
+    "rotatable": true,
+    "price": 0,
+    "finish": "Mdf 15mm - possui prateleiras centrais e ponteira canaletada. Rodape na cor",
+    "code": "131",
+    "height3d": 1.05
+  },
+  {
+    "id": "catalog-131-especial",
+    "category": "BALCOES",
+    "name": "[Especial] l checkout L",
+    "icon": "💳",
+    "description": "Expositor em L check Out | Cód: 131 | Preço: R$ 0",
+    "width": 1,
+    "height": 0.4,
+    "color": "#2563EB",
+    "fillColor": "#DBEAFE",
+    "strokeColor": "#1D4ED8",
+    "minWidth": 1,
+    "maxWidth": 1,
+    "minHeight": 0.4,
+    "maxHeight": 0.4,
+    "rotatable": true,
+    "price": 0,
+    "finish": "Mdf 15mm - possui prateleiras centrais e ponteira canaletada. Rodape na cor",
+    "code": "131",
+    "height3d": 1.05
+  },
+  {
     "id": "catalog-231-premium",
     "category": "PERFUMARIA",
     "name": "[Premium] BOMB 57",
@@ -884,7 +926,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.25,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro",
+    "finish": "MDP 15mm branco TX - kit com 3 prateleiras e frente de vidro",
     "code": "231",
     "height3d": 1.05
   },
@@ -905,7 +947,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.25,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro",
+    "finish": "MDP 15mm branco TX - kit com 3 prateleiras e frente de vidro",
     "code": "232",
     "height3d": 1.05
   },
@@ -926,7 +968,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "11",
     "height3d": 2.9
   },
@@ -947,7 +989,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "12",
     "height3d": 2.9
   },
@@ -968,7 +1010,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "13",
     "height3d": 2.9
   },
@@ -989,7 +1031,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Com fundo todo canaletado. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Com fundo todo canaletado. Contem rodapé na cor",
     "code": "14",
     "height3d": 2.9
   },
@@ -1010,7 +1052,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "15",
     "height3d": 1.9
   },
@@ -1031,7 +1073,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "16",
     "height3d": 1.9
   },
@@ -1052,7 +1094,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.21,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "21",
     "height3d": 2.9
   },
@@ -1073,7 +1115,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.21,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - testeira superior com altura de 30 cm e rodapé com 7,5cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "22",
     "height3d": 2.9
   },
@@ -1094,7 +1136,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.43,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 1 lado canaletado. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5cm. Com 1 lado canaletado. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "31",
     "height3d": 1.3
   },
@@ -1115,7 +1157,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.43,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 2 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5cm. Com 2 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "32",
     "height3d": 1.3
   },
@@ -1136,7 +1178,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.43,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor",
     "code": "33",
     "height3d": 1.3
   },
@@ -1409,7 +1451,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
     "code": "51",
     "height3d": 1.05
   },
@@ -1430,7 +1472,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
     "code": "52",
     "height3d": 1.05
   },
@@ -1451,7 +1493,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira interna e 3 prateleiras frontais. Rodape na cor",
     "code": "53",
     "height3d": 1.05
   },
@@ -1472,7 +1514,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, Todo em MDP. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, Todo em MDP. Rodape na cor",
     "code": "55",
     "height3d": 1.05
   },
@@ -1493,7 +1535,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
     "code": "56",
     "height3d": 1.05
   },
@@ -1514,7 +1556,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
     "code": "57",
     "height3d": 1.05
   },
@@ -1535,7 +1577,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 10 cm, tampo e painel em vidro 6mm. Possui gaveta com pombal. Rodape na cor",
     "code": "58",
     "height3d": 1.05
   },
@@ -1556,7 +1598,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado",
     "code": "61",
     "height3d": 1.36
   },
@@ -1577,7 +1619,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.4,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
     "code": "62",
     "height3d": 1.36
   },
@@ -1598,7 +1640,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.428,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, possui uma gaveta com chave uma prateleira com corrediça que serve de suporte para o teclado. Rodape na cor",
     "code": "63",
     "height3d": 1.36
   },
@@ -1808,7 +1850,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.26,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm Amadeirado – com 5 prateleiras e painel superior canaletado. Chapéu de 30cm com nomenclatura. Rodape na cor",
+    "finish": "MDP 15mm Amadeirado - com 5 prateleiras e painel superior canaletado. Chapéu de 30cm com nomenclatura. Rodape na cor",
     "code": "121",
     "height3d": 2.9
   },
@@ -1850,7 +1892,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.25,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro",
+    "finish": "MDP 15mm branco TX - kit com 3 prateleiras e frente de vidro",
     "code": "231",
     "height3d": 1.05
   },
@@ -1871,7 +1913,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "maxHeight": 0.25,
     "rotatable": true,
     "price": 0,
-    "finish": "MDP 15mm branco TX – kit com 3 prateleiras e frente de vidro",
+    "finish": "MDP 15mm branco TX - kit com 3 prateleiras e frente de vidro",
     "code": "232",
     "height3d": 1.05
   }
