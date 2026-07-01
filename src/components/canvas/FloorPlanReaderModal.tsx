@@ -150,11 +150,26 @@ export default function FloorPlanReaderModal({ isOpen, onClose }: FloorPlanReade
         else if (resultData.entrance.orientation === 'N') rotation = 180
         else if (resultData.entrance.orientation === 'W') rotation = 270
 
+        const orientation = resultData.entrance.orientation
+        const isHorizontal = orientation === 'N' || orientation === 'S'
+        const layoutSize = isHorizontal ? resultData.storeWidth : resultData.storeHeight
+        const maxDoorWidth = layoutSize * 0.7
+
+        let doorWidth = resultData.entrance.width || doorTemplate.width
+        if (doorWidth > maxDoorWidth) {
+          doorWidth = maxDoorWidth
+        }
+
+        const customDoorTemplate = {
+          ...doorTemplate,
+          width: doorWidth
+        }
+
         // Corrige o offset da porta em relação ao tamanho da porta
-        const doorX = Math.max(0, resultData.entrance.x - doorTemplate.width / 2)
+        const doorX = Math.max(0, resultData.entrance.x - doorWidth / 2)
         const doorY = Math.max(0, resultData.entrance.y - doorTemplate.height / 2)
 
-        const addedDoorId = addItem(doorTemplate, doorX, doorY)
+        const addedDoorId = addItem(customDoorTemplate, doorX, doorY)
         if (rotation !== 0) {
           rotateItem(addedDoorId, rotation)
         }

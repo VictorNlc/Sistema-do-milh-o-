@@ -9,8 +9,8 @@ export interface FloorPlanData {
   analysis?: string
   storeWidth: number
   storeHeight: number
-  entrance: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null
-  emergencyExit: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W' } | null
+  entrance: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W'; width?: number } | null
+  emergencyExit: { x: number; y: number; orientation: 'N' | 'S' | 'E' | 'W'; width?: number } | null
   pillars: { x: number; y: number }[]
   obstacles: {
     id?: string
@@ -83,9 +83,10 @@ Regras de Ouro para Assertividade e Precisão Absoluta:
 
 6. PORTAS DE ACESSO E ENTRADAS:
    - Identifique a indicação "ACESSO", "ACESSO PRINCIPAL" ou "ENTRADA".
-   - Determine em qual parede está e sua coordenada central exata (X, Y) com base nas cotas próximas.
+   - Determine em qual parede está, sua coordenada central exata (X, Y) e sua largura (width) com base nas cotas próximas.
      Exemplo (Imagem 1): Acesso centralizado na parede inferior (Sul/S). A porta tem 2.00m de largura, e fica a 2.30m da parede direita. Largura da loja 10.60m. O X da porta é: 10.60 - 2.30 - (2.00/2) = 7.30m (ou calculando pela cota correspondente).
      Exemplo (Imagem 2): Acesso na parede inferior (Sul/S) a 1.80m do canto esquerdo.
+   - O tamanho (largura/width) da porta de entrada deve ser mapeado e não deve exceder 70% do tamanho da parede onde ela está localizada (ex: se está na parede inferior/Sul, não pode ser maior que 70% da largura total da loja).
 
 7. MEMORIAL DE CÁLCULO EXIGIDO:
    - Na propriedade "analysis" do JSON, você deve detalhar passo a passo todas as contas matemáticas e raciocínio lógico que utilizou para achar cada X, Y, largura e altura de cada cômodo, porta ou pilar.
@@ -96,7 +97,7 @@ Sua resposta DEVE ser um objeto JSON sem blocos de texto externos. Siga estritam
   "analysis": "Seu memorial de cálculo descritivo detalhado: como você identificou a escala, as cotas de cada elemento, as somas que realizou para definir o X/Y de cada cômodo/pilar e a justificativa de suas posições geométricas.",
   "storeWidth": 10.60,
   "storeHeight": 12.00,
-  "entrance": { "x": 5.30, "y": 12.00, "orientation": "S" },
+  "entrance": { "x": 5.30, "y": 12.00, "orientation": "S", "width": 2.00 },
   "emergencyExit": null,
   "pillars": [],
   "obstacles": [
