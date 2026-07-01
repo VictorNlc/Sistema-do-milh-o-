@@ -4538,7 +4538,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
                 setMobileMenuOpen(false)
               }}
             >
-              ✉️ <span className="hide-mobile">Receber Projeto por E-mail</span><span className="show-mobile-inline">Receber Projeto por E-mail</span>
+              ✉️ <span className="hide-mobile">Receber Projeto</span><span className="show-mobile-inline">Receber Projeto</span>
             </button>
           </div>
         </div>

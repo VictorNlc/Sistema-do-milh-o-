@@ -854,7 +854,7 @@ export default function Editor() {
         <div className="tb-right">
           <button className="tb-btn desktop-only" onClick={() => setShowEmailModal(true)} style={{ background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <span className="hide-tablet-text">Receber por E-mail</span>
+            <span className="hide-tablet-text">Receber Projeto</span>
           </button>
 
           <button id="btn-3d" className="tb-btn desktop-only" onClick={handleOpen3D}>
@@ -1226,7 +1226,7 @@ export default function Editor() {
             {!isReadOnly ? (
               <button className="btn btn-primary btn-lg btn-full" onClick={() => setShowEmailModal(true)} style={{ background: '#2563eb', borderColor: '#2563eb' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <span>Receber por E-mail</span>
+                <span>Receber Projeto</span>
               </button>
             ) : (
               <button className="btn btn-primary btn-lg btn-full" onClick={() => navigate('/novo-layout')} style={{ background: '#10b981', borderColor: '#10b981' }}>
@@ -1682,7 +1682,6 @@ export default function Editor() {
     </div>
   )
 }
-
 // Inline Icons
 const BookIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
@@ -1717,35 +1716,115 @@ interface SendEmailModalProps {
 function SendEmailModal({ isOpen, onClose, onSend, isSending }: SendEmailModalProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [countryCode, setCountryCode] = useState('(55)')
   const [phone, setPhone] = useState('')
+  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string }>({})
+
+  const formatPhoneValue = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 2) return `(${digits}`
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
+
+  const isValidEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
 
   useEffect(() => {
     if (!isOpen) return
+    setErrors({})
     try {
       const rawDetails = sessionStorage.getItem('projefarma_client_details')
       if (rawDetails) {
         const details = JSON.parse(rawDetails)
         if (details.clientName) setName(details.clientName)
-        if (details.clientPhone) setPhone(details.clientPhone)
+        const detailsPhone = details.clientPhone || details.phone
+        if (detailsPhone) {
+          const rawPhone = String(detailsPhone)
+          const match = rawPhone.match(/^\((\d+)\)(.*)$/)
+          if (match) {
+            setCountryCode(`(${match[1]})`)
+            setPhone(formatPhoneValue(match[2]))
+          } else {
+            const digits = rawPhone.replace(/\D/g, '')
+            if (digits.startsWith('55') && digits.length > 10) {
+              setCountryCode('(55)')
+              setPhone(formatPhoneValue(digits.slice(2)))
+            } else {
+              setCountryCode('(55)')
+              setPhone(formatPhoneValue(rawPhone))
+            }
+          }
+        } else {
+          setCountryCode('(55)')
+        }
+      } else {
+        setCountryCode('(55)')
       }
-    } catch {}
+    } catch {
+      setCountryCode('(55)')
+    }
   }, [isOpen])
+
+  const handleNameChange = (val: string) => {
+    setName(val)
+    if (errors.name) {
+      setErrors(prev => ({ ...prev, name: undefined }))
+    }
+  }
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val)
+    if (errors.email) {
+      setErrors(prev => ({ ...prev, email: undefined }))
+    }
+  }
+
+  const handleCountryCodeChange = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 4)
+    setCountryCode(digits ? `(${digits})` : '')
+    if (errors.phone) {
+      setErrors(prev => ({ ...prev, phone: undefined }))
+    }
+  }
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(formatPhoneValue(val))
+    if (errors.phone) {
+      setErrors(prev => ({ ...prev, phone: undefined }))
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const newErrors: { name?: string; email?: string; phone?: string } = {}
+
     if (!name.trim()) {
-      toast.error('Por favor, informe o seu nome.')
+      newErrors.name = 'Por favor, informe o seu nome.'
+    }
+    if (!isValidEmail(email)) {
+      newErrors.email = 'Por favor, informe um e-mail válido.'
+    }
+    
+    const countryDigits = countryCode.replace(/\D/g, '')
+    const phoneDigits = phone.replace(/\D/g, '')
+
+    if (!countryDigits) {
+      newErrors.phone = 'Por favor, informe o código do país.'
+    } else if (!phoneDigits) {
+      newErrors.phone = 'Por favor, informe seu telefone/WhatsApp.'
+    } else if (countryDigits === '55' && (phoneDigits.length < 10 || phoneDigits.length > 11)) {
+      newErrors.phone = 'Por favor, informe um telefone válido com DDD (ex: (11) 99999-9999).'
+    } else if (phoneDigits.length < 8) {
+      newErrors.phone = 'Por favor, informe um número de telefone válido.'
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
-    if (!email.trim() || !email.includes('@')) {
-      toast.error('Por favor, informe um e-mail válido.')
-      return
-    }
-    if (!phone.trim()) {
-      toast.error('Por favor, informe seu telefone/WhatsApp.')
-      return
-    }
-    onSend(name, email, phone)
+
+    const finalPhone = `(${countryDigits})${phoneDigits}`
+    onSend(name, email, finalPhone)
   }
 
   return (
@@ -1759,7 +1838,7 @@ function SendEmailModal({ isOpen, onClose, onSend, isSending }: SendEmailModalPr
       justifyContent: 'center',
       zIndex: 9999
     }} onClick={onClose}>
-      <form onSubmit={handleSubmit} style={{
+      <form onSubmit={handleSubmit} noValidate style={{
         background: 'var(--surface-card)',
         border: '1px solid var(--border-xs)',
         borderRadius: 'var(--r-lg)',
@@ -1801,10 +1880,19 @@ function SendEmailModal({ isOpen, onClose, onSend, isSending }: SendEmailModalPr
             type="text"
             placeholder="Nome Completo"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => handleNameChange(e.target.value)}
             required
             disabled={isSending}
+            style={{
+              borderColor: errors.name ? '#DC2626' : undefined,
+              boxShadow: errors.name ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : undefined
+            }}
           />
+          {errors.name && (
+            <span className="cif-error-msg" style={{ display: 'block', color: '#DC2626', fontSize: '0.73rem', fontWeight: 600, marginTop: '2px' }}>
+              {errors.name}
+            </span>
+          )}
         </div>
 
         <div className="form-group" style={{ gap: 4 }}>
@@ -1815,24 +1903,65 @@ function SendEmailModal({ isOpen, onClose, onSend, isSending }: SendEmailModalPr
             type="email"
             placeholder="seuemail@exemplo.com"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => handleEmailChange(e.target.value)}
             required
             disabled={isSending}
+            style={{
+              borderColor: errors.email ? '#DC2626' : undefined,
+              boxShadow: errors.email ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : undefined
+            }}
           />
+          {errors.email && (
+            <span className="cif-error-msg" style={{ display: 'block', color: '#DC2626', fontSize: '0.73rem', fontWeight: 600, marginTop: '2px' }}>
+              {errors.email}
+            </span>
+          )}
         </div>
 
         <div className="form-group" style={{ gap: 4 }}>
-          <label className="label" htmlFor="email-modal-phone">Telefone / WhatsApp</label>
-          <input
-            id="email-modal-phone"
-            className="input"
-            type="text"
-            placeholder="(00) 00000-0000"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            required
-            disabled={isSending}
-          />
+          <label className="label">Telefone / WhatsApp</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ width: '80px', flexShrink: 0 }}>
+              <input
+                id="email-modal-country-code"
+                className="input"
+                type="text"
+                placeholder="(55)"
+                value={countryCode}
+                onChange={e => handleCountryCodeChange(e.target.value)}
+                required
+                disabled={isSending}
+                maxLength={6}
+                style={{
+                  borderColor: errors.phone ? '#DC2626' : undefined,
+                  boxShadow: errors.phone ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : undefined,
+                  textAlign: 'center'
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <input
+                id="email-modal-phone"
+                className="input"
+                type="tel"
+                placeholder="(11) 99999-9999"
+                value={phone}
+                onChange={e => handlePhoneChange(e.target.value)}
+                required
+                disabled={isSending}
+                maxLength={15}
+                style={{
+                  borderColor: errors.phone ? '#DC2626' : undefined,
+                  boxShadow: errors.phone ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : undefined
+                }}
+              />
+            </div>
+          </div>
+          {errors.phone && (
+            <span className="cif-error-msg" style={{ display: 'block', color: '#DC2626', fontSize: '0.73rem', fontWeight: 600, marginTop: '2px' }}>
+              {errors.phone}
+            </span>
+          )}
         </div>
 
         <button
