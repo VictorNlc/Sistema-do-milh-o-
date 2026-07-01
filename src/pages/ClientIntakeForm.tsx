@@ -157,11 +157,22 @@ export default function ClientIntakeForm() {
     floorPlanPreview: null,
   })
 
+  const wMeters = parseFloat(form.width) || 10
+  const hMeters = parseFloat(form.height) || 12
+
+  // Limites da largura da porta 1 (largura da parede menos 2m de margem nas extremidades)
+  const wallLength1 = (doorOrientation === 'N' || doorOrientation === 'S') ? wMeters : hMeters
+  const maxDoorWidth = Math.max(0.8, wallLength1 - 2)
+
+  // Limites da largura da porta 2 (largura da parede menos 2m de margem nas extremidades)
+  const wallLength2 = (door2Orientation === 'N' || door2Orientation === 'S') ? wMeters : hMeters
+  const maxDoor2Width = Math.max(0.8, wallLength2 - 2)
+
   // Recalculates default centered door offset
   useEffect(() => {
     if (step !== 3) return
-    const w = parseFloat(form.width) || 10
-    const h = parseFloat(form.height) || 12
+    const w = wMeters
+    const h = hMeters
     const dWidth = parseFloat(doorWidth) || 2
     const wallLength = (doorOrientation === 'N' || doorOrientation === 'S') ? w : h
     const maxOffset = Math.max(0, wallLength - dWidth)
@@ -979,12 +990,12 @@ export default function ClientIntakeForm() {
       floorPlanDataUrl: form.spaceMode === 'floorplan' ? form.floorPlanPreview : null,
       freightData,
       door: form.spaceMode === 'dimensions' ? {
-        width: parseFloat(doorWidth) || 2.0,
+        width: Math.min(maxDoorWidth, Math.max(0.8, parseFloat(doorWidth) || 2.0)),
         orientation: doorOrientation,
         offset: parseFloat(doorOffset) || 0.0
       } : null,
       door2: (form.spaceMode === 'dimensions' && hasDoor2) ? {
-        width: parseFloat(door2Width) || 2.0,
+        width: Math.min(maxDoor2Width, Math.max(0.8, parseFloat(door2Width) || 2.0)),
         orientation: door2Orientation,
         offset: parseFloat(door2Offset) || 0.0
       } : null,
@@ -1694,7 +1705,15 @@ export default function ClientIntakeForm() {
                     <select
                       id="cif-door-wall"
                       value={doorOrientation}
-                      onChange={e => setDoorOrientation(e.target.value as any)}
+                      onChange={e => {
+                        const newOrient = e.target.value as any
+                        setDoorOrientation(newOrient)
+                        const wLen = (newOrient === 'N' || newOrient === 'S') ? wMeters : hMeters
+                        const maxW = Math.max(0.8, wLen - 2)
+                        if (parseFloat(doorWidth) > maxW) {
+                          setDoorWidth(maxW.toFixed(1))
+                        }
+                      }}
                     >
                       <option value="S">Parede Inferior (Frente/Principal)</option>
                       <option value="N">Parede Superior (Fundos)</option>
@@ -1708,11 +1727,18 @@ export default function ClientIntakeForm() {
                       id="cif-door-width"
                       type="number"
                       min="0.8"
-                      max="4.0"
+                      max={maxDoorWidth.toFixed(1)}
                       step="0.1"
                       placeholder="Ex: 2.0"
                       value={doorWidth}
-                      onChange={e => setDoorWidth(e.target.value)}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value)
+                        if (val > maxDoorWidth) {
+                          setDoorWidth(maxDoorWidth.toFixed(1))
+                        } else {
+                          setDoorWidth(e.target.value)
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -1964,21 +1990,42 @@ export default function ClientIntakeForm() {
                   <div className="cif-form-row">
                     <div className="cif-field">
                       <label>Parede da 2ª Porta</label>
-                      <select value={door2Orientation} onChange={e => setDoor2Orientation(e.target.value as any)}>
-                        {doorOrientation !== 'S' && <option value="S">Parede Inferior (Frente)</option>}
-                        {doorOrientation !== 'N' && <option value="N">Parede Superior (Fundos)</option>}
-                        {doorOrientation !== 'W' && <option value="W">Parede Esquerda</option>}
-                        {doorOrientation !== 'E' && <option value="E">Parede Direita</option>}
-                      </select>
-                    </div>
-                    <div className="cif-field">
-                      <label>Largura da 2ª Porta (m)</label>
-                      <input
-                        type="number" min="0.8" max="4.0" step="0.1"
-                        placeholder="Ex: 2.0"
-                        value={door2Width}
-                        onChange={e => setDoor2Width(e.target.value)}
-                      />
+                    <select
+                      value={door2Orientation}
+                      onChange={e => {
+                        const newOrient = e.target.value as any
+                        setDoor2Orientation(newOrient)
+                        const wLen = (newOrient === 'N' || newOrient === 'S') ? wMeters : hMeters
+                        const maxW = Math.max(0.8, wLen - 2)
+                        if (parseFloat(door2Width) > maxW) {
+                          setDoor2Width(maxW.toFixed(1))
+                        }
+                      }}
+                    >
+                      {doorOrientation !== 'S' && <option value="S">Parede Inferior (Frente)</option>}
+                      {doorOrientation !== 'N' && <option value="N">Parede Superior (Fundos)</option>}
+                      {doorOrientation !== 'W' && <option value="W">Parede Esquerda</option>}
+                      {doorOrientation !== 'E' && <option value="E">Parede Direita</option>}
+                    </select>
+                  </div>
+                  <div className="cif-field">
+                    <label>Largura da 2ª Porta (m)</label>
+                    <input
+                      type="number"
+                      min="0.8"
+                      max={maxDoor2Width.toFixed(1)}
+                      step="0.1"
+                      placeholder="Ex: 2.0"
+                      value={door2Width}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value)
+                        if (val > maxDoor2Width) {
+                          setDoor2Width(maxDoor2Width.toFixed(1))
+                        } else {
+                          setDoor2Width(e.target.value)
+                        }
+                      }}
+                    />
                     </div>
                   </div>
 
