@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { toast } from '../../store/toastStore'
 import { generateAILayout } from '../../services/heuristicLayoutGenerator'
 import type { ItemCategory, PharmacyItemTemplate, CanvasItem } from '../../types'
+import { getFurnitureIcon } from '../../utils/furnitureIcons'
 import './ItemLibrary.css'
 
 interface ItemLibraryProps {
@@ -381,8 +382,12 @@ export default function ItemLibrary({
                   aria-label={`Adicionar ${cleanItemName(item.name)}`}
                   style={{ '--item-fill': item.fillColor, '--item-stroke': item.strokeColor } as React.CSSProperties}
                 >
-                  <div className="lib-swatch-svg">
-                    {getItemIcon(item.category, item.id, item.name)}
+                  <div className="lib-swatch-svg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {getFurnitureIcon(item) ? (
+                      <img src={getFurnitureIcon(item)!} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      getItemIcon(item.category, item.id, item.name)
+                    )}
                   </div>
                   <div className="lib-body">
                     <span className="lib-name">{cleanItemName(item.name)}</span>

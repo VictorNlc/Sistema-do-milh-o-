@@ -1,9 +1,10 @@
 import { useRef, useCallback, useState, useEffect, memo } from 'react'
-import { Group, Rect, Text, Circle, Line } from 'react-konva'
+import { Group, Rect, Text, Circle, Line, Image as KonvaImage } from 'react-konva'
 import { useCanvasStore, PIXELS_PER_METER } from '../../store/canvasStore'
 import { clampItemPosition, getRotatedBounds, checkItemsCollision } from '../../utils/geometry'
 import { cleanItemName } from '../../utils/labels'
 import type { CanvasItem as CanvasItemType } from '../../types'
+import { getFurnitureIcon } from '../../utils/furnitureIcons'
 
 interface CanvasItemProps {
   item: CanvasItemType
@@ -17,6 +18,23 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
   const groupRef = useRef<any>(null)
   const drawingsGroupRef = useRef<any>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [imgObj, setImgObj] = useState<HTMLImageElement | null>(null)
+  
+  useEffect(() => {
+    const iconUrl = getFurnitureIcon(item)
+    if (iconUrl) {
+      const img = new window.Image()
+      img.src = iconUrl
+      img.onload = () => {
+        setImgObj(img)
+      }
+      img.onerror = () => {
+        setImgObj(null)
+      }
+    } else {
+      setImgObj(null)
+    }
+  }, [item.name, item.code, item.id, item.icon])
   
   const selectedItemIds = useCanvasStore(state => state.selectedItemIds)
   const selectedItemsStartPos = useRef<Record<string, { x: number; y: number }>>({})
@@ -684,165 +702,191 @@ const CanvasItem = memo(function CanvasItem({ item, isSelected, isDraggable, onS
       opacity={isOutsideThreshold ? 0.35 : 1}
     >
       <Group ref={drawingsGroupRef}>
-        <Rect
-          width={w} height={h}
-          fill={isObstacle ? '#f8fafc' : dynamicFill}
-          stroke={isObstacle ? '#334155' : dynamicStroke}
-          strokeWidth={isObstacle ? 5 : strokeBorderWidth}
-          cornerRadius={cRadius}
-          shadowEnabled={!isDragging}
-          shadowBlur={isSelected ? 12 : 2}
-          shadowColor={isSelected ? '#C5A028' : 'rgba(15, 23, 42, 0.05)'}
-          shadowOffsetY={isSelected ? 2 : 1}
-        />
-
-        {/* A. GONDOLAS: CAD side caps, shelf lines & products */}
-        {!isSmall && item.category === 'GONDOLAS' && (
-          w >= h ? (
-            <>
-              {/* End caps */}
-              <Rect x={0} y={0} width={2.5} height={h} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
-              <Rect x={w - 2.5} y={0} width={2.5} height={h} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
-              {/* Divider */}
-              <Line points={[2.5, h / 2, w - 2.5, h / 2]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={1} opacity={0.8} />
-              {/* Shelf lines */}
-              <Line points={[2.5, h * 0.25, w - 2.5, h * 0.25]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
-              <Line points={[2.5, h * 0.75, w - 2.5, h * 0.75]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
-              
-              {/* Products on shelves */}
-              {w >= 30 && Array.from({ length: Math.floor((w - 8) / 10) }).map((_, idx) => {
-                const px = 6 + idx * 10
-                const prodColors = ['#f59e0b', '#3b82f6', '#ef4444', '#10b981']
-                return (
-                  <Group key={idx}>
-                    <Rect x={px} y={h * 0.25 - 1.5} width={4} height={3} fill={prodColors[idx % 4]} opacity={0.7} cornerRadius={0.5} />
-                    <Rect x={px + 5} y={h * 0.75 - 1.5} width={4} height={3} fill={prodColors[(idx + 1) % 4]} opacity={0.7} cornerRadius={0.5} />
-                  </Group>
-                )
-              })}
-            </>
-          ) : (
-            <>
-              {/* End caps */}
-              <Rect x={0} y={0} width={w} height={2.5} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
-              <Rect x={0} y={h - 2.5} width={w} height={2.5} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
-              {/* Divider */}
-              <Line points={[w / 2, 2.5, w / 2, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={1} opacity={0.8} />
-              {/* Shelf lines */}
-              <Line points={[w * 0.25, 2.5, w * 0.25, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
-              <Line points={[w * 0.75, 2.5, w * 0.75, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
-              
-              {/* Products on shelves vertical */}
-              {h >= 30 && Array.from({ length: Math.floor((h - 8) / 10) }).map((_, idx) => {
-                const py = 6 + idx * 10
-                const prodColors = ['#f59e0b', '#3b82f6', '#ef4444', '#10b981']
-                return (
-                  <Group key={idx}>
-                    <Rect x={w * 0.25 - 1.5} y={py} width={3} height={4} fill={prodColors[idx % 4]} opacity={0.7} cornerRadius={0.5} />
-                    <Rect x={w * 0.75 - 1.5} y={py + 5} width={3} height={4} fill={prodColors[(idx + 1) % 4]} opacity={0.7} cornerRadius={0.5} />
-                  </Group>
-                )
-              })}
-            </>
-          )
-        )}
-
-        {/* B. BALCOES: Countertop inset & register shapes */}
-        {!isSmall && item.category === 'BALCOES' && (
+        {imgObj ? (
           <>
             <Rect
-              x={3} y={3}
-              width={w - 6} height={h - 6}
-              fill="#f8fafc" // Distinct countertop inset
-              stroke={item.strokeColor || '#1D4ED8'}
-              strokeWidth={0.8}
-              cornerRadius={1.5}
+              width={w} height={h}
+              fill="#ffffff"
+              stroke={dynamicStroke}
+              strokeWidth={strokeBorderWidth}
+              cornerRadius={cRadius}
+              shadowEnabled={!isDragging}
+              shadowBlur={isSelected ? 12 : 2}
+              shadowColor={isSelected ? '#C5A028' : 'rgba(15, 23, 42, 0.05)'}
+              shadowOffsetY={isSelected ? 2 : 1}
             />
-            {/* Mock keyboard & monitor screen & scanner */}
-            {w >= 24 && h >= 16 && (
-              <>
-                {/* Keyboard */}
-                <Rect x={w / 2 - 5} y={h / 2 - 1.5} width={10} height={3} fill="#64748b" cornerRadius={0.5} opacity={0.8} />
-                {/* Monitor */}
-                <Line points={[w / 2 - 6, h / 2 - 4, w / 2 + 6, h / 2 - 4]} stroke="#334155" strokeWidth={1.2} />
-                <Line points={[w / 2, h / 2 - 4, w / 2, h / 2 - 2]} stroke="#475569" strokeWidth={1} />
-                {/* Scanner bed */}
-                <Rect x={w / 2 - 9} y={h / 2 - 1.5} width={2.5} height={2.5} fill="#ef4444" stroke="#dc2626" strokeWidth={0.4} />
-              </>
-            )}
+            <KonvaImage
+              image={imgObj}
+              x={1.5}
+              y={1.5}
+              width={w - 3}
+              height={h - 3}
+              cornerRadius={cRadius > 1.5 ? cRadius - 1.5 : cRadius}
+            />
           </>
-        )}
-
-        {/* C. REFRIGERACAO: Double frame, diagonal glass reflection & racks */}
-        {!isSmall && item.category === 'REFRIGERACAO' && (
+        ) : (
           <>
-            {/* Inner wall insulation */}
-            <Rect x={3} y={3} width={w - 6} height={h - 6} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.8} opacity={0.7} />
-            {/* Diagonal glass reflection */}
-            <Line points={[w * 0.15, h * 0.25, w * 0.35, h * 0.45]} stroke="#ffffff" strokeWidth={1.2} opacity={0.6} />
-            <Line points={[w * 0.25, h * 0.25, w * 0.45, h * 0.45]} stroke="#ffffff" strokeWidth={0.8} opacity={0.4} />
-            {/* Wire racks */}
-            {w >= h ? (
-              Array.from({ length: Math.floor((w - 8) / 8) }).map((_, idx) => {
-                const gx = 6 + idx * 8
-                return <Line key={idx} points={[gx, 4, gx, h - 4]} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.4} opacity={0.4} />
-              })
-            ) : (
-              Array.from({ length: Math.floor((h - 8) / 8) }).map((_, idx) => {
-                const gy = 6 + idx * 8
-                return <Line key={idx} points={[4, gy, w - 4, gy]} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.4} opacity={0.4} />
-              })
-            )}
-            {/* Fan vent circle */}
-            {w >= 20 && h >= 20 && (
-              <Circle x={w - 6} y={h - 6} radius={2.5} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.5} opacity={0.6} />
-            )}
-          </>
-        )}
+            <Rect
+              width={w} height={h}
+              fill={isObstacle ? '#f8fafc' : dynamicFill}
+              stroke={isObstacle ? '#334155' : dynamicStroke}
+              strokeWidth={isObstacle ? 5 : strokeBorderWidth}
+              cornerRadius={cRadius}
+              shadowEnabled={!isDragging}
+              shadowBlur={isSelected ? 12 : 2}
+              shadowColor={isSelected ? '#C5A028' : 'rgba(15, 23, 42, 0.05)'}
+              shadowOffsetY={isSelected ? 2 : 1}
+            />
 
-        {/* D. PERFUMARIA: Circular details & cosmetics display */}
-        {!isSmall && item.category === 'PERFUMARIA' && (
-          isRound ? (
-            <>
-              <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 2 - 3} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.8} opacity={0.8} />
-              <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 4} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.6} />
-              {/* Radials */}
-              <Line points={[3, h / 2, w - 3, h / 2]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
-              <Line points={[w / 2, 3, w / 2, h - 3]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
-              
-              {/* Cosmetics circles */}
-              <Circle x={w / 2 - 3.5} y={h / 2 - 3.5} radius={1.5} fill="#db2777" />
-              <Circle x={w / 2 + 3.5} y={h / 2 - 3.5} radius={1.5} fill="#f59e0b" />
-              <Circle x={w / 2 - 3.5} y={h / 2 + 3.5} radius={1.5} fill="#0ea5e9" />
-              <Circle x={w / 2 + 3.5} y={h / 2 + 3.5} radius={1.5} fill="#10b981" />
-            </>
-          ) : (
-            <>
-              <Rect x={2.5} y={2.5} width={w - 5} height={h - 5} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.7} dash={[2, 2]} opacity={0.6} />
-              {/* Perfume bottles on shelf */}
-              {w >= 30 && (
-                <Group>
-                  <Line points={[4, h * 0.4, w - 4, h * 0.4]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
-                  <Line points={[4, h * 0.7, w - 4, h * 0.7]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+            {/* A. GONDOLAS: CAD side caps, shelf lines & products */}
+            {!isSmall && item.category === 'GONDOLAS' && (
+              w >= h ? (
+                <>
+                  {/* End caps */}
+                  <Rect x={0} y={0} width={2.5} height={h} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+                  <Rect x={w - 2.5} y={0} width={2.5} height={h} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+                  {/* Divider */}
+                  <Line points={[2.5, h / 2, w - 2.5, h / 2]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={1} opacity={0.8} />
+                  {/* Shelf lines */}
+                  <Line points={[2.5, h * 0.25, w - 2.5, h * 0.25]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+                  <Line points={[2.5, h * 0.75, w - 2.5, h * 0.75]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
                   
-                  {Array.from({ length: Math.floor((w - 8) / 12) }).map((_, idx) => {
-                    const px = 6 + idx * 12
+                  {/* Products on shelves */}
+                  {w >= 30 && Array.from({ length: Math.floor((w - 8) / 10) }).map((_, idx) => {
+                    const px = 6 + idx * 10
+                    const prodColors = ['#f59e0b', '#3b82f6', '#ef4444', '#10b981']
                     return (
                       <Group key={idx}>
-                        {/* Perfume 1: round bottle with cap */}
-                        <Circle x={px} y={h * 0.4 - 1.5} radius={1.5} fill="#db2777" />
-                        <Rect x={px - 0.5} y={h * 0.4 - 3.5} width={1} height={1.5} fill="#374151" />
-                        
-                        {/* Perfume 2: square bottle */}
-                        <Rect x={px + 5} y={h * 0.7 - 2.5} width={3} height={3} fill="#f59e0b" cornerRadius={0.5} />
-                        <Rect x={px + 6} y={h * 0.7 - 4} width={1} height={1.5} fill="#374151" />
+                        <Rect x={px} y={h * 0.25 - 1.5} width={4} height={3} fill={prodColors[idx % 4]} opacity={0.7} cornerRadius={0.5} />
+                        <Rect x={px + 5} y={h * 0.75 - 1.5} width={4} height={3} fill={prodColors[(idx + 1) % 4]} opacity={0.7} cornerRadius={0.5} />
                       </Group>
                     )
                   })}
-                </Group>
-              )}
-            </>
-          )
+                </>
+              ) : (
+                <>
+                  {/* End caps */}
+                  <Rect x={0} y={0} width={w} height={2.5} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+                  <Rect x={0} y={h - 2.5} width={w} height={2.5} fill={item.strokeColor || '#5C4A2A'} opacity={0.65} />
+                  {/* Divider */}
+                  <Line points={[w / 2, 2.5, w / 2, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={1} opacity={0.8} />
+                  {/* Shelf lines */}
+                  <Line points={[w * 0.25, 2.5, w * 0.25, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+                  <Line points={[w * 0.75, 2.5, w * 0.75, h - 2.5]} stroke={item.strokeColor || '#5C4A2A'} strokeWidth={0.8} opacity={0.45} />
+                  
+                  {/* Products on shelves vertical */}
+                  {h >= 30 && Array.from({ length: Math.floor((h - 8) / 10) }).map((_, idx) => {
+                    const py = 6 + idx * 10
+                    const prodColors = ['#f59e0b', '#3b82f6', '#ef4444', '#10b981']
+                    return (
+                      <Group key={idx}>
+                        <Rect x={w * 0.25 - 1.5} y={py} width={3} height={4} fill={prodColors[idx % 4]} opacity={0.7} cornerRadius={0.5} />
+                        <Rect x={w * 0.75 - 1.5} y={py + 5} width={3} height={4} fill={prodColors[(idx + 1) % 4]} opacity={0.7} cornerRadius={0.5} />
+                      </Group>
+                    )
+                  })}
+                </>
+              )
+            )}
+
+            {/* B. BALCOES: Countertop inset & register shapes */}
+            {!isSmall && item.category === 'BALCOES' && (
+              <>
+                <Rect
+                  x={3} y={3}
+                  width={w - 6} height={h - 6}
+                  fill="#f8fafc" // Distinct countertop inset
+                  stroke={item.strokeColor || '#1D4ED8'}
+                  strokeWidth={0.8}
+                  cornerRadius={1.5}
+                />
+                {/* Mock keyboard & monitor screen & scanner */}
+                {w >= 24 && h >= 16 && (
+                  <>
+                    {/* Keyboard */}
+                    <Rect x={w / 2 - 5} y={h / 2 - 1.5} width={10} height={3} fill="#64748b" cornerRadius={0.5} opacity={0.8} />
+                    {/* Monitor */}
+                    <Line points={[w / 2 - 6, h / 2 - 4, w / 2 + 6, h / 2 - 4]} stroke="#334155" strokeWidth={1.2} />
+                    <Line points={[w / 2, h / 2 - 4, w / 2, h / 2 - 2]} stroke="#475569" strokeWidth={1} />
+                    {/* Scanner bed */}
+                    <Rect x={w / 2 - 9} y={h / 2 - 1.5} width={2.5} height={2.5} fill="#ef4444" stroke="#dc2626" strokeWidth={0.4} />
+                  </>
+                )}
+              </>
+            )}
+
+            {/* C. REFRIGERACAO: Double frame, diagonal glass reflection & racks */}
+            {!isSmall && item.category === 'REFRIGERACAO' && (
+              <>
+                {/* Inner wall insulation */}
+                <Rect x={3} y={3} width={w - 6} height={h - 6} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.8} opacity={0.7} />
+                {/* Diagonal glass reflection */}
+                <Line points={[w * 0.15, h * 0.25, w * 0.35, h * 0.45]} stroke="#ffffff" strokeWidth={1.2} opacity={0.6} />
+                <Line points={[w * 0.25, h * 0.25, w * 0.45, h * 0.45]} stroke="#ffffff" strokeWidth={0.8} opacity={0.4} />
+                {/* Wire racks */}
+                {w >= h ? (
+                  Array.from({ length: Math.floor((w - 8) / 8) }).map((_, idx) => {
+                    const gx = 6 + idx * 8
+                    return <Line key={idx} points={[gx, 4, gx, h - 4]} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.4} opacity={0.4} />
+                  })
+                ) : (
+                  Array.from({ length: Math.floor((h - 8) / 8) }).map((_, idx) => {
+                    const gy = 6 + idx * 8
+                    return <Line key={idx} points={[4, gy, w - 4, gy]} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.4} opacity={0.4} />
+                  })
+                )}
+                {/* Fan vent circle */}
+                {w >= 20 && h >= 20 && (
+                  <Circle x={w - 6} y={h - 6} radius={2.5} stroke={item.strokeColor || '#0EA5E9'} strokeWidth={0.5} opacity={0.6} />
+                )}
+              </>
+            )}
+
+            {/* D. PERFUMARIA: Circular details & cosmetics display */}
+            {!isSmall && item.category === 'PERFUMARIA' && (
+              isRound ? (
+                <>
+                  <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 2 - 3} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.8} opacity={0.8} />
+                  <Circle x={w / 2} y={h / 2} radius={Math.min(w, h) / 4} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.6} />
+                  {/* Radials */}
+                  <Line points={[3, h / 2, w - 3, h / 2]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+                  <Line points={[w / 2, 3, w / 2, h - 3]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+                  
+                  {/* Cosmetics circles */}
+                  <Circle x={w / 2 - 3.5} y={h / 2 - 3.5} radius={1.5} fill="#db2777" />
+                  <Circle x={w / 2 + 3.5} y={h / 2 - 3.5} radius={1.5} fill="#f59e0b" />
+                  <Circle x={w / 2 - 3.5} y={h / 2 + 3.5} radius={1.5} fill="#0ea5e9" />
+                  <Circle x={w / 2 + 3.5} y={h / 2 + 3.5} radius={1.5} fill="#10b981" />
+                </>
+              ) : (
+                <>
+                  <Rect x={2.5} y={2.5} width={w - 5} height={h - 5} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.7} dash={[2, 2]} opacity={0.6} />
+                  {/* Perfume bottles on shelf */}
+                  {w >= 30 && (
+                    <Group>
+                      <Line points={[4, h * 0.4, w - 4, h * 0.4]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+                      <Line points={[4, h * 0.7, w - 4, h * 0.7]} stroke={item.strokeColor || '#9D174D'} strokeWidth={0.5} opacity={0.4} />
+                      
+                      {Array.from({ length: Math.floor((w - 8) / 12) }).map((_, idx) => {
+                        const px = 6 + idx * 12
+                        return (
+                          <Group key={idx}>
+                            {/* Perfume 1: round bottle with cap */}
+                            <Circle x={px} y={h * 0.4 - 1.5} radius={1.5} fill="#db2777" />
+                            <Rect x={px - 0.5} y={h * 0.4 - 3.5} width={1} height={1.5} fill="#374151" />
+                            
+                            {/* Perfume 2: square bottle */}
+                            <Rect x={px + 5} y={h * 0.7 - 2.5} width={3} height={3} fill="#f59e0b" cornerRadius={0.5} />
+                            <Rect x={px + 6} y={h * 0.7 - 4} width={1} height={1.5} fill="#374151" />
+                          </Group>
+                        )
+                      })}
+                    </Group>
+                  )}
+                </>
+              )
+            )}
+          </>
         )}
 
         {/* E. ROOMS / SERVICOS: Desk, chairs, and medical cross */}

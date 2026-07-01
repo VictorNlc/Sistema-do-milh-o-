@@ -3,6 +3,7 @@ import { useCanvasStore } from '../../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
 import { getFullLayoutDataUrl } from '../../utils/canvasExport'
 import { toast } from '../../store/toastStore'
+import { getFurnitureIcon } from '../../utils/furnitureIcons'
 import './BudgetPanel.css'
 
 interface GroupedBudgetItem {
@@ -96,7 +97,13 @@ export default function BudgetPanel({ onRequestEmail }: BudgetPanelProps) {
           groupedItems.map(group => (
             <div key={group.name} className="budget-card">
               <div className="budget-card-header">
-                <span className="budget-card-icon">{group.icon}</span>
+                <span className="budget-card-icon">
+                  {getFurnitureIcon(group) ? (
+                    <img src={getFurnitureIcon(group)!} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                  ) : (
+                    group.icon
+                  )}
+                </span>
                 <div className="budget-card-meta">
                   <span className="budget-card-name">{group.name}</span>
                   {group.code && <span className="budget-card-code">Cód: {group.code}</span>}
