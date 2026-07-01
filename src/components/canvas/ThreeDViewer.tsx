@@ -5,6 +5,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { useCanvasStore } from '../../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
 import { getRotatedBounds } from '../../utils/geometry'
+import { PHARMACY_ITEMS } from '../../data/items'
 import { generateCustomersSimulation, CustomerData } from '../../services/customerSimulation'
 import './ThreeDViewer.css'
 
@@ -535,6 +536,9 @@ const MODEL_KEY_FOR_ITEM: Record<string, string> = {
 // Gondola models are stored with their length along the GLB X axis — no Y rotation needed
 const NO_ROTATION_MODELS = new Set(['gondola170', 'gondola170cimed', 'gondola220', 'gondola220cimed', 'gondola300', 'gondola300cimed'])
 
+// Balcões e caixa têm o GLB orientado na direção oposta — precisam de +π de correção adicional
+const FLIPPED_MODELS = new Set(['balcao070', 'balcao080', 'balcao100', 'caixa100', 'pdv060'])
+
 const getRequiredModelKeys = (items: any[]): string[] => {
   const keys = new Set<string>()
   items.forEach(item => {
@@ -624,7 +628,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const [showCustomizer, setShowCustomizer] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [floorStyle, setFloorStyle] = useState('vinilico')
-  const [wallColor, setWallColor] = useState('mint') 
+  const [wallColor, setWallColor] = useState('mint')
+  const [moduleAccentColor, setModuleAccentColor] = useState('#c0392b')
   // Real-time sun shadows ON by default on desktop for the premium hero shot; OFF on mobile
   // (perf). The fake contact-shadow planes still ground objects when this is off.
   const [shadowsEnabled, setShadowsEnabled] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 1024 : false))
@@ -3406,7 +3411,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       const itemD = Number(item.height) || 1.0
       const itemX = Number(item.x) || 0
       const itemY = Number(item.y) || 0
-      let itemH = Number(item.height3d) || CATEGORY_HEIGHTS[item.category as keyof typeof CATEGORY_HEIGHTS] || 1.2
+      const _catalogTpl = PHARMACY_ITEMS.find(t => t.id === (item.itemId || item.id))
+      let itemH = Number(_catalogTpl?.height3d) || Number(item.height3d) || CATEGORY_HEIGHTS[item.category as keyof typeof CATEGORY_HEIGHTS] || 1.2
       
       if (isLCheckout) {
         itemH = 1.05
@@ -3466,7 +3472,15 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         modelClone.position.x = -centerX
         modelClone.position.z = -centerZ
 
-        const wallColorHex = WALL_COLORS[wallColor as keyof typeof WALL_COLORS] || WALL_COLORS.mint
+        const skipAccentRecolor = matchedKey === 'cestao'
+        // Modelos MIP têm rótulos coloridos no corpo — usar altura/posição do mesh para distinguir
+        // fechamento/rodapé (topo/base) dos rótulos de categoria (faixas finas no meio)
+        const isMipModel = matchedKey === 'mipdorfebre' || matchedKey === 'mipsistdigestivo' ||
+          matchedKey === 'mipgripealergia' || matchedKey === 'mipprimeiros' || matchedKey === 'mipvitaminas'
+        const accentHex = new THREE.Color(moduleAccentColor).getHex()
+        const _tempBox = new THREE.Box3()
+
+        modelClone.updateMatrixWorld(true)
 
         modelClone.traverse(child => {
           if ((child as THREE.Mesh).isMesh) {
@@ -3474,26 +3488,58 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             mesh.castShadow = true
             mesh.receiveShadow = true
 
-            // Detect and dynamically color parts matching top closure/canopy names
+            if (skipAccentRecolor) return
+
             const nameLower = (mesh.name || '').toLowerCase()
             const matNameLower = (mesh.material && !(mesh.material instanceof Array) && mesh.material.name ? mesh.material.name : '').toLowerCase()
 
-            if (
+            const isNamedBrandPart =
               nameLower.includes('fechamento') || nameLower.includes('testeira') || nameLower.includes('canopy') ||
-              matNameLower.includes('fechamento') || matNameLower.includes('testeira') || matNameLower.includes('canopy')
-            ) {
-              if (mesh.material) {
-                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-                const newMaterials = materials.map(mat => {
-                  if (mat && 'color' in mat) {
-                    const clonedMat = mat.clone() as THREE.MeshStandardMaterial
-                    clonedMat.color.setHex(wallColorHex)
-                    return clonedMat
+              nameLower.includes('rodape') || nameLower.includes('rodapé') ||
+              matNameLower.includes('fechamento') || matNameLower.includes('testeira') || matNameLower.includes('canopy') ||
+              matNameLower.includes('rodape') || matNameLower.includes('rodapé')
+
+            // Detectar material vermelho-ish (R > 0.58, R > G*1.5, R > B*1.5)
+            // Para MIP: só recolorir se o mesh cobrir >60% da largura total do modelo
+            // (fechamento/rodapé são full-width; rótulos cobrem ~1/3 da largura)
+            let isRedishMaterial = false
+            if (!isNamedBrandPart && mesh.material) {
+              const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+              if (mat && 'color' in mat) {
+                const { r, g, b } = (mat as THREE.MeshStandardMaterial).color
+                const isRedish = r > 0.58 && r > g * 1.5 && r > b * 1.5
+                if (isRedish) {
+                  if (isMipModel) {
+                    _tempBox.setFromObject(mesh)
+                    const meshCenterY = (_tempBox.min.y + _tempBox.max.y) / 2
+                    const meshHeight = _tempBox.max.y - _tempBox.min.y
+                    const relY = itemH > 0 ? meshCenterY / itemH : 0.5
+                    const relMeshHeight = itemH > 0 ? meshHeight / itemH : 0
+                    // Excluir faixas finas de rótulo no meio do módulo (10%–80% altura, < 10% espessura)
+                    const isLabelBand = relY >= 0.10 && relY <= 0.80 && relMeshHeight < 0.10
+                    isRedishMaterial = !isLabelBand
+                  } else {
+                    isRedishMaterial = true
                   }
-                  return mat
-                })
-                mesh.material = Array.isArray(mesh.material) ? newMaterials : newMaterials[0]
+                }
               }
+            }
+
+            if ((isNamedBrandPart || isRedishMaterial) && mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+              const newMaterials = materials.map(mat => {
+                if (mat && 'color' in mat) {
+                  const m = mat as THREE.MeshStandardMaterial
+                  // Preservar materiais claros/brancos (texto, logos) — não recolorir
+                  const lum = m.color.r * 0.299 + m.color.g * 0.587 + m.color.b * 0.114
+                  if (lum > 0.8) return mat
+                  const clonedMat = m.clone()
+                  clonedMat.color.setHex(accentHex)
+                  return clonedMat
+                }
+                return mat
+              })
+              mesh.material = Array.isArray(mesh.material) ? newMaterials : newMaterials[0]
             }
           }
         })
@@ -3583,8 +3629,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           //   E/W walls (2D rotation 90°/270°) → correct with +π/2
           const itemRotDeg = ((Number(item.rotation) || 0) % 360 + 360) % 360
           const rotCorrection = NO_ROTATION_MODELS.has(matchedKey!) ? 0
-            : (itemRotDeg === 90 || itemRotDeg === 270) ? Math.PI / 2
-            : -Math.PI / 2
+            : FLIPPED_MODELS.has(matchedKey!)
+              ? ((itemRotDeg === 90 || itemRotDeg === 270) ? -Math.PI / 2 : Math.PI / 2)
+              : ((itemRotDeg === 90 || itemRotDeg === 270) ? Math.PI / 2 : -Math.PI / 2)
           applyModelToSubGroup(matchedModel, true, rotCorrection)
         } catch (e) {
           console.error(`⚠️ [3D Viewer] Erro ao clonar/renderizar modelo 3D para ${item.name}:`, e)
@@ -4050,7 +4097,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     if (rendererRef.current) {
       rendererRef.current.shadowMap.needsUpdate = true
     }
-  }, [items, storeWidth, storeHeight, loadedModelsCount, showSimulation])
+  }, [items, storeWidth, storeHeight, loadedModelsCount, showSimulation, moduleAccentColor])
 
   // --- Effect 4: Atualização de Customizações (floorStyle, wallColor, showSignage) ---
   useEffect(() => {
@@ -4535,6 +4582,44 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
               <button className={`cust-btn ${wallColor === 'blue' ? 'active' : ''}`} onClick={() => setWallColor('blue')}>
                 Azul Royal
               </button>
+            </div>
+          </div>
+
+          <div className="cust-section">
+            <label className="cust-label">Cor de Destaque dos Módulos</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                type="color"
+                value={moduleAccentColor}
+                onChange={e => setModuleAccentColor(e.target.value)}
+                style={{ width: 40, height: 32, padding: 2, border: '1px solid var(--border-sm)', borderRadius: 'var(--r-sm)', cursor: 'pointer', background: 'none' }}
+                title="Cor das partes coloridas dos móveis em 3D"
+              />
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {[
+                  { color: '#c0392b', label: 'Vermelho' },
+                  { color: '#1e3a8a', label: 'Azul' },
+                  { color: '#065f46', label: 'Verde' },
+                  { color: '#ffffff', label: 'Branco' },
+                  { color: '#374151', label: 'Cinza' },
+                  { color: '#7c3aed', label: 'Roxo' },
+                  { color: '#000000', label: 'Preto' },
+                ].map(({ color, label }) => (
+                  <button
+                    key={color}
+                    onClick={() => setModuleAccentColor(color)}
+                    style={{
+                      width: 24, height: 24,
+                      background: color,
+                      border: moduleAccentColor === color ? '2px solid var(--text-1)' : '1px solid var(--border-sm)',
+                      borderRadius: 'var(--r-sm)',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                    title={label}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
