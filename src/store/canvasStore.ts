@@ -333,17 +333,27 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { storeWidth, storeHeight } = get()
     const cleanedName = cleanItemName(itemTemplate.name)
     
-    const initialX = (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
+    const isDoor = itemTemplate.isDoor ?? itemTemplate.id?.includes('porta') ?? false
+    let finalWidth = itemTemplate.width
+    if (isDoor) {
+      // Quando adicionado via catalogo, a rotação inicial é 0 (horizontal)
+      const limit = storeWidth * 0.7
+      if (finalWidth > limit) {
+        finalWidth = limit
+      }
+    }
+
+    const initialX = (isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA')
       ? Math.max(0, Math.min(x, storeWidth))
-      : Math.max(0, Math.min(x, storeWidth - itemTemplate.width))
-    const initialY = (itemTemplate.isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA' || itemTemplate.id?.includes('porta'))
+      : Math.max(0, Math.min(x, storeWidth - finalWidth))
+    const initialY = (isDoor || itemTemplate.isWallItem || itemTemplate.category === 'ESTRUTURA')
       ? Math.max(0, Math.min(y, storeHeight))
       : Math.max(0, Math.min(y, storeHeight - itemTemplate.height))
 
     const clamped = clampItemPosition(
       initialX,
       initialY,
-      itemTemplate.width,
+      finalWidth,
       itemTemplate.height,
       0,
       storeWidth,
@@ -358,7 +368,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       category: itemTemplate.category,
       x: clamped.x,
       y: clamped.y,
-      width: itemTemplate.width,
+      width: finalWidth,
       height: itemTemplate.height,
       fillColor: itemTemplate.fillColor,
       strokeColor: itemTemplate.strokeColor,
@@ -536,14 +546,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const item = items.find(i => i.id === id)
     if (!item) return
 
-    const isWallOrDoor = item.isDoor || item.isWallItem || item.category === 'ESTRUTURA' || item.itemId?.includes('porta')
+    const isDoor = item.isDoor || item.itemId?.includes('porta')
+    const isWallOrDoor = isDoor || item.isWallItem || item.category === 'ESTRUTURA'
 
-    const newWidth = isWallOrDoor 
+    let newWidth = isWallOrDoor 
       ? width 
       : Math.max(0.2, Math.min(width, storeWidth - item.x))
-    const newHeight = isWallOrDoor 
+    let newHeight = isWallOrDoor 
       ? height 
       : Math.max(0.2, Math.min(height, storeHeight - item.y))
+
+    if (isDoor) {
+      const isHorizontal = (item.rotation || 0) % 180 === 0
+      const limit = isHorizontal ? storeWidth * 0.7 : storeHeight * 0.7
+      if (newWidth > limit) {
+        newWidth = limit
+      }
+    }
 
     set(s => ({
       items: s.items.map(i => (i.id === id ? { ...i, width: newWidth, height: newHeight } : i)),
