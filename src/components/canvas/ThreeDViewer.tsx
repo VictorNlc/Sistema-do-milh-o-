@@ -528,7 +528,9 @@ const MODEL_KEY_FOR_ITEM: Record<string, string> = {
   'catalog-15-premium': 'vitrine080', 'catalog-15-especial': 'vitrine080',
   'catalog-16-premium': 'vitrine080', 'catalog-16-especial': 'vitrine080',
   'catalog-33-premium': 'gondola300', 'catalog-33-especial': 'gondola300',
-  'catalog-34-premium': 'gondola300', 'catalog-34-especial': 'gondola300',
+  'catalog-34-premium': 'gondola170cimed', 'catalog-34-especial': 'gondola170cimed',
+  'catalog-35-premium': 'gondola220cimed', 'catalog-35-especial': 'gondola220cimed',
+  'catalog-36-premium': 'gondola300cimed', 'catalog-36-especial': 'gondola300cimed',
   'catalog-81-premium': 'lateralcaixa040', 'catalog-81-especial': 'lateralcaixa040',
   'catalog-82-premium': 'lateralcaixa065', 'catalog-82-especial': 'lateralcaixa065',
 }
