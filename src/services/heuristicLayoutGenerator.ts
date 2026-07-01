@@ -54,7 +54,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   premium: {
     name: 'Farmácia Premium',
-    priority: ['catalog-92', 'catalog-51', 'catalog-55', 'catalog-11', 'catalog-31'],
+    priority: ['catalog-91', 'catalog-51', 'catalog-11', 'catalog-31'],
     corridorMin: 1.5,
     focus: 'experiência do cliente e perfumaria',
     tips: [
@@ -66,7 +66,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   manipulacao: {
     name: 'Farmácia de Manipulação',
-    priority: ['catalog-55', 'catalog-51', 'catalog-21'],
+    priority: ['catalog-51', 'catalog-21'],
     corridorMin: STANDARD_PASSAGE_WIDTH,
     focus: 'área técnica e manipulação',
     tips: [
@@ -78,7 +78,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   completa: {
     name: 'Farmácia Completa',
-    priority: ['catalog-31', 'catalog-51', 'catalog-61', 'catalog-92'],
+    priority: ['catalog-31', 'catalog-51', 'catalog-61', 'catalog-91'],
     corridorMin: 1.3,
     focus: 'mix completo de produtos e serviços',
     tips: [
@@ -821,20 +821,20 @@ export async function generateAILayout(
     const preferredSequence = [
       { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
       { id: 'catalog-11', name: 'Perfumaria', icon: '🌸', w: 0.807 },
-      { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
+      { id: 'catalog-91', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
       { id: 'catalog-121', name: 'Expositor Maquiagem', icon: '💅', w: 0.5 },
       { id: 'catalog-111', name: 'Expositor Esmaltes', icon: '💅', w: 0.5 },
-      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
-      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
-      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
-      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
-      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
-      { id: 'catalog-41', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.807 },
     ]
 
     const fallbacks = [
-      { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
-      { id: 'catalog-42', name: 'Medicamentos MIP', icon: '💊', w: 0.5 },
+      { id: 'catalog-91', name: 'Dermocosméticos', icon: '💄', w: 0.5 },
+      { id: 'catalog-43', name: 'Medicamentos MIP', icon: '💊', w: 0.5 },
     ]
 
     let seqIndex = 0
@@ -965,7 +965,7 @@ export async function generateAILayout(
   const MIP_VERMELHO: WallSeqItem = { id: 'catalog-44', name: 'MIP Gripe e Alergia', icon: '💊', w: 0.5, color: '#FEF2F2', stroke: '#DC2626' }
   const MIP_AZUL: WallSeqItem = { id: 'catalog-45', name: 'MIP Sist. Digestivo', icon: '💊', w: 0.5, color: '#EFF6FF', stroke: '#2563EB' }
   const PF_CANAL: WallSeqItem = { id: 'catalog-14', name: 'PF Canaletado', icon: '🌸', w: 0.807, color: '#FFF1F7', stroke: '#DB2777' }
-  const DERMO: WallSeqItem = { id: 'catalog-92', name: 'Dermocosméticos', icon: '💄', w: 0.5, color: '#F8FAFC', stroke: '#1C1917' }
+  const DERMO: WallSeqItem = { id: 'catalog-91', name: 'Dermocosméticos', icon: '💄', w: 0.5, color: '#F8FAFC', stroke: '#1C1917' }
   const ESMALTE: WallSeqItem = { id: 'catalog-111', name: 'Esmaltes', icon: '💅', w: 0.5, color: '#FDF4FF', stroke: '#9333EA' }
   const MAQUIAGEM: WallSeqItem = { id: 'catalog-121', name: 'Maquiagem', icon: '💄', w: 0.5, color: '#FFF0F6', stroke: '#EC4899' }
   const FRALDA_ITEM: WallSeqItem = { id: 'catalog-181', name: 'Fraldas', icon: '👶', w: FRALDA_WIDTH, depth: FRALDA_DEPTH, color: '#EEF2FF', stroke: '#4338CA' }
@@ -1333,14 +1333,14 @@ export async function generateAILayout(
       // Braço vertical (encosta na parede de entrada y=storeBottom) — quadrante inf. direito (Top)
       if (!collidesWithObstacle(checkoutX, storeBottom - 1.0, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           checkoutX, storeBottom - 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
       // Braço horizontal — quadrante sup. esquerdo, tocando o vertical só no canto
       if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, storeBottom - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           checkoutX - 1.0 - BALCAO_DEPTH, storeBottom - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
@@ -1685,14 +1685,14 @@ export async function generateAILayout(
       // Braço vertical (encosta na parede de entrada y=storeTop) — desce para o interior
       if (!collidesWithObstacle(checkoutX, storeTop, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           checkoutX, storeTop, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
       // Braço horizontal — tocando o vertical só no canto inferior
       if (!collidesWithObstacle(checkoutX - 1.0 - BALCAO_DEPTH, storeTop + 1.0, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           checkoutX - 1.0 - BALCAO_DEPTH, storeTop + 1.0, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
@@ -2029,14 +2029,14 @@ export async function generateAILayout(
       // Braço perpendicular (encosta em x=storeWidth, entra na loja)
       if (!collidesWithObstacle(storeRight - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           storeRight - 1.0, checkoutY - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
       // Braço paralelo — tocando o perpendicular só no canto
       if (!collidesWithObstacle(storeRight - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           storeRight - 1.0, checkoutY - 1.0 - BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
@@ -2373,14 +2373,14 @@ export async function generateAILayout(
       // Braço perpendicular (encosta em x=0, entra na loja)
       if (!collidesWithObstacle(storeLeft, checkoutY, 1.0, BALCAO_DEPTH, 0)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           storeLeft, checkoutY, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 0 }
         ))
       }
       // Braço paralelo — tocando o perpendicular só no canto
       if (!collidesWithObstacle(storeLeft + 1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, 90)) {
         generatedItems.push(makeItem(
-          `catalog-55${lineSuffix}`, 'BA 100 MDF', '🏪',
+          `catalog-51${lineSuffix}`, 'BA 100 MDF', '🏪',
           storeLeft + 1.0 + BALCAO_DEPTH, checkoutY + BALCAO_DEPTH, 1.0, BALCAO_DEPTH, '#DBEAFE', '#1D4ED8', { rotation: 90 }
         ))
       }
@@ -2706,6 +2706,28 @@ export async function generateAILayout(
   const validation = validateLayout(generatedItems, storeWidth, storeHeight, minCorridor)
   const messages = [...config.tips, ...validation.messages]
 
+  // Garantir pelo menos uma gôndola Cimed em toda farmácia gerada
+  const CIMED_IDS = new Set(['catalog-34', 'catalog-35', 'catalog-36'])
+  const REGULAR_TO_CIMED: Record<string, string> = {
+    'catalog-31': 'catalog-34',
+    'catalog-32': 'catalog-35',
+    'catalog-33': 'catalog-36',
+  }
+  const stripNumSuffix = (id: string) => id.replace(/-\d+$/, '')
+  const hasCimed = generatedItems.some(i => CIMED_IDS.has(stripNumSuffix(String(i.itemId || ''))))
+  if (!hasCimed) {
+    const firstRegularGondola = generatedItems.find(i =>
+      REGULAR_TO_CIMED[stripNumSuffix(String(i.itemId || ''))]
+    )
+    if (firstRegularGondola) {
+      const baseId = stripNumSuffix(String(firstRegularGondola.itemId || ''))
+      firstRegularGondola.itemId = REGULAR_TO_CIMED[baseId]
+      firstRegularGondola.name = (firstRegularGondola.name || 'Gôndola') + ' Cimed'
+      firstRegularGondola.fillColor = '#DBEAFE'
+      firstRegularGondola.strokeColor = '#1D4ED8'
+    }
+  }
+
   return {
     items: generatedItems,
     messages,
@@ -2734,8 +2756,7 @@ function getPos(currVal: number, w: number, rot: number, sign: number): number {
 function getBalcaoIdForWidth(w: number, suffix: string): string {
   if (w >= 0.90) return `catalog-51${suffix}`
   if (w >= 0.75) return `catalog-52${suffix}`
-  if (w >= 0.65) return `catalog-53${suffix}`
-  return `catalog-54${suffix}`
+  return `catalog-53${suffix}`
 }
 
 function makeItem(

@@ -492,23 +492,16 @@ const _FACADE_COL_MAT = new THREE.MeshStandardMaterial({ color: 0x0a1232, roughn
 // Mapping from catalog item ID to 3D GLB model key
 const MODEL_KEY_FOR_ITEM: Record<string, string> = {
   'catalog-71': 'cestao',
-  'catalog-72': 'cestao',
   'catalog-53': 'balcao070',
-  'catalog-58': 'balcao070',
   'catalog-52': 'balcao080',
-  'catalog-57': 'balcao080',
   'catalog-51': 'balcao100',
-  'catalog-55': 'balcao100',
-  'catalog-56': 'balcao100',
+  'catalog-131': 'balcao100',
   'catalog-231': 'bomboniere060',
   'catalog-232': 'bomboniere100',
-  'catalog-63': 'caixa100',
   'catalog-61': 'pdv060',
-  'catalog-62': 'pdv060',
   'catalog-101': 'controlado050',
   'catalog-102': 'controlado100',
   'catalog-91': 'dermo050',
-  'catalog-92': 'dermo050',
   'catalog-111': 'esmalte050',
   'catalog-31': 'gondola170',
   'catalog-32': 'gondola220',
@@ -518,6 +511,7 @@ const MODEL_KEY_FOR_ITEM: Record<string, string> = {
   'catalog-11': 'perfumaria080',
   'catalog-12': 'perfumariafraldas',
   'catalog-14': 'perfumariacanal080',
+  'catalog-141': 'perfumariacanal080',
   'catalog-45': 'mipsistdigestivo',
   'catalog-43': 'mipdorfebre',
   'catalog-44': 'mipgripealergia',
@@ -526,7 +520,6 @@ const MODEL_KEY_FOR_ITEM: Record<string, string> = {
   'catalog-47': 'mipprimeiros',
   'catalog-13': 'perfumaria055',
   'catalog-15': 'vitrine080',
-  'catalog-16': 'vitrine080',
   'catalog-33': 'gondola300',
   'catalog-34': 'gondola170cimed',
   'catalog-35': 'gondola220cimed',
@@ -3105,8 +3098,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     // the item name, and the user-facing label (reference layouts only carry "Vitrine" on the label).
     const vitrines = items.filter(it =>
       it.itemId?.includes('catalog-15') ||
-      it.itemId?.includes('catalog-16') ||
-      it.itemId?.includes('catalog-92') ||
       it.name?.toLowerCase().includes('vitrine') ||
       it.name?.toLowerCase().includes('dermocosm') ||
       it.label?.toLowerCase().includes('vitrine')
@@ -4236,7 +4227,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     const gondolaItem = items.find(i => i.category === 'GONDOLAS')
     const perfItem = items.find(i =>
       i.category === 'PERFUMARIA' ||
-      i.itemId?.includes('catalog-15') || i.itemId?.includes('catalog-16') || i.itemId?.includes('catalog-92') ||
+      i.itemId?.includes('catalog-15') ||
       i.label?.toLowerCase().includes('vitrine')
     )
 
