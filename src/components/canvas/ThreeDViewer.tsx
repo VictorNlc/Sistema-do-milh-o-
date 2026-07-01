@@ -491,48 +491,48 @@ const _FACADE_COL_MAT = new THREE.MeshStandardMaterial({ color: 0x0a1232, roughn
 
 // Mapping from catalog item ID to 3D GLB model key
 const MODEL_KEY_FOR_ITEM: Record<string, string> = {
-  'catalog-71-premium': 'cestao', 'catalog-71-especial': 'cestao',
-  'catalog-72-premium': 'cestao', 'catalog-72-especial': 'cestao',
-  'catalog-53-premium': 'balcao070', 'catalog-53-especial': 'balcao070',
-  'catalog-58-premium': 'balcao070', 'catalog-58-especial': 'balcao070',
-  'catalog-52-premium': 'balcao080', 'catalog-52-especial': 'balcao080',
-  'catalog-57-premium': 'balcao080', 'catalog-57-especial': 'balcao080',
-  'catalog-51-premium': 'balcao100', 'catalog-51-especial': 'balcao100',
-  'catalog-55-premium': 'balcao100', 'catalog-55-especial': 'balcao100',
-  'catalog-56-premium': 'balcao100', 'catalog-56-especial': 'balcao100',
-  'catalog-231-premium': 'bomboniere060', 'catalog-231-especial': 'bomboniere060',
-  'catalog-232-premium': 'bomboniere100', 'catalog-232-especial': 'bomboniere100',
-  'catalog-63-premium': 'caixa100', 'catalog-63-especial': 'caixa100',
-  'catalog-61-premium': 'pdv060', 'catalog-61-especial': 'pdv060',
-  'catalog-62-premium': 'pdv060', 'catalog-62-especial': 'pdv060',
-  'catalog-101-premium': 'controlado050', 'catalog-101-especial': 'controlado050',
-  'catalog-102-premium': 'controlado100', 'catalog-102-especial': 'controlado100',
-  'catalog-91-premium': 'dermo050', 'catalog-91-especial': 'dermo050',
-  'catalog-92-premium': 'dermo050', 'catalog-92-especial': 'dermo050',
-  'catalog-111-premium': 'esmalte050', 'catalog-111-especial': 'esmalte050',
-  'catalog-31-premium': 'gondola170', 'catalog-31-especial': 'gondola170',
-  'catalog-32-premium': 'gondola220', 'catalog-32-especial': 'gondola220',
-  'catalog-121-premium': 'maquiagem050', 'catalog-121-especial': 'maquiagem050',
-  'catalog-21-premium': 'medicamento080', 'catalog-21-especial': 'medicamento080',
-  'catalog-22-premium': 'medicamento050', 'catalog-22-especial': 'medicamento050',
-  'catalog-11-premium': 'perfumaria080', 'catalog-11-especial': 'perfumaria080',
-  'catalog-12-premium': 'perfumariafraldas', 'catalog-12-especial': 'perfumariafraldas',
-  'catalog-14-premium': 'perfumariacanal080', 'catalog-14-especial': 'perfumariacanal080',
-  'catalog-45-premium': 'mipsistdigestivo', 'catalog-45-especial': 'mipsistdigestivo',
-  'catalog-43-premium': 'mipdorfebre', 'catalog-43-especial': 'mipdorfebre',
-  'catalog-44-premium': 'mipgripealergia', 'catalog-44-especial': 'mipgripealergia',
-  'catalog-46-premium': 'mipvitaminas', 'catalog-46-especial': 'mipvitaminas',
-  'catalog-48-premium': 'mipvitaminas', 'catalog-48-especial': 'mipvitaminas',
-  'catalog-47-premium': 'mipprimeiros', 'catalog-47-especial': 'mipprimeiros',
-  'catalog-13-premium': 'perfumaria055', 'catalog-13-especial': 'perfumaria055',
-  'catalog-15-premium': 'vitrine080', 'catalog-15-especial': 'vitrine080',
-  'catalog-16-premium': 'vitrine080', 'catalog-16-especial': 'vitrine080',
-  'catalog-33-premium': 'gondola300', 'catalog-33-especial': 'gondola300',
-  'catalog-34-premium': 'gondola170cimed', 'catalog-34-especial': 'gondola170cimed',
-  'catalog-35-premium': 'gondola220cimed', 'catalog-35-especial': 'gondola220cimed',
-  'catalog-36-premium': 'gondola300cimed', 'catalog-36-especial': 'gondola300cimed',
-  'catalog-81-premium': 'lateralcaixa040', 'catalog-81-especial': 'lateralcaixa040',
-  'catalog-82-premium': 'lateralcaixa065', 'catalog-82-especial': 'lateralcaixa065',
+  'catalog-71': 'cestao',
+  'catalog-72': 'cestao',
+  'catalog-53': 'balcao070',
+  'catalog-58': 'balcao070',
+  'catalog-52': 'balcao080',
+  'catalog-57': 'balcao080',
+  'catalog-51': 'balcao100',
+  'catalog-55': 'balcao100',
+  'catalog-56': 'balcao100',
+  'catalog-231': 'bomboniere060',
+  'catalog-232': 'bomboniere100',
+  'catalog-63': 'caixa100',
+  'catalog-61': 'pdv060',
+  'catalog-62': 'pdv060',
+  'catalog-101': 'controlado050',
+  'catalog-102': 'controlado100',
+  'catalog-91': 'dermo050',
+  'catalog-92': 'dermo050',
+  'catalog-111': 'esmalte050',
+  'catalog-31': 'gondola170',
+  'catalog-32': 'gondola220',
+  'catalog-121': 'maquiagem050',
+  'catalog-21': 'medicamento080',
+  'catalog-22': 'medicamento050',
+  'catalog-11': 'perfumaria080',
+  'catalog-12': 'perfumariafraldas',
+  'catalog-14': 'perfumariacanal080',
+  'catalog-45': 'mipsistdigestivo',
+  'catalog-43': 'mipdorfebre',
+  'catalog-44': 'mipgripealergia',
+  'catalog-46': 'mipvitaminas',
+  'catalog-48': 'mipvitaminas',
+  'catalog-47': 'mipprimeiros',
+  'catalog-13': 'perfumaria055',
+  'catalog-15': 'vitrine080',
+  'catalog-16': 'vitrine080',
+  'catalog-33': 'gondola300',
+  'catalog-34': 'gondola170cimed',
+  'catalog-35': 'gondola220cimed',
+  'catalog-36': 'gondola300cimed',
+  'catalog-81': 'lateralcaixa040',
+  'catalog-82': 'lateralcaixa065',
 }
 
 // Gondola models are stored with their length along the GLB X axis — no Y rotation needed
@@ -546,7 +546,7 @@ const getRequiredModelKeys = (items: any[]): string[] => {
   items.forEach(item => {
     if (!item) return
     const itemId = item.itemId || item.id || ''
-    const key = MODEL_KEY_FOR_ITEM[itemId]
+    const key = MODEL_KEY_FOR_ITEM[itemId] || MODEL_KEY_FOR_ITEM[itemId.replace(/-(premium|especial)$/, '')]
     if (key) keys.add(key)
   })
   return Array.from(keys)
@@ -3584,7 +3584,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
       // Match catalog item to GLB 3D model by ID
       const itemId = item.itemId || item.id || ''
-      const matchedKey = MODEL_KEY_FOR_ITEM[itemId]
+      const matchedKey = MODEL_KEY_FOR_ITEM[itemId] || MODEL_KEY_FOR_ITEM[itemId.replace(/-(premium|especial)$/, '')]
       const modelRefLookup: Record<string, React.MutableRefObject<THREE.Group | null>> = {
         cestao: cestaoModelRef,
         balcao070: balcao070ModelRef,

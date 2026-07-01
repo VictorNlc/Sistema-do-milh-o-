@@ -288,11 +288,8 @@ export default function ItemLibrary({
       else if (subFilter === 'rx') matchCat = item.category === 'SERVICOS'
     }
 
-    const matchStoreType = storeType === 'premium'
-      ? !item.id.endsWith('-especial')
-      : !item.id.endsWith('-premium')
-    return matchSearch && matchCat && matchStoreType
-  }), [search, activeCategory, subFilter, storeType])
+    return matchSearch && matchCat
+  }), [search, activeCategory, subFilter])
 
   return (
     <div className="lib-root">

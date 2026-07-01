@@ -197,7 +197,7 @@ function buildLayoutSystemPrompt(
   area: number,
   obstacles: { itemId: string; x: number; y: number; width: number; height: number; rotation: number }[],
 ): string {
-  const lineSuffix = storeType === 'premium' ? '-premium' : '-especial'
+  const lineSuffix = ''
 
   // Detectar porta e a parede da entrada (Top, Bottom, Left, Right)
   const door = obstacles.find(o => o.itemId === 'porta-entrada' || o.itemId.includes('porta') || o.itemId.includes('door'))

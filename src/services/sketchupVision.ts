@@ -21,42 +21,40 @@ const CATALOG_CONTEXT = `
 CATÁLOGO DE MÓVEIS DE FARMÁCIA (mapeie os objetos detectados para um destes IDs):
 
 GÔNDOLAS CENTRAIS (profundidade 0.43m):
-- catalog-31-premium / catalog-31-especial: Gôndola 1.70m
-- catalog-32-premium / catalog-32-especial: Gôndola 2.20m
-- catalog-33-premium / catalog-33-especial: Gôndola 3.00m
+- catalog-31: Gôndola 1.70m
+- catalog-32: Gôndola 2.20m
+- catalog-33: Gôndola 3.00m
 
 PRATELEIRAS DE MEDICAMENTOS - parede (profundidade 0.21m):
-- catalog-21-premium / catalog-21-especial: Prateleira Medicamentos 0.807m
-- catalog-22-premium / catalog-22-especial: Prateleira Medicamentos 0.50m
-- catalog-23-premium / catalog-23-especial: Prateleira Medicamentos 1.00m
+- catalog-21: Prateleira Medicamentos 0.807m
+- catalog-22: Prateleira Medicamentos 0.50m
 
 PERFUMARIA / COSMÉTICOS - parede (profundidade 0.26m):
-- catalog-11-premium / catalog-11-especial: Expositor Perfumaria 0.807m
-- catalog-91-premium / catalog-91-especial: Dermocosméticos 0.50m
-- catalog-92-premium / catalog-92-especial: Dermocosméticos 0.807m
+- catalog-11: Expositor Perfumaria 0.807m
+- catalog-91: Dermocosméticos 0.50m
+- catalog-92: Dermocosméticos 0.807m
 
 MEDICAMENTOS MIP - parede (profundidade 0.26m):
-- catalog-41-premium / catalog-41-especial: MIP 0.807m
-- catalog-42-premium / catalog-42-especial: MIP 0.50m
+- catalog-43: MIP 0.50m
 
 BALCÕES DE ATENDIMENTO (profundidade 0.40m):
-- catalog-51-premium / catalog-51-especial: Balcão Atendimento 1.00m
-- catalog-52-premium / catalog-52-especial: Balcão Atendimento 0.80m
-- catalog-55-premium / catalog-55-especial: Balcão MDF 1.00m
+- catalog-51: Balcão Atendimento 1.00m
+- catalog-52: Balcão Atendimento 0.80m
+- catalog-55: Balcão MDF 1.00m
 
 CAIXAS / PDV (profundidade 0.40m):
-- catalog-61-premium / catalog-61-especial: Caixa 0.60m
-- catalog-63-premium / catalog-63-especial: Caixa 1.00m
+- catalog-61: Caixa 0.60m
+- catalog-63: Caixa 1.00m
 
 LATERAL CAIXA (profundidade 0.26m):
-- catalog-81-premium / catalog-81-especial: Lateral Caixa 0.40m
-- catalog-82-premium / catalog-82-especial: Lateral Caixa 0.55m
+- catalog-81: Lateral Caixa 0.40m
+- catalog-82: Lateral Caixa 0.55m
 
 CHECKOUT EM L:
-- catalog-131-premium / catalog-131-especial: Checkout em L 1.20m x 1.20m
+- catalog-131: Checkout em L 1.00m x 0.40m
 
 CESTÃO PROMOCIONAL:
-- catalog-71-premium / catalog-71-especial: Cestão 0.40m x 0.40m
+- catalog-71: Cestão 0.40m x 0.40m
 
 PORTAS:
 - porta-entrada: Porta de Entrada
@@ -69,14 +67,11 @@ PILARES:
 // ─── Prompt de análise de imagem ───────────────────────────────────────────
 
 function buildVisionPrompt(storeWidth: number, storeHeight: number, storeType: StoreType): string {
-  const lineSuffix = storeType === 'premium' ? '-premium' : '-especial'
   return `Você é um especialista em análise de plantas baixas de farmácias.
   
 Analise esta imagem de cima (planta baixa) de um layout de farmácia e identifique todos os móveis presentes.
 
 DIMENSÕES REAIS DA LOJA: ${storeWidth}m × ${storeHeight}m
-TIPO DE FARMÁCIA: ${storeType}
-SUFIXO A USAR NOS IDs: ${lineSuffix}
 
 ${CATALOG_CONTEXT}
 
@@ -85,7 +80,7 @@ INSTRUÇÕES:
 2. Estime sua posição X,Y em metros (0,0 = canto superior esquerdo)
 3. Estime dimensões reais em metros baseando-se nas proporções da imagem vs dimensões da loja
 4. Determine a rotação (0=horizontal, 90=vertical rotacionado)
-5. Mapeie para o catalogId mais adequado usando o sufixo ${lineSuffix}
+5. Mapeie para o catalogId mais adequado (ex: catalog-11, catalog-21, etc.)
 6. Para cada item, atribua uma confiança de 0 a 1
 
 REGRAS IMPORTANTES:
@@ -96,7 +91,7 @@ REGRAS IMPORTANTES:
 - Se não tiver certeza do tipo, use o mais próximo e reduza a confiança
 
 Responda APENAS com um JSON array válido. Sem markdown, sem explicações.
-Formato: [{"detectedName":"nome visto","catalogId":"catalog-XX${lineSuffix}","x":0.0,"y":0.0,"width":0.0,"height":0.0,"rotation":0,"confidence":0.9}]
+Formato: [{"detectedName":"nome visto","catalogId":"catalog-XX","x":0.0,"y":0.0,"width":0.0,"height":0.0,"rotation":0,"confidence":0.9}]
 
 Se a imagem não contiver um layout de farmácia, retorne: []`
 }

@@ -42,7 +42,7 @@ interface StoreTypeConfig {
 const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   popular: {
     name: 'Farmácia Popular',
-    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-21-premium'],
+    priority: ['catalog-31', 'catalog-51', 'catalog-61', 'catalog-21'],
     corridorMin: STANDARD_PASSAGE_WIDTH,
     focus: 'volume de vendas e acessibilidade',
     tips: [
@@ -54,7 +54,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   premium: {
     name: 'Farmácia Premium',
-    priority: ['catalog-92-premium', 'catalog-51-premium', 'catalog-55-premium', 'catalog-11-premium', 'catalog-31-premium'],
+    priority: ['catalog-92', 'catalog-51', 'catalog-55', 'catalog-11', 'catalog-31'],
     corridorMin: 1.5,
     focus: 'experiência do cliente e perfumaria',
     tips: [
@@ -66,7 +66,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   manipulacao: {
     name: 'Farmácia de Manipulação',
-    priority: ['catalog-55-premium', 'catalog-51-premium', 'catalog-21-premium'],
+    priority: ['catalog-55', 'catalog-51', 'catalog-21'],
     corridorMin: STANDARD_PASSAGE_WIDTH,
     focus: 'área técnica e manipulação',
     tips: [
@@ -78,7 +78,7 @@ const STORE_TYPE_CONFIGS: Record<StoreType, StoreTypeConfig> = {
   },
   completa: {
     name: 'Farmácia Completa',
-    priority: ['catalog-31-premium', 'catalog-51-premium', 'catalog-61-premium', 'catalog-92-premium'],
+    priority: ['catalog-31', 'catalog-51', 'catalog-61', 'catalog-92'],
     corridorMin: 1.3,
     focus: 'mix completo de produtos e serviços',
     tips: [
@@ -319,7 +319,7 @@ export async function generateAILayout(
     return collidesGenerated
   }
 
-  const lineSuffix = storeType === 'premium' ? '-premium' : '-especial'
+  const lineSuffix = ''
 
   // 1. Detectar ou criar portas (entrada e saída)
   const doors = existingObstacles.filter(i => i.isDoor || i.itemId?.includes('door') || i.itemId?.includes('porta'))
