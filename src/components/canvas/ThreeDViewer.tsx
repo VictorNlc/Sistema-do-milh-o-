@@ -2149,17 +2149,25 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     const buildingGlassMat = new THREE.MeshStandardMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.2, roughness: 0.1, metalness: 0.9 })
     const streetlightPoleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.8 })
     const streetlightFixtureMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 })
+    // ── Compute front-street extent (trimmed in corner mode) ──
+    // In corner mode the front elements must stop at sideWallX so they don't
+    // bleed into the lateral street.  On the non-corner side they keep the
+    // original 60 m reach.
+    const frontLeftX  = isCorner && sideSign === -1 ? sideWallX : -60
+    const frontRightX = isCorner && sideSign ===  1 ? sideWallX : 60
+    const frontWidth  = frontRightX - frontLeftX
+    const frontCenterX = (frontLeftX + frontRightX) / 2
 
     // 1. Calçada Proxima (Sidewalk Near) - Plane
-    const sidewalkGeo = new THREE.PlaneGeometry(120, 3.0)
+    const sidewalkGeo = new THREE.PlaneGeometry(frontWidth, 3.0)
     const sidewalkMesh = new THREE.Mesh(sidewalkGeo, sidewalkMat)
     sidewalkMesh.rotation.x = -Math.PI / 2
-    sidewalkMesh.position.set(0, 0, facadeZ + 1.5)
+    sidewalkMesh.position.set(frontCenterX, 0, facadeZ + 1.5)
     sidewalkMesh.receiveShadow = true
     urbanContextGroup.add(sidewalkMesh)
 
     // Sidewalk joint lines
-    for (let x = -60; x <= 60; x += 2) {
+    for (let x = Math.ceil(frontLeftX / 2) * 2; x <= frontRightX; x += 2) {
       if (Math.abs(x) < widthVal / 2 - 0.1 || Math.abs(x) > widthVal / 2 + 0.1) {
         const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
         const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
@@ -2167,19 +2175,19 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         urbanContextGroup.add(jointMesh)
       }
     }
-    const longJointGeo = new THREE.BoxGeometry(120, 0.002, 0.015)
+    const longJointGeo = new THREE.BoxGeometry(frontWidth, 0.002, 0.015)
     const longJointMesh = new THREE.Mesh(longJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
-    longJointMesh.position.set(0, 0.001, facadeZ + 1.5)
+    longJointMesh.position.set(frontCenterX, 0.001, facadeZ + 1.5)
     urbanContextGroup.add(longJointMesh)
 
     // 2. Meio-fio Proximo (Curb Near) - Box
-    const curbGeo = new THREE.BoxGeometry(120, 0.15, 0.12)
+    const curbGeo = new THREE.BoxGeometry(frontWidth, 0.15, 0.12)
     const curbMesh = new THREE.Mesh(curbGeo, curbMat)
-    curbMesh.position.set(0, -0.075, curbZ - 0.06)
+    curbMesh.position.set(frontCenterX, -0.075, curbZ - 0.06)
     curbMesh.receiveShadow = true
     urbanContextGroup.add(curbMesh)
 
-    // 3. Rua Asfaltada (Asphalt Road) - Plane
+    // 3. Rua Asfaltada (Asphalt Road) - Plane (full 120m, never trimmed)
     const roadGeo = new THREE.PlaneGeometry(120, 12.0)
     const roadMesh = new THREE.Mesh(roadGeo, asphaltMat)
     roadMesh.rotation.x = -Math.PI / 2
@@ -2187,7 +2195,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     roadMesh.receiveShadow = true
     urbanContextGroup.add(roadMesh)
 
-    // Road Painted Markings
+    // Road Painted Markings (full 120m)
     const yellowLineLeft = new THREE.Mesh(new THREE.BoxGeometry(120, 0.002, 0.08), roadMarkMat)
     yellowLineLeft.position.set(0, -0.148, curbZ + 5.90)
     urbanContextGroup.add(yellowLineLeft)
@@ -2196,44 +2204,26 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     yellowLineRight.position.set(0, -0.148, curbZ + 6.10)
     urbanContextGroup.add(yellowLineRight)
 
-    // Pedestrian Zebra Crossing (Faixa de pedestres - Door 1)
-    const doorItem = items.find(item =>
-      (item.isDoor ||
-        item.itemId?.includes('door') ||
-        item.itemId?.includes('porta')) &&
-      !item.isEmergency &&
-      item.itemId !== 'porta-saida-emergencia'
-    )
-    const doorW = doorItem?.width ?? 1.2
-    const doorX2d = doorItem?.x ?? (storeWidth / 2 - doorW / 2)
-    const doorX3d = doorX2d + doorW / 2 - widthVal / 2
-
-    const numStripes = 6
-    const stripeW = 0.5
-    const stripeD = 4.5
-    const stripeSpacing = 0.5
-    const crosswalkXStart = doorX3d - ((numStripes - 1) * (stripeW + stripeSpacing)) / 2
-
-    for (let s = 0; s < numStripes; s++) {
-      const sx = crosswalkXStart + s * (stripeW + stripeSpacing)
-      const stripeGeo = new THREE.BoxGeometry(stripeW, 0.002, stripeD)
-      const stripeMesh = new THREE.Mesh(stripeGeo, paintWhiteMat)
-      stripeMesh.position.set(sx, -0.148, curbZ + 2.5)
-      urbanContextGroup.add(stripeMesh)
-    }
-
     // ── CORNER STREET ELEMENTS ──
     if (isCorner) {
+      // The side street should extend from -60 on the back side up to
+      // facadeZ (front edge of the building) on the front side. Beyond
+      // facadeZ, the front road / intersection takes over.
+      const sideBackZ = -60
+      const sideFrontZ = facadeZ
+      const sideLength = sideFrontZ - sideBackZ
+      const sideCenterZ = (sideBackZ + sideFrontZ) / 2
+
       // 1. Sidewalk Side (Calçada Lateral)
-      const sideSidewalkGeo = new THREE.PlaneGeometry(3.0, 120)
+      const sideSidewalkGeo = new THREE.PlaneGeometry(3.0, sideLength)
       const sideSidewalkMesh = new THREE.Mesh(sideSidewalkGeo, sidewalkMat)
       sideSidewalkMesh.rotation.x = -Math.PI / 2
-      sideSidewalkMesh.position.set(sideWallX + sideSign * 1.5, 0, 0)
+      sideSidewalkMesh.position.set(sideWallX + sideSign * 1.5, 0, sideCenterZ)
       sideSidewalkMesh.receiveShadow = true
       urbanContextGroup.add(sideSidewalkMesh)
 
       // Joints for side sidewalk
-      for (let z = -60; z <= 60; z += 2) {
+      for (let z = Math.ceil(sideBackZ / 2) * 2; z <= sideFrontZ; z += 2) {
         if (z < -heightVal / 2 || z > heightVal / 2) {
           const jointGeo = new THREE.BoxGeometry(3.0, 0.002, 0.015)
           const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
@@ -2241,19 +2231,19 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           urbanContextGroup.add(jointMesh)
         }
       }
-      const sideLongJointGeo = new THREE.BoxGeometry(0.015, 0.002, 120)
+      const sideLongJointGeo = new THREE.BoxGeometry(0.015, 0.002, sideLength)
       const sideLongJointMesh = new THREE.Mesh(sideLongJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
-      sideLongJointMesh.position.set(sideWallX + sideSign * 1.5, 0.001, 0)
+      sideLongJointMesh.position.set(sideWallX + sideSign * 1.5, 0.001, sideCenterZ)
       urbanContextGroup.add(sideLongJointMesh)
 
-      // 2. Curb Side (Meio-fio Lateral)
-      const sideCurbGeo = new THREE.BoxGeometry(0.12, 0.15, 120)
+      // 2. Curb Side (Meio-fio Lateral) — trimmed
+      const sideCurbGeo = new THREE.BoxGeometry(0.12, 0.15, sideLength)
       const sideCurbMesh = new THREE.Mesh(sideCurbGeo, curbMat)
-      sideCurbMesh.position.set(sideWallX + sideSign * (3.0 - 0.06), -0.075, 0)
+      sideCurbMesh.position.set(sideWallX + sideSign * (3.0 - 0.06), -0.075, sideCenterZ)
       sideCurbMesh.receiveShadow = true
       urbanContextGroup.add(sideCurbMesh)
 
-      // 3. Asphalt Road Side (Rua Lateral)
+      // 3. Asphalt Road Side (Rua Lateral) — full 120m, never trimmed
       const sideRoadGeo = new THREE.PlaneGeometry(12.0, 120)
       const sideRoadMesh = new THREE.Mesh(sideRoadGeo, asphaltMat)
       sideRoadMesh.rotation.x = -Math.PI / 2
@@ -2261,7 +2251,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       sideRoadMesh.receiveShadow = true
       urbanContextGroup.add(sideRoadMesh)
 
-      // Side Road painted markings
+      // Side Road painted markings — full 120m
       const sideYellowLineLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.002, 120), roadMarkMat)
       sideYellowLineLeft.position.set(sideWallX + sideSign * 8.9, -0.148, 0)
       urbanContextGroup.add(sideYellowLineLeft)
@@ -2269,30 +2259,6 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       const sideYellowLineRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.002, 120), roadMarkMat)
       sideYellowLineRight.position.set(sideWallX + sideSign * 9.1, -0.148, 0)
       urbanContextGroup.add(sideYellowLineRight)
-
-      // 4. Pedestrian Crossing for Door 2 (offset/size taken from the real corner door item)
-      const d2b = urbanSideDoor
-        ? getRotatedBounds(urbanSideDoor.x, urbanSideDoor.y, urbanSideDoor.width, urbanSideDoor.height, urbanSideDoor.rotation || 0)
-        : null
-      const d2Offset = d2b ? ((urbanD2Abs === 'N' || urbanD2Abs === 'S') ? d2b.x : d2b.y) : 0.0
-      const d2Width = d2b ? ((urbanD2Abs === 'N' || urbanD2Abs === 'S') ? d2b.width : d2b.height) : 2.0
-      const doorZ_start = heightVal / 2 - (d2Offset + d2Width)
-      const doorZ_end = heightVal / 2 - d2Offset
-      const doorZ_mid = (doorZ_start + doorZ_end) / 2
-
-      const numStripes2 = 6
-      const stripeW2 = 0.5
-      const stripeD2 = 4.5
-      const stripeSpacing2 = 0.5
-      const crosswalkZStart = doorZ_mid - ((numStripes2 - 1) * (stripeW2 + stripeSpacing2)) / 2
-
-      for (let s = 0; s < numStripes2; s++) {
-        const sz = crosswalkZStart + s * (stripeW2 + stripeSpacing2)
-        const stripeGeo = new THREE.BoxGeometry(stripeD2, 0.002, stripeW2)
-        const stripeMesh = new THREE.Mesh(stripeGeo, paintWhiteMat)
-        stripeMesh.position.set(sideWallX + sideSign * 2.5, -0.148, sz)
-        urbanContextGroup.add(stripeMesh)
-      }
     }
 
     // 4. Neighboring Buildings (Left & Right)
@@ -2391,29 +2357,29 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     const oppCurbZ = facadeZ + 15.0
     const oppSidewalkZ = facadeZ + 16.5
 
-    const oppCurbGeo = new THREE.BoxGeometry(120, 0.15, 0.12)
+    const oppCurbGeo = new THREE.BoxGeometry(frontWidth, 0.15, 0.12)
     const oppCurbMesh = new THREE.Mesh(oppCurbGeo, curbMat)
-    oppCurbMesh.position.set(0, -0.075, oppCurbZ + 0.06)
+    oppCurbMesh.position.set(frontCenterX, -0.075, oppCurbZ + 0.06)
     oppCurbMesh.receiveShadow = true
     urbanContextGroup.add(oppCurbMesh)
 
-    const oppSidewalkGeo = new THREE.PlaneGeometry(120, 3.0)
+    const oppSidewalkGeo = new THREE.PlaneGeometry(frontWidth, 3.0)
     const oppSidewalkMesh = new THREE.Mesh(oppSidewalkGeo, sidewalkMat)
     oppSidewalkMesh.rotation.x = -Math.PI / 2
-    oppSidewalkMesh.position.set(0, 0, oppSidewalkZ)
+    oppSidewalkMesh.position.set(frontCenterX, 0, oppSidewalkZ)
     oppSidewalkMesh.receiveShadow = true
     urbanContextGroup.add(oppSidewalkMesh)
 
     // Joints for opposite sidewalk
-    for (let x = -60; x <= 60; x += 2) {
+    for (let x = Math.ceil(frontLeftX / 2) * 2; x <= frontRightX; x += 2) {
       const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
       const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
       jointMesh.position.set(x, 0.001, oppSidewalkZ)
       urbanContextGroup.add(jointMesh)
     }
-    const oppLongJointGeo = new THREE.BoxGeometry(120, 0.002, 0.015)
+    const oppLongJointGeo = new THREE.BoxGeometry(frontWidth, 0.002, 0.015)
     const oppLongJointMesh = new THREE.Mesh(oppLongJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
-    oppLongJointMesh.position.set(0, 0.001, oppSidewalkZ)
+    oppLongJointMesh.position.set(frontCenterX, 0.001, oppSidewalkZ)
     urbanContextGroup.add(oppLongJointMesh)
 
     // 6. Prédios do Lado Oposto (Opposite Buildings)
@@ -2494,7 +2460,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         { width: 16, height: 10, color: 0x334155, z: -30, sign: "RESTAURANTE CENTRAL" },
         { width: 14, height: 12, color: 0x065f46, z: -10, sign: "POSTO COMBUSTÍVEL" },
         { width: 18, height: 9, color: 0x7c2d12, z: 15, sign: "MERCADO DO BAIRRO" }
-      ]
+      ].filter(cfg => (cfg.z + cfg.width / 2) < facadeZ)
 
       sideBuildingsConfig.forEach(cfg => {
         // Main block mesh
@@ -2534,7 +2500,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     }
 
     // 7. Vegetação (Trees along both sidewalks)
-    const treePositions = [
+    const treePositions: { x: number; z: number }[] = [
       // Near sidewalk
       { x: -16.0, z: curbZ - 0.3 },
       { x: 16.0, z: curbZ - 0.3 },
@@ -2547,14 +2513,21 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     // Add side street trees if corner
     if (isCorner) {
       treePositions.push(
-        { x: sideWallX + sideSign * 0.3, z: -35.0 },
-        { x: sideWallX + sideSign * 0.3, z: 35.0 },
+        { x: sideWallX + sideSign * 1.5, z: -35.0 },
+        { x: sideWallX + sideSign * 1.5, z: 35.0 },
         { x: sideWallX + sideSign * 17.7, z: -20.0 },
         { x: sideWallX + sideSign * 17.7, z: 20.0 }
       )
     }
 
-    treePositions.forEach(pos => {
+    // Filter out trees that fall into the lateral street zone
+    const filteredTreePositions = isCorner
+      ? treePositions.filter(pos => pos.x >= frontLeftX && pos.x <= frontRightX
+          || pos.x === sideWallX + sideSign * 1.5
+          || pos.x === sideWallX + sideSign * 17.7)
+      : treePositions
+
+    filteredTreePositions.forEach(pos => {
       const tree = createTreeMesh()
       tree.position.set(pos.x, 0, pos.z)
       urbanContextGroup.add(tree)
@@ -2570,7 +2543,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       { x: widthVal / 2 + 10, z: oppCurbZ + 1.2, rotY: Math.PI }
     ]
 
-    streetlightPositions.forEach((pos) => {
+    // Filter out streetlights that fall into the lateral street zone
+    const filteredStreetlightPositions = isCorner
+      ? streetlightPositions.filter(pos => pos.x >= frontLeftX && pos.x <= frontRightX)
+      : streetlightPositions
+
+    filteredStreetlightPositions.forEach((pos) => {
       const streetlightGroup = new THREE.Group()
       streetlightGroup.position.set(pos.x, 0, pos.z)
       if (pos.rotY) {
@@ -2614,8 +2592,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     // Side Streetlights
     if (isCorner) {
       const sideStreetlightPositions = [
-        { x: sideWallX + sideSign * 0.3, z: -20, rotY: sideSign * Math.PI / 2 },
-        { x: sideWallX + sideSign * 0.3, z: 20, rotY: sideSign * Math.PI / 2 },
+        { x: sideWallX + sideSign * 1.5, z: -20, rotY: sideSign * Math.PI / 2 },
+        { x: sideWallX + sideSign * 1.5, z: 20, rotY: sideSign * Math.PI / 2 },
         // Opposite side of side street pointing back
         { x: sideWallX + sideSign * 17.7, z: -35, rotY: -sideSign * Math.PI / 2 },
         { x: sideWallX + sideSign * 17.7, z: 0, rotY: -sideSign * Math.PI / 2 },
