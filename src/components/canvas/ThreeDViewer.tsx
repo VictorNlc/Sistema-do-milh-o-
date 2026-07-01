@@ -101,6 +101,9 @@ const getContactShadowTexture = (): THREE.CanvasTexture => {
 
 // Helper to draw text onto a 2D canvas and convert it to a Three.js texture
 const createSignageTexture = (text: string, bgColor: string, textColor: string): THREE.CanvasTexture => {
+  const cacheKey = `${text}|${bgColor}|${textColor}`
+  const cached = _signageTexCache.get(cacheKey)
+  if (cached) return cached
   const canvas = document.createElement('canvas')
   canvas.width = 512
   canvas.height = 128
@@ -133,7 +136,167 @@ const createSignageTexture = (text: string, bgColor: string, textColor: string):
   }
   ctx.fillText(upper, canvas.width / 2, canvas.height / 2)
 
-  return new THREE.CanvasTexture(canvas)
+  const tex = new THREE.CanvasTexture(canvas)
+  _signageTexCache.set(cacheKey, tex)
+  return tex
+}
+
+// Blue pharmacy fascia/banner — full-width sign with name, subtitle and cross logo
+const createFasciaTexture = (name: string): THREE.CanvasTexture => {
+  const cached = _fasciaTexCache.get(name)
+  if (cached) return cached
+  const W = 1024, H = 200
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(document.createElement('canvas'))
+
+  // Deep navy blue gradient — same rich blue as the reference image
+  ctx.fillStyle = '#0d1f6e'
+  ctx.fillRect(0, 0, W, H)
+  const grad = ctx.createLinearGradient(0, 0, W, 0)
+  grad.addColorStop(0, 'rgba(10,18,80,0.6)')
+  grad.addColorStop(0.5, 'rgba(0,0,0,0)')
+  grad.addColorStop(1, 'rgba(10,18,80,0.6)')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, W, H)
+
+  // Thin bottom highlight strip
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'
+  ctx.fillRect(0, H - 6, W, 6)
+
+  // Medical cross + leaf (white/green) on left
+  const cx = 115, cy = Math.round(H * 0.40), cs = 68, aw = 28
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(cx - aw / 2, cy - cs / 2, aw, cs)
+  ctx.fillRect(cx - cs / 2, cy - aw / 2, cs, aw)
+  ctx.fillStyle = '#22c55e'
+  ctx.beginPath()
+  ctx.ellipse(cx + 24, cy + 24, 18, 10, Math.PI / 4, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Pharmacy name (bold, auto-shrink to fit)
+  const upper = name.toUpperCase()
+  let fontSize = 152
+  ctx.font = `bold ${fontSize}px Arial, sans-serif`
+  const maxW = W - 270
+  while (ctx.measureText(upper).width > maxW && fontSize > 48) {
+    fontSize -= 4
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`
+  }
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'
+  ctx.shadowBlur = 8
+  ctx.fillText(upper, 200, H * 0.34)
+  ctx.shadowBlur = 0
+
+  // Separator line
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(200, H * 0.60)
+  ctx.lineTo(W - 40, H * 0.60)
+  ctx.stroke()
+
+  // Subtitle with letter-spacing effect (drawn char-by-char for compatibility)
+  const subtitle = 'FARMÁCIA  &  PERFUMARIA'
+  ctx.font = '400 54px Arial, sans-serif'
+  ctx.fillStyle = '#93c5fd'
+  ctx.fillText(subtitle, 200, H * 0.78)
+
+  const tex = new THREE.CanvasTexture(canvas)
+  _fasciaTexCache.set(name, tex)
+  return tex
+}
+
+// Side info panel texture — left: service icons, right: brand tagline
+const createSideInfoTexture = (side: 'left' | 'right'): THREE.CanvasTexture => {
+  const cached = _sideInfoTexCache.get(side)
+  if (cached) return cached
+  const W = 256, H = 512
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(document.createElement('canvas'))
+
+  ctx.fillStyle = '#0f2060'
+  ctx.fillRect(0, 0, W, H)
+
+  if (side === 'left') {
+    const entries = [
+      { label1: 'MEDICAMENTOS', label2: '', y: 0.18 },
+      { label1: 'PERFUMARIA', label2: '', y: 0.50 },
+      { label1: 'CUIDADO E', label2: 'CONFIANÇA', y: 0.78 }
+    ]
+    entries.forEach(e => {
+      const yBase = H * e.y
+      ctx.strokeStyle = 'rgba(255,255,255,0.50)'
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.arc(W / 2, yBase, 74, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(W / 2 - 6, yBase - 34, 12, 68)
+      ctx.fillRect(W / 2 - 34, yBase - 6, 68, 12)
+      ctx.font = 'bold 50px Arial, sans-serif'
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      ctx.fillText(e.label1, W / 2, yBase + 88)
+      if (e.label2) ctx.fillText(e.label2, W / 2, yBase + 144)
+    })
+  } else {
+    const lines = ['SAÚDE', 'BELEZA', 'BEM-ESTAR']
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    lines.forEach((t, i) => {
+      const y = H * (0.22 + i * 0.28)
+      ctx.font = 'bold 88px Arial, sans-serif'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(t, W / 2, y)
+      if (i < lines.length - 1) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(W * 0.22, y + 62)
+        ctx.lineTo(W * 0.78, y + 62)
+        ctx.stroke()
+      }
+    })
+  }
+
+  const tex = new THREE.CanvasTexture(canvas)
+  _sideInfoTexCache.set(side, tex)
+  return tex
+}
+
+// Welcome mat — "SEJA BEM-VINDO" on dark-blue background
+const createWelcomeMatTexture = (): THREE.CanvasTexture => {
+  if (_welcomeMatTex) return _welcomeMatTex
+  const W = 256, H = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(document.createElement('canvas'))
+
+  ctx.fillStyle = '#1e3a8a'
+  ctx.fillRect(0, 0, W, H)
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+  ctx.lineWidth = 4
+  ctx.strokeRect(6, 6, W - 12, H - 12)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 26px Arial, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('SEJA BEM-VINDO', W / 2, H / 2)
+
+  _welcomeMatTex = new THREE.CanvasTexture(canvas)
+  return _welcomeMatTex
 }
 
 // Helper to generate small colorful 3D packages and bottles on shelves
@@ -144,25 +307,13 @@ const addProductMeshes = (group: THREE.Group, width: number, shelfY: number, dep
   
   for (let d = 0; d < productCount; d++) {
     const px = -width / 2 + 0.06 + d * 0.11 + (Math.random() - 0.5) * 0.02
-    
     const isCylinder = Math.random() > 0.4
-    const pW = 0.03 + Math.random() * 0.03
-    const pH = 0.05 + Math.random() * 0.07
-    const pD = 0.03 + Math.random() * 0.03
     const color = colors[Math.floor(Math.random() * colors.length)]
-    
-    let mesh: THREE.Mesh
-    if (isCylinder) {
-      const geo = new THREE.CylinderGeometry(pW / 2, pW / 2, pH, 6)
-      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.3 })
-      mesh = new THREE.Mesh(geo, mat)
-    } else {
-      const geo = new THREE.BoxGeometry(pW, pH, pD)
-      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6 })
-      mesh = new THREE.Mesh(geo, mat)
-    }
-    
-    mesh.position.set(px, shelfY + pH / 2, depthOffset + (Math.random() - 0.5) * 0.02)
+    // Reuse shared geometries — no per-product geometry allocation
+    const geo = isCylinder ? _PROD_CYL_GEO : _PROD_BOX_GEO
+    const mat = new THREE.MeshBasicMaterial({ color }) // BasicMaterial: no lighting calc, minimal cost
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.set(px, shelfY + 0.05, depthOffset + (Math.random() - 0.5) * 0.02)
     mesh.castShadow = false
     mesh.receiveShadow = false
     group.add(mesh)
@@ -204,110 +355,138 @@ const configureMeshShadows = (object: THREE.Object3D) => {
   })
 }
 
-// Helper to generate a stylistic low-poly tree mesh
+// Helper to generate a stylistic low-poly tree mesh (uses singleton geos/mats)
 const createTreeMesh = (): THREE.Group => {
   const treeGroup = new THREE.Group()
-  
-  // Trunk
-  const trunkGeo = new THREE.CylinderGeometry(0.1, 0.15, 1.6, 8)
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
-  const trunkMesh = new THREE.Mesh(trunkGeo, trunkMat)
+  const trunkMesh = new THREE.Mesh(_TREE_TRUNK_GEO, _TREE_TRUNK_MAT)
   trunkMesh.position.y = 0.8
-  trunkMesh.castShadow = true
-  trunkMesh.receiveShadow = true
   treeGroup.add(trunkMesh)
-  
-  // Foliage (modern blocky low-poly style)
-  const folMat = new THREE.MeshStandardMaterial({ color: 0x16803d, roughness: 0.8 })
-  
-  const folGeo1 = new THREE.BoxGeometry(1.4, 1.8, 1.4)
-  const folMesh1 = new THREE.Mesh(folGeo1, folMat)
+  const folMesh1 = new THREE.Mesh(_TREE_FOL1_GEO, _TREE_FOL_MAT)
   folMesh1.position.y = 2.2
-  folMesh1.castShadow = true
-  folMesh1.receiveShadow = true
   treeGroup.add(folMesh1)
-  
-  const folGeo2 = new THREE.BoxGeometry(1.0, 0.9, 1.0)
-  const folMesh2 = new THREE.Mesh(folGeo2, folMat)
+  const folMesh2 = new THREE.Mesh(_TREE_FOL2_GEO, _TREE_FOL_MAT)
   folMesh2.position.y = 3.25
-  folMesh2.castShadow = true
   treeGroup.add(folMesh2)
-  
   return treeGroup
 }
 
-// Helper to generate a stylistic low-poly car mesh
+// Helper to generate a stylistic low-poly car mesh (singleton geos + per-color cached mat)
 const createCarMesh = (color: number): THREE.Group => {
   const carGroup = new THREE.Group()
-  
-  // Chassis/Body
-  const bodyGeo = new THREE.BoxGeometry(3.6, 0.65, 1.6)
-  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.2, metalness: 0.1 })
-  const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat)
+  let bodyMat = _carBodyMatCache.get(color)
+  if (!bodyMat) {
+    bodyMat = new THREE.MeshLambertMaterial({ color })
+    bodyMat.userData.isShared = true
+    _carBodyMatCache.set(color, bodyMat)
+  }
+  const bodyMesh = new THREE.Mesh(_CAR_BODY_GEO, bodyMat)
   bodyMesh.position.y = 0.525
-  bodyMesh.castShadow = true
-  bodyMesh.receiveShadow = true
   carGroup.add(bodyMesh)
-  
-  // Cabin
-  const cabinGeo = new THREE.BoxGeometry(1.9, 0.55, 1.4)
-  const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 })
-  const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat)
+  const cabinMesh = new THREE.Mesh(_CAR_CABIN_GEO, _CAR_CABIN_MAT)
   cabinMesh.position.set(-0.2, 1.05, 0)
-  cabinMesh.castShadow = true
-  cabinMesh.receiveShadow = true
   carGroup.add(cabinMesh)
-  
-  // Wheels
-  const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.3, 8)
-  wheelGeo.rotateX(Math.PI / 2) // Orient axle along Z
-  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 })
-  
-  const wheelFL = new THREE.Mesh(wheelGeo, wheelMat)
+  const wheelFL = new THREE.Mesh(_CAR_WHEEL_GEO, _CAR_WHEEL_MAT)
   wheelFL.position.set(1.0, 0.28, 0.75)
   carGroup.add(wheelFL)
-  
-  const wheelFR = new THREE.Mesh(wheelGeo, wheelMat)
+  const wheelFR = new THREE.Mesh(_CAR_WHEEL_GEO, _CAR_WHEEL_MAT)
   wheelFR.position.set(1.0, 0.28, -0.75)
   carGroup.add(wheelFR)
-  
-  const wheelRL = new THREE.Mesh(wheelGeo, wheelMat)
+  const wheelRL = new THREE.Mesh(_CAR_WHEEL_GEO, _CAR_WHEEL_MAT)
   wheelRL.position.set(-1.0, 0.28, 0.75)
   carGroup.add(wheelRL)
-  
-  const wheelRR = new THREE.Mesh(wheelGeo, wheelMat)
+  const wheelRR = new THREE.Mesh(_CAR_WHEEL_GEO, _CAR_WHEEL_MAT)
   wheelRR.position.set(-1.0, 0.28, -0.75)
   carGroup.add(wheelRR)
-  
-  // Headlights
-  const lightGeo = new THREE.BoxGeometry(0.08, 0.1, 0.25)
-  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfffee0 })
-  
-  const hlL = new THREE.Mesh(lightGeo, lightMat)
+  const hlL = new THREE.Mesh(_CAR_LIGHT_GEO, _CAR_HEADLIGHT_MAT)
   hlL.position.set(1.8, 0.525, 0.55)
   carGroup.add(hlL)
-  
-  const hlR = new THREE.Mesh(lightGeo, lightMat)
+  const hlR = new THREE.Mesh(_CAR_LIGHT_GEO, _CAR_HEADLIGHT_MAT)
   hlR.position.set(1.8, 0.525, -0.55)
   carGroup.add(hlR)
-  
-  // Taillights
-  const tailMat = new THREE.MeshBasicMaterial({ color: 0xef4444 })
-  
-  const tlL = new THREE.Mesh(lightGeo, tailMat)
+  const tlL = new THREE.Mesh(_CAR_LIGHT_GEO, _CAR_TAILLIGHT_MAT)
   tlL.position.set(-1.8, 0.525, 0.55)
   carGroup.add(tlL)
-  
-  const tlR = new THREE.Mesh(lightGeo, tailMat)
+  const tlR = new THREE.Mesh(_CAR_LIGHT_GEO, _CAR_TAILLIGHT_MAT)
   tlR.position.set(-1.8, 0.525, -0.55)
   carGroup.add(tlR)
-  
   return carGroup
 }
 
 // Global cache for loaded GLTF models to avoid reloading on every component mount
 const modelCache: Record<string, THREE.Group | undefined> = {}
 const loadingPromises: Record<string, Promise<THREE.Group> | undefined> = {}
+
+// ─── Texture caches (module-level singletons) ─────────────────────────────────
+// Canvas textures are expensive to create and upload to GPU. Cache by key so
+// rebuilds reuse the same GPU texture object instead of leaking VRAM each time.
+const _fasciaTexCache = new Map<string, THREE.CanvasTexture>()
+const _sideInfoTexCache = new Map<string, THREE.CanvasTexture>()
+let _welcomeMatTex: THREE.CanvasTexture | null = null
+const _signageTexCache = new Map<string, THREE.CanvasTexture>()
+
+// ─── Shared product geometries ────────────────────────────────────────────────
+// Pre-allocated geometries reused across every product mesh on every shelf.
+// Eliminates ~150 BoxGeometry/CylinderGeometry allocations per layout rebuild.
+const _PROD_CYL_GEO = new THREE.CylinderGeometry(0.022, 0.022, 0.10, 6)
+const _PROD_BOX_GEO = new THREE.BoxGeometry(0.05, 0.082, 0.04)
+
+// ─── Tree geometry/material singletons ───────────────────────────────────────
+// Shared across all tree instances — avoids leaking 3 geos+2 mats per tree per rebuild.
+const _TREE_TRUNK_GEO = new THREE.CylinderGeometry(0.1, 0.15, 1.6, 8)
+const _TREE_FOL1_GEO = new THREE.BoxGeometry(1.4, 1.8, 1.4)
+const _TREE_FOL2_GEO = new THREE.BoxGeometry(1.0, 0.9, 1.0)
+const _TREE_TRUNK_MAT = new THREE.MeshLambertMaterial({ color: 0x5c4033 })
+const _TREE_FOL_MAT = new THREE.MeshLambertMaterial({ color: 0x16803d })
+;[_TREE_TRUNK_GEO, _TREE_FOL1_GEO, _TREE_FOL2_GEO].forEach(g => { g.userData.isShared = true })
+;[_TREE_TRUNK_MAT, _TREE_FOL_MAT].forEach(m => { m.userData.isShared = true })
+
+// ─── Car geometry/material singletons ────────────────────────────────────────
+const _CAR_BODY_GEO = new THREE.BoxGeometry(3.6, 0.65, 1.6)
+const _CAR_CABIN_GEO = new THREE.BoxGeometry(1.9, 0.55, 1.4)
+const _CAR_WHEEL_GEO = (() => { const g = new THREE.CylinderGeometry(0.28, 0.28, 0.3, 8); g.rotateX(Math.PI / 2); return g })()
+const _CAR_LIGHT_GEO = new THREE.BoxGeometry(0.08, 0.1, 0.25)
+const _CAR_CABIN_MAT = new THREE.MeshLambertMaterial({ color: 0x111111 })
+const _CAR_WHEEL_MAT = new THREE.MeshLambertMaterial({ color: 0x111111 })
+const _CAR_HEADLIGHT_MAT = new THREE.MeshBasicMaterial({ color: 0xfffee0 })
+const _CAR_TAILLIGHT_MAT = new THREE.MeshBasicMaterial({ color: 0xef4444 })
+const _carBodyMatCache = new Map<number, THREE.MeshLambertMaterial>()
+;[_CAR_BODY_GEO, _CAR_CABIN_GEO, _CAR_WHEEL_GEO, _CAR_LIGHT_GEO].forEach(g => { g.userData.isShared = true })
+;[_CAR_CABIN_MAT, _CAR_WHEEL_MAT, _CAR_HEADLIGHT_MAT, _CAR_TAILLIGHT_MAT].forEach(m => { m.userData.isShared = true })
+
+// ─── Streetlight geometry/material singletons ─────────────────────────────────
+const _POLE_GEO = new THREE.CylinderGeometry(0.05, 0.08, 5.0, 8)
+const _POLE_ARM_GEO = new THREE.BoxGeometry(0.06, 0.06, 1.2)
+const _LIGHT_HEAD_GEO = new THREE.BoxGeometry(0.15, 0.08, 0.3)
+const _LIGHT_LENS_GEO = new THREE.BoxGeometry(0.12, 0.01, 0.24)
+const _LIGHT_LENS_MAT = new THREE.MeshBasicMaterial({ color: 0xffe885 })
+;[_POLE_GEO, _POLE_ARM_GEO, _LIGHT_HEAD_GEO, _LIGHT_LENS_GEO].forEach(g => { g.userData.isShared = true })
+_LIGHT_LENS_MAT.userData.isShared = true
+
+// ─── Urban context material singletons ───────────────────────────────────────
+// Constant colors — no reason to recreate on every rebuildUrbanContext call.
+const _SIDEWALK_MAT = new THREE.MeshLambertMaterial({ color: 0x8c8c8c })
+const _CURB_MAT = new THREE.MeshLambertMaterial({ color: 0xb0b0b0 })
+const _ASPHALT_MAT = new THREE.MeshLambertMaterial({ color: 0x1f242e })
+const _ROAD_MARK_MAT = new THREE.MeshLambertMaterial({ color: 0xeab308 })
+const _PAINT_WHITE_MAT = new THREE.MeshLambertMaterial({ color: 0xffffff })
+const _BUILDING_LEFT_MAT = new THREE.MeshLambertMaterial({ color: 0x475569 })
+const _BUILDING_RIGHT_MAT = new THREE.MeshLambertMaterial({ color: 0xa1a1aa })
+const _BUILDING_FRAME_MAT = new THREE.MeshLambertMaterial({ color: 0x1e293b })
+const _BUILDING_GLASS_MAT = new THREE.MeshLambertMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.2 })
+const _STREETLIGHT_POLE_MAT = new THREE.MeshLambertMaterial({ color: 0x334155 })
+const _STREETLIGHT_FIXTURE_MAT = new THREE.MeshLambertMaterial({ color: 0x0f172a })
+const _JOINT_MAT = new THREE.MeshBasicMaterial({ color: 0x555555 })
+;[_SIDEWALK_MAT, _CURB_MAT, _ASPHALT_MAT, _ROAD_MARK_MAT, _PAINT_WHITE_MAT,
+  _BUILDING_LEFT_MAT, _BUILDING_RIGHT_MAT, _BUILDING_FRAME_MAT, _BUILDING_GLASS_MAT,
+  _STREETLIGHT_POLE_MAT, _STREETLIGHT_FIXTURE_MAT, _JOINT_MAT].forEach(m => { m.userData.isShared = true })
+
+// ─── Facade material singletons ───────────────────────────────────────────────
+// Constant PBR params — rebuilt on every buildDoorFacade call without caching.
+const _FACADE_METAL_MAT = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.8 })
+const _FACADE_GLASS_MAT = new THREE.MeshStandardMaterial({ color: 0xcce8ff, transparent: true, opacity: 0.13, metalness: 0.98, roughness: 0.02 })
+const _FACADE_CONCRETE_MAT = new THREE.MeshStandardMaterial({ color: FACADE_CONCRETE.color, roughness: FACADE_CONCRETE.roughness, metalness: FACADE_CONCRETE.metalness })
+const _FACADE_COL_MAT = new THREE.MeshStandardMaterial({ color: 0x0a1232, roughness: 0.35, metalness: 0.1 })
+;[_FACADE_METAL_MAT, _FACADE_GLASS_MAT, _FACADE_CONCRETE_MAT, _FACADE_COL_MAT].forEach(m => { m.userData.isShared = true })
 
 // Mapping from catalog item ID to 3D GLB model key
 const MODEL_KEY_FOR_ITEM: Record<string, string> = {
@@ -344,10 +523,17 @@ const MODEL_KEY_FOR_ITEM: Record<string, string> = {
   'catalog-46-premium': 'mipvitaminas', 'catalog-46-especial': 'mipvitaminas',
   'catalog-48-premium': 'mipvitaminas', 'catalog-48-especial': 'mipvitaminas',
   'catalog-47-premium': 'mipprimeiros', 'catalog-47-especial': 'mipprimeiros',
+  'catalog-13-premium': 'perfumaria055', 'catalog-13-especial': 'perfumaria055',
+  'catalog-15-premium': 'vitrine080', 'catalog-15-especial': 'vitrine080',
+  'catalog-16-premium': 'vitrine080', 'catalog-16-especial': 'vitrine080',
+  'catalog-33-premium': 'gondola300', 'catalog-33-especial': 'gondola300',
+  'catalog-34-premium': 'gondola300', 'catalog-34-especial': 'gondola300',
+  'catalog-81-premium': 'lateralcaixa040', 'catalog-81-especial': 'lateralcaixa040',
+  'catalog-82-premium': 'lateralcaixa065', 'catalog-82-especial': 'lateralcaixa065',
 }
 
 // Gondola models are stored with their length along the GLB X axis — no Y rotation needed
-const NO_ROTATION_MODELS = new Set(['gondola170', 'gondola170cimed', 'gondola220', 'gondola220cimed'])
+const NO_ROTATION_MODELS = new Set(['gondola170', 'gondola170cimed', 'gondola220', 'gondola220cimed', 'gondola300', 'gondola300cimed'])
 
 const getRequiredModelKeys = (items: any[]): string[] => {
   const keys = new Set<string>()
@@ -453,6 +639,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const frontFacadeGroupRef = useRef<THREE.Group | null>(null)
   const sideFacadeGroupRef = useRef<THREE.Group | null>(null)
   const urbanContextGroupRef = useRef<THREE.Group | null>(null)
+  const doorPanelMeshesRef = useRef<THREE.Mesh[]>([]) // cached door panels — avoids traverse() every frame
   const carsRef = useRef<{ mesh: THREE.Group; speed: number; dir: number }[]>([])
   const [loadedModelsCount, setLoadedModelsCount] = useState(0)
   const cestaoModelRef = useRef<THREE.Group | null>(null)
@@ -470,6 +657,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
   const gondola170cimedModelRef = useRef<THREE.Group | null>(null)
   const gondola220ModelRef = useRef<THREE.Group | null>(null)
   const gondola220cimedModelRef = useRef<THREE.Group | null>(null)
+  const gondola300ModelRef = useRef<THREE.Group | null>(null)
+  const gondola300cimedModelRef = useRef<THREE.Group | null>(null)
+  const lateralcaixa040ModelRef = useRef<THREE.Group | null>(null)
+  const lateralcaixa065ModelRef = useRef<THREE.Group | null>(null)
+  const perfumaria055ModelRef = useRef<THREE.Group | null>(null)
+  const vitrine080ModelRef = useRef<THREE.Group | null>(null)
   const maquiagem050ModelRef = useRef<THREE.Group | null>(null)
   const medicamento050ModelRef = useRef<THREE.Group | null>(null)
   const medicamento080ModelRef = useRef<THREE.Group | null>(null)
@@ -606,11 +799,10 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         powerPreference: "high-performance",
         precision: "mediump"
       })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
       renderer.setSize(width, height)
       renderer.shadowMap.enabled = true
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap // softer, more premium contact shadows
-      renderer.shadowMap.autoUpdate = true
+      renderer.shadowMap.type = THREE.PCFShadowMap // PCFSoft ≈ 2× cost; PCF sufficient at 512
       // Color & tone: filmic rolloff so stacked lights stop clipping to flat white,
       // and correct sRGB output so colors/GLB textures look rich instead of washed out.
       renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -650,8 +842,8 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       directionalLight.shadow.camera.bottom = -15
       directionalLight.shadow.camera.near = 0.1
       directionalLight.shadow.camera.far = 30
-      directionalLight.shadow.mapSize.width = 1024
-      directionalLight.shadow.mapSize.height = 1024
+      directionalLight.shadow.mapSize.width = 512
+      directionalLight.shadow.mapSize.height = 512
       directionalLight.shadow.bias = -0.0005
       scene.add(directionalLight)
       directionalLightRef.current = directionalLight
@@ -767,6 +959,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         gondola170cimed: gondola170cimedModelRef,
         gondola220: gondola220ModelRef,
         gondola220cimed: gondola220cimedModelRef,
+        gondola300: gondola300ModelRef,
+        gondola300cimed: gondola300cimedModelRef,
+        lateralcaixa040: lateralcaixa040ModelRef,
+        lateralcaixa065: lateralcaixa065ModelRef,
+        perfumaria055: perfumaria055ModelRef,
+        vitrine080: vitrine080ModelRef,
         maquiagem050: maquiagem050ModelRef,
         medicamento050: medicamento050ModelRef,
         medicamento080: medicamento080ModelRef,
@@ -799,6 +997,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         { key: 'gondola170cimed', path: '/models/Gôndola 1,70 com ponta cimed.glb' },
         { key: 'gondola220', path: '/models/Gôndola 2,20.glb' },
         { key: 'gondola220cimed', path: '/models/Gôndola 2,20 com ponta cimed.glb' },
+        { key: 'gondola300', path: '/models/Gôndola 3,00.glb' },
+        { key: 'gondola300cimed', path: '/models/Gôndola 3,00 com ponta cimed.glb' },
+        { key: 'lateralcaixa040', path: '/models/Lateral caixa 0,40.glb' },
+        { key: 'lateralcaixa065', path: '/models/Lateral caixa 0,65.glb' },
+        { key: 'perfumaria055', path: '/models/Perfumaria 0,55.glb' },
+        { key: 'vitrine080', path: '/models/Vitrine 0,80.glb' },
         { key: 'maquiagem050', path: '/models/Maquiagens 0,50.glb' },
         { key: 'medicamento050', path: '/models/Medicamento 0,50.glb' },
         { key: 'medicamento080', path: '/models/Medicamento 0,80.glb' },
@@ -1567,18 +1771,9 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
           }
 
           // --- Animar Portas Automáticas por Proximidade da Câmera ---
-          if (frontFacadeGroupRef.current || sideFacadeGroupRef.current) {
-            const doorPanels: THREE.Mesh[] = []
-            const collectPanels = (group: THREE.Group | null) => {
-              if (!group) return
-              group.traverse((child) => {
-                if (child instanceof THREE.Mesh && child.userData && child.userData.isDoorPanel) {
-                  doorPanels.push(child)
-                }
-              })
-            }
-            collectPanels(frontFacadeGroupRef.current)
-            collectPanels(sideFacadeGroupRef.current)
+          // Use pre-cached panel list (built at facade rebuild) — no per-frame traverse()
+          if (doorPanelMeshesRef.current.length > 0) {
+            const doorPanels = doorPanelMeshesRef.current
 
             doorPanels.forEach((panel) => {
               // Obtém posição absoluta do painel no mundo 3D
@@ -1680,7 +1875,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         }
         cam.aspect = w / h
         cam.updateProjectionMatrix()
-        ren.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        ren.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
         ren.setSize(w, h)
       }
       window.addEventListener('resize', handleResize)
@@ -1840,21 +2035,26 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     const frontFacadeGroup = targetGroup
     if (!frontFacadeGroup) return
 
-    // Clear old children
+    // Clear old children — dispose geometry + non-shared materials (skip singletons and cached textures)
     while (frontFacadeGroup.children.length > 0) {
       const child = frontFacadeGroup.children[0]
       frontFacadeGroup.remove(child)
       if (child instanceof THREE.Mesh) {
         child.geometry.dispose()
-        if (Array.isArray(child.material)) {
-          child.material.forEach(m => m.dispose())
-        } else {
-          child.material.dispose()
+        const disposeMat = (m: THREE.Material) => {
+          if (!m.userData.isShared) m.dispose()
         }
-      } else if (child instanceof THREE.Light) {
-        child.dispose()
+        if (Array.isArray(child.material)) {
+          child.material.forEach(disposeMat)
+        } else {
+          disposeMat(child.material)
+        }
+      } else if ((child as THREE.Light).isLight) {
+        (child as THREE.Light).dispose()
       }
     }
+    // Clear the cached door panel list for this facade group
+    if (targetGroup === frontFacadeGroupRef.current) doorPanelMeshesRef.current = []
 
     const mainOrient = doorItem ? getDoorOrientation(doorItem, storeWidth, storeHeight) : 'S'
     const wallLength = (mainOrient === 'N' || mainOrient === 'S') ? widthVal : heightVal
@@ -1887,12 +2087,10 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     const canopyMinY = 2.3
     const canopyHeight = 0.9 // up to y = 3.2
 
-    // Materials
-    const metalMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.8 })
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0xa5f3fc, transparent: true, opacity: 0.18, metalness: 0.95, roughness: 0.05 })
-    const wallColorHex = WALL_COLORS[wallColor as keyof typeof WALL_COLORS] || WALL_COLORS.mint
-    const canopyMat = new THREE.MeshStandardMaterial({ color: wallColorHex, roughness: 0.5 })
-    const concreteWallMat = new THREE.MeshStandardMaterial({ color: FACADE_CONCRETE.color, roughness: FACADE_CONCRETE.roughness, metalness: FACADE_CONCRETE.metalness })
+    // Materials: module-level singletons — not recreated on each facade rebuild
+    const metalMat = _FACADE_METAL_MAT
+    const glassMat = _FACADE_GLASS_MAT
+    const concreteWallMat = _FACADE_CONCRETE_MAT
 
     // 1. Left Glass Panel or Concrete Wall (from -wallLength / 2 to doorLeftX)
     const leftPanelW = doorLeftX - (-wallLength / 2)
@@ -1962,6 +2160,39 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       }
     }
 
+    // 2.5. Decorative info panels ONLY on concrete wall sections (never on glass)
+    if (!hasVitrines) {
+      const addConcreteInfoPanel = (panelW: number, centerX: number, sideLabel: 'left' | 'right') => {
+        if (panelW < 0.5) return
+        const ipW = panelW * 0.82
+        const ipH = canopyMinY * 0.84
+        const ipTex = createSideInfoTexture(sideLabel)
+        const ipMat = new THREE.MeshStandardMaterial({ map: ipTex, emissive: 0x0a1232, emissiveIntensity: 0.15, roughness: 0.15 })
+        const ipGeo = new THREE.BoxGeometry(ipW, ipH, 0.03)
+        const ipMesh = new THREE.Mesh(ipGeo, ipMat)
+        ipMesh.position.set(centerX, ipH / 2, facadeZ + 0.17)
+        frontFacadeGroup.add(ipMesh)
+      }
+      addConcreteInfoPanel(leftPanelW, -wallLength / 2 + leftPanelW / 2, 'left')
+      addConcreteInfoPanel(rightPanelW, doorRightX + rightPanelW / 2, 'right')
+    }
+
+    // Narrow architectural edge columns on the outer extremes of the facade (always visible)
+    {
+      const colW = 0.22
+      const colH = canopyMinY
+      const colMat = _FACADE_COL_MAT
+      const colGeo = new THREE.BoxGeometry(colW, colH, 0.12)
+      const leftCol = new THREE.Mesh(colGeo, colMat)
+      leftCol.position.set(-wallLength / 2 + colW / 2, colH / 2, facadeZ + 0.06)
+      leftCol.castShadow = true
+      frontFacadeGroup.add(leftCol)
+      const rightCol = new THREE.Mesh(colGeo, colMat)
+      rightCol.position.set(wallLength / 2 - colW / 2, colH / 2, facadeZ + 0.06)
+      rightCol.castShadow = true
+      frontFacadeGroup.add(rightCol)
+    }
+
     // 3. Automatic Glass Door (at doorX3d)
     // Concrete wall header above the door height when it's a solid wall facade
     if (!hasVitrines) {
@@ -2016,54 +2247,45 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     }
     rightSheetMesh.position.set(doorX3d + sheetW / 2, (doorHeight - 0.06) / 2 + 0.03, facadeZ)
     frontFacadeGroup.add(rightSheetMesh)
+    // Cache door panels to avoid per-frame traverse() in the render loop
+    doorPanelMeshesRef.current.push(leftSheetMesh, rightSheetMesh)
 
-    // 4. Upper Canopy (Marquise) - projecting forward by 0.5m in Z
-    const canopyDepth = 0.5
-    const canopyGeo = new THREE.BoxGeometry(wallLength, canopyHeight, canopyDepth)
-    const canopyMesh = new THREE.Mesh(canopyGeo, canopyMat)
-    canopyMesh.position.set(0, canopyMinY + canopyHeight / 2, facadeZ + canopyDepth / 2)
-    canopyMesh.castShadow = true
-    canopyMesh.receiveShadow = true
-    frontFacadeGroup.add(canopyMesh)
+    // 4. Blue fascia banner — full-width sign box replacing the plain canopy
+    const canopyDepth = 0.20
+    const fasciaH = canopyHeight + 0.25
 
-    // 5. Commercial Sign (Placa comercial) — only on the main entrance facade
+    const fasciaEdgeMat2 = new THREE.MeshStandardMaterial({ color: 0x080e1a, roughness: 0.35 })
+    let fasciaPrimaryMat: THREE.Material
     if (withSign) {
-      const signW = Math.min(wallLength * 0.7, 4.0)
-      const signH = 0.5
-
-      // Choose sign colors dynamically based on wall color
-      let signBg = '#' + wallColorHex.toString(16).padStart(6, '0')
-      let signFg = '#ffffff'
-      let signEmissiveColor = 0xffffff
-      let signEmissiveIntensity = 0.1
-
-      if (wallColor === 'white') {
-        signBg = '#0b3d2e' // Elegant dark green brand color (Projefarma) on white/cream walls
-        signEmissiveColor = 0x1ba079
-        signEmissiveIntensity = 0.2
-      } else if (wallColor === 'mint') {
-        signEmissiveColor = 0x10b981
-        signEmissiveIntensity = 0.2
-      } else if (wallColor === 'blue') {
-        signEmissiveColor = 0x60a5fa
-        signEmissiveIntensity = 0.2
-      }
-
-      const signTex = createSignageTexture(pharmacyName || 'FARMÁCIA PROJEFARMA', signBg, signFg)
-      const signFrontMat = new THREE.MeshStandardMaterial({
-        map: signTex,
-        roughness: 0.1,
-        emissive: signEmissiveColor,
-        emissiveIntensity: signEmissiveIntensity
-      })
-      const signBorderMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4 })
-      const signMaterials = [signBorderMat, signBorderMat, signBorderMat, signBorderMat, signFrontMat, signBorderMat]
-
-      const signGeo = new THREE.BoxGeometry(signW, signH, 0.06)
-      const signMesh = new THREE.Mesh(signGeo, signMaterials)
-      signMesh.position.set(0, canopyMinY + canopyHeight / 2, facadeZ + canopyDepth + 0.03)
-      frontFacadeGroup.add(signMesh)
+      const fasciaTex = createFasciaTexture(pharmacyName || 'FARMÁCIA PROJEFARMA')
+      fasciaPrimaryMat = new THREE.MeshStandardMaterial({ map: fasciaTex, emissive: 0x0d1f6e, emissiveIntensity: 0.22, roughness: 0.08 })
+    } else {
+      fasciaPrimaryMat = new THREE.MeshStandardMaterial({ color: 0x0d1f6e, roughness: 0.3 })
     }
+    // BoxGeometry face order: +X, -X, +Y, -Y, +Z (front/street-facing), -Z
+    const fasciaBoxMats = [fasciaEdgeMat2, fasciaEdgeMat2, fasciaEdgeMat2, fasciaEdgeMat2, fasciaPrimaryMat, fasciaEdgeMat2]
+    const fasciaGeo = new THREE.BoxGeometry(wallLength + 0.12, fasciaH, canopyDepth)
+    const fasciaMesh = new THREE.Mesh(fasciaGeo, fasciaBoxMats)
+    fasciaMesh.position.set(0, canopyMinY + fasciaH / 2, facadeZ + canopyDepth / 2)
+    fasciaMesh.castShadow = true
+    fasciaMesh.receiveShadow = true
+    frontFacadeGroup.add(fasciaMesh)
+
+    // Dark metal top-cap on fascia
+    const fasciaCapMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(wallLength + 0.24, 0.065, canopyDepth + 0.065),
+      metalMat
+    )
+    fasciaCapMesh.position.set(0, canopyMinY + fasciaH + 0.033, facadeZ + canopyDepth / 2)
+    frontFacadeGroup.add(fasciaCapMesh)
+
+    // LED strip along the top edge of the fascia
+    const ledBannerMat = new THREE.MeshStandardMaterial({ color: 0xfffbeb, emissive: 0xfffbeb, emissiveIntensity: 3.2 })
+    const ledBannerMesh = new THREE.Mesh(new THREE.BoxGeometry(wallLength + 0.40, 0.042, 0.042), ledBannerMat)
+    ledBannerMesh.position.set(0, canopyMinY + fasciaH + 0.08, facadeZ + 0.04)
+    frontFacadeGroup.add(ledBannerMesh)
+
+    // 5. (sign is now baked into fascia texture above)
 
     // 6. External Lighting (Spotlights under the canopy pointing down)
     const numSpots = Math.max(2, Math.floor(wallLength / 3))
@@ -2083,6 +2305,45 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       frontFacadeGroup.add(spotLight.target)
     }
 
+    // 7. Vertical LED strips on the far left and right edges of the facade
+    const ledEdgeMat = new THREE.MeshStandardMaterial({ color: 0xfffbeb, emissive: 0xfffbeb, emissiveIntensity: 2.6 })
+    const ledEdgeHeight = canopyMinY + fasciaH + 0.08
+    const ledEdgeGeo = new THREE.BoxGeometry(0.052, ledEdgeHeight, 0.052)
+    const ledLeftEdge = new THREE.Mesh(ledEdgeGeo, ledEdgeMat)
+    ledLeftEdge.position.set(-wallLength / 2 - 0.05, ledEdgeHeight / 2, facadeZ + 0.03)
+    frontFacadeGroup.add(ledLeftEdge)
+    const ledRightEdge = new THREE.Mesh(ledEdgeGeo, ledEdgeMat)
+    ledRightEdge.position.set(wallLength / 2 + 0.05, ledEdgeHeight / 2, facadeZ + 0.03)
+    frontFacadeGroup.add(ledRightEdge)
+
+    // 8. Welcome mat in front of the entrance door
+    {
+      const matW = Math.min(doorW * 1.3, 2.4)
+      const matD = 0.85
+      const welcomeTex = createWelcomeMatTexture()
+      const welcomeMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(matW, 0.012, matD),
+        new THREE.MeshStandardMaterial({ map: welcomeTex, roughness: 0.88 })
+      )
+      welcomeMesh.position.set(doorX3d, 0.006, facadeZ + matD / 2 + 0.06)
+      frontFacadeGroup.add(welcomeMesh)
+    }
+
+    // 9. Decorative planters with greenery at front facade corners
+    {
+      const planterMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.48 })
+      const bushMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.85 })
+      const planterXs = [-wallLength / 2 + 0.36, wallLength / 2 - 0.36]
+      planterXs.forEach(px => {
+        const planterMesh = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.44, 0.64), planterMat)
+        planterMesh.position.set(px, 0.22, facadeZ + 0.42)
+        frontFacadeGroup.add(planterMesh)
+        const bushMesh = new THREE.Mesh(new THREE.SphereGeometry(0.27, 8, 6), bushMat)
+        bushMesh.position.set(px, 0.58, facadeZ + 0.42)
+        frontFacadeGroup.add(bushMesh)
+      })
+    }
+
     // Position and rotate the group so it sits on the wall where the door was actually placed.
     frontFacadeGroup.position.set(0, 0, 0)
     frontFacadeGroup.rotation.set(0, 0, 0)
@@ -2094,19 +2355,27 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     const urbanContextGroup = urbanContextGroupRef.current
     if (!urbanContextGroup) return
 
-    // Clear old children
+    // Clear old children — dispose variable-dim geometries; skip isShared geos+mats (singletons).
+    // Groups (trees, cars, streetlights) are traversed to find variable-dim child geos to dispose.
+    const _disposeChild = (obj: THREE.Object3D) => {
+      const mesh = obj as THREE.Mesh
+      if (!mesh.isMesh) return
+      if (mesh.geometry && !mesh.geometry.userData.isShared) mesh.geometry.dispose()
+      const mat = mesh.material
+      if (!mat) return
+      const disposeMat = (m: THREE.Material) => { if (!m.userData.isShared) m.dispose() }
+      if (Array.isArray(mat)) mat.forEach(disposeMat)
+      else disposeMat(mat as THREE.Material)
+    }
     while (urbanContextGroup.children.length > 0) {
       const child = urbanContextGroup.children[0]
       urbanContextGroup.remove(child)
-      if (child instanceof THREE.Mesh) {
-        child.geometry.dispose()
-        if (Array.isArray(child.material)) {
-          child.material.forEach(m => m.dispose())
-        } else {
-          child.material.dispose()
-        }
-      } else if (child instanceof THREE.Light) {
-        child.dispose()
+      if (child instanceof THREE.Group) {
+        child.traverse(_disposeChild)
+      } else if (child instanceof THREE.Mesh) {
+        _disposeChild(child)
+      } else if ((child as THREE.Light).isLight) {
+        (child as THREE.Light).dispose()
       }
     }
 
@@ -2170,13 +2439,13 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     for (let x = Math.ceil(frontLeftX / 2) * 2; x <= frontRightX; x += 2) {
       if (Math.abs(x) < widthVal / 2 - 0.1 || Math.abs(x) > widthVal / 2 + 0.1) {
         const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
-        const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+        const jointMesh = new THREE.Mesh(jointGeo, _JOINT_MAT)
         jointMesh.position.set(x, 0.001, facadeZ + 1.5)
         urbanContextGroup.add(jointMesh)
       }
     }
     const longJointGeo = new THREE.BoxGeometry(frontWidth, 0.002, 0.015)
-    const longJointMesh = new THREE.Mesh(longJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+    const longJointMesh = new THREE.Mesh(longJointGeo, _JOINT_MAT)
     longJointMesh.position.set(frontCenterX, 0.001, facadeZ + 1.5)
     urbanContextGroup.add(longJointMesh)
 
@@ -2226,13 +2495,13 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       for (let z = Math.ceil(sideBackZ / 2) * 2; z <= sideFrontZ; z += 2) {
         if (z < -heightVal / 2 || z > heightVal / 2) {
           const jointGeo = new THREE.BoxGeometry(3.0, 0.002, 0.015)
-          const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+          const jointMesh = new THREE.Mesh(jointGeo, _JOINT_MAT)
           jointMesh.position.set(sideWallX + sideSign * 1.5, 0.001, z)
           urbanContextGroup.add(jointMesh)
         }
       }
       const sideLongJointGeo = new THREE.BoxGeometry(0.015, 0.002, sideLength)
-      const sideLongJointMesh = new THREE.Mesh(sideLongJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+      const sideLongJointMesh = new THREE.Mesh(sideLongJointGeo, _JOINT_MAT)
       sideLongJointMesh.position.set(sideWallX + sideSign * 1.5, 0.001, sideCenterZ)
       urbanContextGroup.add(sideLongJointMesh)
 
@@ -2373,12 +2642,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     // Joints for opposite sidewalk
     for (let x = Math.ceil(frontLeftX / 2) * 2; x <= frontRightX; x += 2) {
       const jointGeo = new THREE.BoxGeometry(0.015, 0.002, 3.0)
-      const jointMesh = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+      const jointMesh = new THREE.Mesh(jointGeo, _JOINT_MAT)
       jointMesh.position.set(x, 0.001, oppSidewalkZ)
       urbanContextGroup.add(jointMesh)
     }
     const oppLongJointGeo = new THREE.BoxGeometry(frontWidth, 0.002, 0.015)
-    const oppLongJointMesh = new THREE.Mesh(oppLongJointGeo, new THREE.MeshBasicMaterial({ color: 0x555555 }))
+    const oppLongJointMesh = new THREE.Mesh(oppLongJointGeo, _JOINT_MAT)
     oppLongJointMesh.position.set(frontCenterX, 0.001, oppSidewalkZ)
     urbanContextGroup.add(oppLongJointMesh)
 
@@ -2551,41 +2820,25 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     filteredStreetlightPositions.forEach((pos) => {
       const streetlightGroup = new THREE.Group()
       streetlightGroup.position.set(pos.x, 0, pos.z)
-      if (pos.rotY) {
-        streetlightGroup.rotation.y = pos.rotY
-      }
-      
-      const poleGeo = new THREE.CylinderGeometry(0.05, 0.08, 5.0, 8)
-      const poleMesh = new THREE.Mesh(poleGeo, streetlightPoleMat)
+      if (pos.rotY) streetlightGroup.rotation.y = pos.rotY
+      const poleMesh = new THREE.Mesh(_POLE_GEO, streetlightPoleMat)
       poleMesh.position.y = 2.5
-      poleMesh.castShadow = true
-      poleMesh.receiveShadow = true
       streetlightGroup.add(poleMesh)
-
-      const armGeo = new THREE.BoxGeometry(0.06, 0.06, 1.2)
-      const armMesh = new THREE.Mesh(armGeo, streetlightPoleMat)
+      const armMesh = new THREE.Mesh(_POLE_ARM_GEO, streetlightPoleMat)
       armMesh.position.set(0, 5.0, 0.5)
-      armMesh.castShadow = true
       streetlightGroup.add(armMesh)
-
-      const headGeo = new THREE.BoxGeometry(0.15, 0.08, 0.3)
-      const headMesh = new THREE.Mesh(headGeo, streetlightFixtureMat)
+      const headMesh = new THREE.Mesh(_LIGHT_HEAD_GEO, streetlightFixtureMat)
       headMesh.position.set(0, 4.96, 1.1)
-      headMesh.castShadow = true
       streetlightGroup.add(headMesh)
-
-      const lensGeo = new THREE.BoxGeometry(0.12, 0.01, 0.24)
-      const lensMesh = new THREE.Mesh(lensGeo, new THREE.MeshBasicMaterial({ color: 0xffe885 }))
+      const lensMesh = new THREE.Mesh(_LIGHT_LENS_GEO, _LIGHT_LENS_MAT)
       lensMesh.position.set(0, 4.915, 1.1)
       streetlightGroup.add(lensMesh)
-
       const light = new THREE.SpotLight(0xffd8a8, 1.5, 16.0, Math.PI / 4, 0.6, 1.0)
       light.position.set(0, 4.9, 1.1)
       light.target.position.set(0, 0, 1.1)
       light.castShadow = false
       streetlightGroup.add(light)
       streetlightGroup.add(light.target)
-
       urbanContextGroup.add(streetlightGroup)
     })
 
@@ -2604,38 +2857,24 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         const streetlightGroup = new THREE.Group()
         streetlightGroup.position.set(pos.x, 0, pos.z)
         streetlightGroup.rotation.y = pos.rotY
-        
-        const poleGeo = new THREE.CylinderGeometry(0.05, 0.08, 5.0, 8)
-        const poleMesh = new THREE.Mesh(poleGeo, streetlightPoleMat)
+        const poleMesh = new THREE.Mesh(_POLE_GEO, streetlightPoleMat)
         poleMesh.position.y = 2.5
-        poleMesh.castShadow = true
-        poleMesh.receiveShadow = true
         streetlightGroup.add(poleMesh)
-
-        const armGeo = new THREE.BoxGeometry(0.06, 0.06, 1.2)
-        const armMesh = new THREE.Mesh(armGeo, streetlightPoleMat)
+        const armMesh = new THREE.Mesh(_POLE_ARM_GEO, streetlightPoleMat)
         armMesh.position.set(0, 5.0, 0.5)
-        armMesh.castShadow = true
         streetlightGroup.add(armMesh)
-
-        const headGeo = new THREE.BoxGeometry(0.15, 0.08, 0.3)
-        const headMesh = new THREE.Mesh(headGeo, streetlightFixtureMat)
+        const headMesh = new THREE.Mesh(_LIGHT_HEAD_GEO, streetlightFixtureMat)
         headMesh.position.set(0, 4.96, 1.1)
-        headMesh.castShadow = true
         streetlightGroup.add(headMesh)
-
-        const lensGeo = new THREE.BoxGeometry(0.12, 0.01, 0.24)
-        const lensMesh = new THREE.Mesh(lensGeo, new THREE.MeshBasicMaterial({ color: 0xffe885 }))
+        const lensMesh = new THREE.Mesh(_LIGHT_LENS_GEO, _LIGHT_LENS_MAT)
         lensMesh.position.set(0, 4.915, 1.1)
         streetlightGroup.add(lensMesh)
-
         const light = new THREE.SpotLight(0xffd8a8, 1.5, 16.0, Math.PI / 4, 0.6, 1.0)
         light.position.set(0, 4.9, 1.1)
         light.target.position.set(0, 0, 1.1)
         light.castShadow = false
         streetlightGroup.add(light)
         streetlightGroup.add(light.target)
-
         urbanContextGroup.add(streetlightGroup)
       })
     }
@@ -2695,6 +2934,11 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
     // entrance actually is, so the sidewalk/street/crosswalk line up with the door in 3D.
     urbanContextGroup.position.set(0, 0, 0)
     urbanContextGroup.rotation.set(0, orientToRotationY(urbanMainOrient), 0)
+
+    // Urban context never casts shadows — all materials are already Lambert singletons.
+    urbanContextGroup.traverse(child => {
+      if ((child as THREE.Mesh).isMesh) (child as THREE.Mesh).castShadow = false
+    })
   }
 
 
@@ -2738,7 +2982,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       shadowCam.near = 0.1
       shadowCam.far = dirLight.position.y + ext * 2
       shadowCam.updateProjectionMatrix()
-      const desiredMap = Math.max(widthVal, heightVal) > 24 ? 2048 : 1024
+      const desiredMap = Math.max(widthVal, heightVal) > 24 ? 1024 : 512
       if (dirLight.shadow.mapSize.width !== desiredMap) {
         dirLight.shadow.mapSize.set(desiredMap, desiredMap)
         dirLight.shadow.map?.dispose()
@@ -3309,6 +3553,12 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
         gondola170cimed: gondola170cimedModelRef,
         gondola220: gondola220ModelRef,
         gondola220cimed: gondola220cimedModelRef,
+        gondola300: gondola300ModelRef,
+        gondola300cimed: gondola300cimedModelRef,
+        lateralcaixa040: lateralcaixa040ModelRef,
+        lateralcaixa065: lateralcaixa065ModelRef,
+        perfumaria055: perfumaria055ModelRef,
+        vitrine080: vitrine080ModelRef,
         maquiagem050: maquiagem050ModelRef,
         medicamento050: medicamento050ModelRef,
         medicamento080: medicamento080ModelRef,
@@ -3327,8 +3577,14 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       if (matchedModel) {
         try {
           // Gondola models are stored with length along GLB X — no Y rotation needed.
-          // All other models have their depth along GLB X and need 90° Y correction.
-          const rotCorrection = NO_ROTATION_MODELS.has(matchedKey!) ? 0 : Math.PI / 2
+          // All other GLBs have their front face along +X. The correction needed to aim
+          // that face INTO the store depends on which wall the item sits on:
+          //   N/S walls (2D rotation 0°/180°)  → correct with -π/2
+          //   E/W walls (2D rotation 90°/270°) → correct with +π/2
+          const itemRotDeg = ((Number(item.rotation) || 0) % 360 + 360) % 360
+          const rotCorrection = NO_ROTATION_MODELS.has(matchedKey!) ? 0
+            : (itemRotDeg === 90 || itemRotDeg === 270) ? Math.PI / 2
+            : -Math.PI / 2
           applyModelToSubGroup(matchedModel, true, rotCorrection)
         } catch (e) {
           console.error(`⚠️ [3D Viewer] Erro ao clonar/renderizar modelo 3D para ${item.name}:`, e)

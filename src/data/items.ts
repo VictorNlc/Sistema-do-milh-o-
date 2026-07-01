@@ -153,7 +153,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 831.42,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '13',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-14-premium',
@@ -342,7 +342,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 3360.67,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '33',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-34-premium',
@@ -363,7 +363,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 4815.25,
     finish: 'MDP 15mm Preto TX – rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '34',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-35-premium',
@@ -853,7 +853,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'BALCOES',
     name: '[Premium] LAT CX 40',
     icon: '💳',
-    description: 'Painel lateral de caixa 1,90x40x26cm | Cód: 81 | Preço: R$ 519.30',
+    description: 'Painel lateral de caixa 2,90x40x26cm | Cód: 81 | Preço: R$ 519.30',
     width: 0.4,
     height: 0.26,
     color: '#2563EB',
@@ -867,28 +867,28 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 519.3,
     finish: 'MDP 15mm branco TX - testeira superior com altura de 30 cm. Rodape na cor',
     code: '81',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-82-premium',
     category: 'BALCOES',
-    name: '[Premium] LAT CX 55',
+    name: '[Premium] LAT CX 65',
     icon: '💳',
-    description: 'Painel lateral de caixa 1,90x55x26cm | Cód: 82 | Preço: R$ 598.25',
-    width: 0.55,
+    description: 'Painel lateral de caixa 2,90x65x26cm | Cód: 82 | Preço: R$ 598.25',
+    width: 0.65,
     height: 0.26,
     color: '#2563EB',
     fillColor: '#DBEAFE',
     strokeColor: '#1D4ED8',
-    minWidth: 0.55,
-    maxWidth: 0.55,
+    minWidth: 0.65,
+    maxWidth: 0.65,
     minHeight: 0.26,
     maxHeight: 0.26,
     rotatable: true,
     price: 598.25,
     finish: 'MDP 15mm branco TX - testeira superior com altura de 30 cm. Rodape na cor',
     code: '82',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-91-premium',
@@ -1455,7 +1455,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 861.52,
     finish: 'MDP 15mm branco TX – testeira superior com altura de 30 cm e rodapé com 7,5 cm. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '13',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-14-especial',
@@ -1644,7 +1644,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 3390.67,
     finish: 'MDP 15mm branco TX – rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '33',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-34-especial',
@@ -1665,7 +1665,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 4865.55,
     finish: 'MDP 15mm Preto TX – rodapé com altura de 7,5cm. Com 3 lados canaletados. Placa superior com nomenclatura. Todas as prateleiras com regulagem de altura. Contem rodapé na cor',
     code: '34',
-    height3d: 1.14
+    height3d: 1.3
   },
   {
     id: 'catalog-35-especial',
@@ -2155,7 +2155,7 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     category: 'BALCOES',
     name: '[Especial] LAT CAIXA 400mm / lat cx 400',
     icon: '💳',
-    description: 'Painel lateral de caixa 1,90x40x26cm | Cód: 81 | Preço: R$ 564.30',
+    description: 'Painel lateral de caixa 2,90x40x26cm | Cód: 81 | Preço: R$ 564.30',
     width: 0.4,
     height: 0.26,
     color: '#2563EB',
@@ -2169,28 +2169,28 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     price: 564.3,
     finish: 'MDP 15mm branco TX - testeira superior com altura de 30 cm. Rodape na cor',
     code: '81',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-82-especial',
     category: 'BALCOES',
-    name: '[Especial] LAT CAIXA 550mm / lat cx 550',
+    name: '[Especial] LAT CAIXA 650mm / lat cx 650',
     icon: '💳',
-    description: 'Painel lateral de caixa 1,90x55x26cm | Cód: 82 | Preço: R$ 633.25',
-    width: 0.55,
+    description: 'Painel lateral de caixa 2,90x65x26cm | Cód: 82 | Preço: R$ 633.25',
+    width: 0.65,
     height: 0.26,
     color: '#2563EB',
     fillColor: '#DBEAFE',
     strokeColor: '#1D4ED8',
-    minWidth: 0.55,
-    maxWidth: 0.55,
+    minWidth: 0.65,
+    maxWidth: 0.65,
     minHeight: 0.26,
     maxHeight: 0.26,
     rotatable: true,
     price: 633.25,
     finish: 'MDP 15mm branco TX - testeira superior com altura de 30 cm. Rodape na cor',
     code: '82',
-    height3d: 1.9
+    height3d: 2.9
   },
   {
     id: 'catalog-91-especial',

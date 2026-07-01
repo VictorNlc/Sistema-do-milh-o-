@@ -755,8 +755,6 @@ export async function generateAILayout(
       : []
 
     const normalSequence = [
-      { id: 'catalog-23', name: 'Prateleira Medicamentos', icon: '💊', w: 1.0 },
-      { id: 'catalog-21', name: 'Prateleira Medicamentos', icon: '💊', w: 0.807 },
       { id: 'catalog-22', name: 'Prateleira Medicamentos', icon: '💊', w: 0.5 },
     ]
 
@@ -1282,10 +1280,7 @@ export async function generateAILayout(
       const remaining = backWallEnd - currentX
       let itemId = `catalog-22${lineSuffix}`
       let w = 0.5
-      if (remaining >= 1.0) {
-        itemId = `catalog-23${lineSuffix}`
-        w = 1.0
-      } else if (remaining >= 0.807) {
+      if (remaining >= 0.807 && remaining < 1.0) {
         itemId = `catalog-21${lineSuffix}`
         w = 0.807
       }
@@ -1638,10 +1633,7 @@ export async function generateAILayout(
       const remaining = backWallEnd - currentX
       let itemId = `catalog-22${lineSuffix}`
       let w = 0.5
-      if (remaining >= 1.0) {
-        itemId = `catalog-23${lineSuffix}`
-        w = 1.0
-      } else if (remaining >= 0.807) {
+      if (remaining >= 0.807 && remaining < 1.0) {
         itemId = `catalog-21${lineSuffix}`
         w = 0.807
       }
@@ -1985,10 +1977,7 @@ export async function generateAILayout(
       const remaining = backWallEnd - currentY
       let itemId = `catalog-22${lineSuffix}`
       let w = 0.5
-      if (remaining >= 1.0) {
-        itemId = `catalog-23${lineSuffix}`
-        w = 1.0
-      } else if (remaining >= 0.807) {
+      if (remaining >= 0.807 && remaining < 1.0) {
         itemId = `catalog-21${lineSuffix}`
         w = 0.807
       }
@@ -2332,10 +2321,7 @@ export async function generateAILayout(
       const remaining = backWallEnd - currentY
       let itemId = `catalog-22${lineSuffix}`
       let w = 0.5
-      if (remaining >= 1.0) {
-        itemId = `catalog-23${lineSuffix}`
-        w = 1.0
-      } else if (remaining >= 0.807) {
+      if (remaining >= 0.807 && remaining < 1.0) {
         itemId = `catalog-21${lineSuffix}`
         w = 0.807
       }
