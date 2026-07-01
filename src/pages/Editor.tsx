@@ -1421,7 +1421,11 @@ export default function Editor() {
           </div>
         }>
           <ThreeDViewer 
-            onClose={() => setShow3D(false)} 
+            onClose={() => {
+              setShow3D(false)
+              useCanvasStore.getState().setSelectedItem(null)
+              setActiveMobileTab('budget')
+            }} 
             showSimulation={showSimulation} 
             initialCameraView={initialCameraView} 
             onSendEmail={() => setShowEmailModal(true)}
