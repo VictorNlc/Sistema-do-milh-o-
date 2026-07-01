@@ -54,6 +54,7 @@ interface FormData {
   number: string
   complement: string
   phone: string
+  phoneCountryCode: string
   employees: string
   spaceMode: 'dimensions' | 'floorplan'
   width: string
@@ -149,6 +150,7 @@ export default function ClientIntakeForm() {
     number: '',
     complement: '',
     phone: '',
+    phoneCountryCode: '(55)',
     employees: '',
     spaceMode: 'dimensions',
     width: '',
@@ -223,7 +225,16 @@ export default function ClientIntakeForm() {
       return 'Estado não preenchido. Verifique o código postal.'
     }
     if (field === 'address' && !currentForm.address.trim()) return 'Informe o endereço.'
-    if (field === 'phone' && currentForm.phone.replace(/\D/g, '').length < 10) return 'Informe um telefone válido.'
+    if (field === 'phone') {
+      const countryDigits = currentForm.phoneCountryCode?.replace(/\D/g, '') || ''
+      const phoneDigits = currentForm.phone.replace(/\D/g, '')
+      if (!countryDigits) return 'Informe o código do país.'
+      if (!phoneDigits) return 'Informe seu telefone / WhatsApp.'
+      if (countryDigits === '55' && (phoneDigits.length < 10 || phoneDigits.length > 11)) {
+        return 'Informe um telefone válido com DDD (ex: (11) 99999-9999).'
+      }
+      if (phoneDigits.length < 8) return 'Informe um número de telefone válido.'
+    }
     if (field === 'employees' && !currentForm.employees) return 'Selecione o número de funcionários.'
     return undefined
   }, [isCityManual, isStateManual])
@@ -867,12 +878,16 @@ export default function ClientIntakeForm() {
       return copy
     })
     
+    const countryDigits = form.phoneCountryCode.replace(/\D/g, '')
+    const phoneDigits = form.phone.replace(/\D/g, '')
+    const concatenatedPhone = `(${countryDigits})${phoneDigits}`
+    
     try {
       if (supabase) {
         const { data: existing, error } = await supabase
           .from('profiles')
           .select('id, name')
-          .eq('phone', form.phone)
+          .eq('phone', concatenatedPhone)
           .maybeSingle()
           
         if (error) {
@@ -939,6 +954,10 @@ export default function ClientIntakeForm() {
       ? crypto.randomUUID() 
       : 'p_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15))
 
+    const countryDigits = form.phoneCountryCode.replace(/\D/g, '')
+    const phoneDigits = form.phone.replace(/\D/g, '')
+    const concatenatedPhone = `(${countryDigits})${phoneDigits}`
+
     // Try to save/update in Supabase profiles table
     if (supabase) {
       try {
@@ -946,7 +965,7 @@ export default function ClientIntakeForm() {
           id: idToSave,
           name: form.clientName.trim(),
           pharmacyName: form.pharmacyName.trim(),
-          phone: form.phone,
+          phone: concatenatedPhone,
           country: form.country,
           postalCode: form.postalCode.trim(),
           city: form.city.trim(),
@@ -981,7 +1000,7 @@ export default function ClientIntakeForm() {
       address: form.address.trim(),
       number: form.number.trim(),
       complement: form.complement.trim(),
-      phone: form.phone,
+      phone: concatenatedPhone,
       employees: form.employees,
       spaceMode: form.spaceMode,
       width: form.spaceMode === 'dimensions' ? parseFloat(form.width) : null,
@@ -1012,7 +1031,8 @@ export default function ClientIntakeForm() {
     sessionStorage.setItem('projefarma_client_details', JSON.stringify({
       clientName: form.clientName.trim(),
       pharmacyName: form.pharmacyName.trim(),
-      phone: form.phone,
+      phone: concatenatedPhone,
+      clientPhone: concatenatedPhone,
       city: form.city.trim(),
       state: form.state.trim(),
       address: form.address.trim(),
@@ -1423,17 +1443,41 @@ export default function ClientIntakeForm() {
                     />
                   </div>
                   <div className="cif-field">
-                    <label htmlFor="cif-phone">Telefone para contato <span className="cif-required">*</span></label>
-                    <input
-                      id="cif-phone"
-                      type="tel"
-                      placeholder="(11) 99999-9999"
-                      value={form.phone}
-                      onChange={e => set('phone', formatPhone(e.target.value).slice(0, 25))}
-                      onBlur={() => handleBlur('phone')}
-                      className={errors.phone ? 'error' : ''}
-                      maxLength={25}
-                    />
+                    <label>Telefone para contato <span className="cif-required">*</span></label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ width: '80px', flexShrink: 0 }}>
+                        <input
+                          id="cif-phone-country-code"
+                          type="text"
+                          placeholder="(55)"
+                          value={form.phoneCountryCode}
+                          onChange={e => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
+                            set('phoneCountryCode', digits ? `(${digits})` : '')
+                            if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }))
+                          }}
+                          onBlur={() => handleBlur('phone')}
+                          className={errors.phone ? 'error' : ''}
+                          maxLength={6}
+                          style={{ textAlign: 'center' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          id="cif-phone"
+                          type="tel"
+                          placeholder="(11) 99999-9999"
+                          value={form.phone}
+                          onChange={e => {
+                            set('phone', formatPhone(e.target.value).slice(0, 25))
+                            if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }))
+                          }}
+                          onBlur={() => handleBlur('phone')}
+                          className={errors.phone ? 'error' : ''}
+                          maxLength={25}
+                        />
+                      </div>
+                    </div>
                     {errors.phone && <span className="cif-error-msg">{errors.phone}</span>}
                   </div>
                 </div>
