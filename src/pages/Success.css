@@ -1,0 +1,525 @@
+/* ============================================
+   Success Page Styles — ProjeLayout Premium
+   Creative, Friendly and Animated Success View
+   ============================================ */
+
+.success-container {
+  min-height: 100vh;
+  background: radial-gradient(circle at 10% 20%, var(--green-50, #f0faf7) 0%, var(--surface-base) 90%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s8) var(--s4);
+  position: relative;
+  overflow-y: auto;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  scrollbar-gutter: stable; /* Evita tremores ao renderizar a barra de rolagem */
+}
+
+/* === Ambient Decorative Elements === */
+.success-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(11, 61, 46, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 61, 46, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.success-bg-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(197, 160, 40, 0.06) 0%, rgba(197, 160, 40, 0) 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* === Confetti Effect === */
+.confetti-wrapper {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden; /* Evita que confetes gerem barra de rolagem e mexam o card */
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confetti-fall 4s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg) translateX(0);
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(105vh) rotate(360deg) translateX(50px);
+    opacity: 0;
+  }
+}
+
+/* === Success Card === */
+.success-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-sm);
+  border-radius: 36px; /* Layout mais arredondado */
+  box-shadow: var(--sh-xl), var(--sh-premium-neon);
+  width: 100%;
+  margin: var(--s6) auto;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  animation: card-entry 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.success-card.has-details {
+  max-width: 860px;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--s8);
+  padding: var(--s8);
+}
+
+.success-card.no-details {
+  max-width: 480px;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s6);
+  padding: var(--s8) var(--s6);
+}
+
+.success-left-col {
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4); /* Reduzido de s6 para aproximar o mascot do texto */
+  text-align: center;
+}
+
+.success-card.no-details .success-left-col {
+  width: 100%;
+}
+
+.success-right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s6);
+  width: 100%;
+  border-left: 1px dashed var(--border-sm);
+  padding-left: var(--s8);
+}
+
+@keyframes card-entry {
+  0% {
+    transform: scale(0.85) translateY(40px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* === Mascot Style & Animations (Isometric Modules forming checkmark ✔️) === */
+.mascot-wrapper {
+  position: relative;
+  width: 200px;
+  height: 130px; /* Reduzido para aproximar o texto do mascote */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.mascot-svg {
+  width: 120px; /* Reduzido para melhor encaixe */
+  height: 120px;
+  overflow: visible;
+  transform: rotate(20deg); /* Rotaciona no sentido horário para endireitar o checkmark */
+}
+
+.isometric-module-left {
+  transform-origin: 48px 82px;
+  animation: split-left 5s ease-in-out infinite;
+}
+
+.isometric-module-right {
+  transform-origin: 80px 82px;
+  animation: split-right 5s ease-in-out infinite;
+}
+
+.isometric-module-top {
+  transform-origin: 72px 44px;
+  animation: split-top 5s ease-in-out infinite;
+}
+
+.mascot-shadow.isometric-shadow {
+  width: 70px;
+  height: 6px;
+  background: rgba(11, 61, 46, 0.1);
+  border-radius: 50%;
+  filter: blur(2px);
+  position: absolute;
+  bottom: 10px; /* Subiu a sombra para encaixar na redução de altura */
+  animation: shadow-pulse 5s ease-in-out infinite;
+}
+
+/* === Isometric Animation Keyframes (Checkmark Assembling) === */
+
+/* Module Left Slides Out (Down-Left) */
+@keyframes split-left {
+  0%, 20%, 85%, 100% {
+    transform: translate(12px, -8px);
+    opacity: 1;
+  }
+  35%, 70% {
+    transform: translate(-24px, 16px); /* Alinha como perna esquerda curta do checkmark */
+    opacity: 0.35; /* Fica semitransparente para destacar o checkmark desenhado */
+  }
+}
+
+/* Module Right Slides Out (Right Vertex) */
+@keyframes split-right {
+  0%, 20%, 85%, 100% {
+    transform: translate(-12px, -8px);
+    opacity: 1;
+  }
+  35%, 70% {
+    transform: translate(0px, 28px); /* Alinha como o vértice inferior do checkmark */
+    opacity: 0.35;
+  }
+}
+
+/* Module Top Slides Out (Up-Right long leg) */
+@keyframes split-top {
+  0%, 20%, 85%, 100% {
+    transform: translate(0px, 16px);
+    opacity: 1;
+  }
+  35%, 70% {
+    transform: translate(24px, -12px); /* Alinha como a perna direita longa do checkmark */
+    opacity: 0.35;
+  }
+}
+
+/* Shadow Resizes as blocks split and expand footprint */
+@keyframes shadow-pulse {
+  0%, 20%, 85%, 100% {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+  35%, 70% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}
+
+/* === Checkmark Path Drawing Animations === */
+.checkmark-trail {
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: draw-trail 5s ease-in-out infinite;
+  opacity: 0;
+}
+
+.checkmark-trail-glow {
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: draw-trail-glow 5s ease-in-out infinite;
+  opacity: 0;
+  filter: drop-shadow(0 0 6px rgba(44, 166, 134, 0.85));
+}
+
+@keyframes draw-trail {
+  0%, 25%, 85%, 100% {
+    stroke-dashoffset: 120;
+    opacity: 0;
+  }
+  38%, 70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes draw-trail-glow {
+  0%, 28%, 82%, 100% {
+    stroke-dashoffset: 120;
+    opacity: 0;
+  }
+  40%, 68% {
+    stroke-dashoffset: 0;
+    opacity: 0.95;
+  }
+}
+
+/* === Content Styles === */
+.success-badge-pill {
+  background: rgba(46, 204, 113, 0.12); /* Verde claro */
+  border: 1px solid rgba(46, 204, 113, 0.35); /* Borda verde claro */
+  color: #1b5e20; /* Texto verde escuro contrastante e legível */
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 99px;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--s1); /* Menor margem */
+}
+
+.success-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px; /* Espaçamento menor e mais compacto */
+}
+
+.success-card.has-details .success-header {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.success-title {
+  color: var(--text-1);
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.success-accent-yellow {
+  color: var(--dourado); /* Tom amarelo/dourado */
+  display: block;
+  font-size: 2.1rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.success-desc {
+  color: var(--text-2);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin-top: 4px;
+  max-width: 460px;
+}
+
+/* === Details Box === */
+.success-details-box {
+  background: var(--surface-subtle);
+  border: 1px dashed var(--border-sm);
+  border-radius: 24px; /* Layout mais arredondado */
+  padding: var(--s4) var(--s5);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  text-align: left;
+}
+
+.success-details-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.success-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.success-details-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: 0.95rem;
+  color: var(--text-1);
+}
+
+.success-details-icon {
+  color: var(--dourado);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* === Buttons === */
+.success-actions {
+  display: flex;
+  gap: var(--s4);
+  width: 100%;
+  margin-top: var(--s2);
+}
+
+.success-btn {
+  flex: 1;
+  padding: 0.85rem var(--s5);
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 999px; /* Botão formato pílula/arredondado */
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  transition: all var(--dur-base) var(--ease-out);
+}
+
+.success-btn-primary {
+  background: var(--verde-escuro);
+  color: var(--white);
+}
+
+.success-btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--sh-green-sm);
+}
+
+.success-btn-primary:active {
+  transform: translateY(0);
+}
+
+.success-btn-secondary {
+  background: transparent;
+  border-color: var(--border-sm);
+  color: var(--text-2);
+}
+
+.success-btn-secondary:hover {
+  background: var(--surface-subtle);
+  border-color: var(--text-3);
+  color: var(--text-1);
+  transform: translateY(-2px);
+}
+
+.success-btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* === Responsive adjustments === */
+@media (max-width: 820px) {
+  .success-card.has-details {
+    flex-direction: column;
+    max-width: 480px;
+    gap: var(--s5);
+    padding: var(--s6);
+  }
+
+  .success-right-col {
+    border-left: none;
+    border-top: 1px dashed var(--border-sm);
+    padding-left: 0;
+    padding-top: var(--s5);
+  }
+}
+
+@media (max-width: 600px) {
+  .success-container {
+    padding: var(--s4) var(--s3);
+  }
+
+  .success-card {
+    border-radius: 28px;
+  }
+
+  .success-card.has-details,
+  .success-card.no-details {
+    padding: var(--s6) var(--s5);
+    gap: var(--s4);
+    max-width: 100%;
+    margin: var(--s3) auto;
+  }
+
+  .mascot-wrapper {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 0;
+  }
+
+  .mascot-svg {
+    width: 90px;
+    height: 90px;
+  }
+
+  .success-title {
+    font-size: 1.6rem;
+  }
+
+  .success-desc {
+    font-size: 0.9rem;
+  }
+
+  .success-details-box {
+    border-radius: 18px;
+    padding: var(--s3) var(--s4);
+  }
+
+  .success-actions {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 0;
+  }
+
+  .success-btn {
+    width: 100%;
+    padding: 0.75rem var(--s4);
+    font-size: 0.9rem;
+  }
+}
+
+/* Landscape/Short Screen adjustment to guarantee full visibility */
+@media (max-height: 640px) {
+  .success-container {
+    padding: var(--s4);
+    align-items: flex-start;
+  }
+
+  .success-card {
+    margin: var(--s3) auto;
+  }
+
+  .mascot-wrapper {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 0;
+  }
+
+  .mascot-svg {
+    width: 80px;
+    height: 80px;
+  }
+}
