@@ -385,6 +385,12 @@
   box-shadow: var(--sh-sm);
 }
 
+.loader-tip-card {
+  @media (max-width: 1024px) {
+    display: none;
+  }
+}
+
 .loader-tip-tag {
   font-size: 8px;
   font-weight: 800;
@@ -428,7 +434,8 @@
 
 /* ─── D-PAD CONTROLLER ─── */
 .three-dpad {
-  display: none; /* Hide on desktop */
+  display: none;
+  /* Hide on desktop */
   position: absolute;
   bottom: var(--s6);
   right: var(--s6);
@@ -515,7 +522,10 @@
   user-select: none;
 }
 
-.hud-toggle-customizer, .hud-free-mode, .hud-tour-mode, .hud-email-btn {
+.hud-toggle-customizer,
+.hud-free-mode,
+.hud-tour-mode,
+.hud-email-btn {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
@@ -533,7 +543,9 @@
   pointer-events: auto !important;
 }
 
-.hud-toggle-customizer:hover, .hud-free-mode:hover, .hud-tour-mode:hover {
+.hud-toggle-customizer:hover,
+.hud-free-mode:hover,
+.hud-tour-mode:hover {
   background: rgba(11, 61, 46, 0.08) !important;
   border-color: rgba(11, 61, 46, 0.2) !important;
   color: var(--text-1) !important;
@@ -555,7 +567,9 @@
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
 }
 
-.hud-toggle-customizer.active, .hud-free-mode.active, .hud-tour-mode.active {
+.hud-toggle-customizer.active,
+.hud-free-mode.active,
+.hud-tour-mode.active {
   background: var(--primary) !important;
   border: 1px solid var(--primary) !important;
   color: #ffffff !important;
