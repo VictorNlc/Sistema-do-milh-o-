@@ -186,15 +186,6 @@ export default function Success() {
             </button>
           </div>
         </div>
-
-        {/* Secondary Info Card */}
-        <div className="loader-tip-card success-tip-card">
-          <span className="loader-tip-tag">💡 DICA PROJEFARMA</span>
-          <p className="loader-tip-text">
-            Você receberá uma cópia do link 3D interativo e o arquivo PDF com a planta baixa diretamente em seu WhatsApp e e-mail. Se não encontrar, verifique a pasta de spam.
-          </p>
-        </div>
-
       </div>
     </div>
   )
