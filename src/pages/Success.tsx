@@ -11,11 +11,11 @@ interface RouteState {
 export default function Success() {
   const location = useLocation()
   const navigate = useNavigate()
-  
+
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
   const [clientPhone, setClientPhone] = useState('')
-  
+
   // Confetti particles
   const [confetti, setConfetti] = useState<Array<{ id: number; left: string; color: string; size: string; delay: string; duration: string }>>([])
 
@@ -59,19 +59,11 @@ export default function Success() {
   }
 
   const handleGoBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1)
-    } else {
-      navigate('/editor')
-    }
+    navigate('/editor')
   }
 
   return (
     <div className="success-container">
-      {/* Background decorations */}
-      <div className="success-bg-grid" />
-      <div className="success-bg-glow" />
-
       {/* Confetti celebration */}
       <div className="confetti-wrapper">
         {confetti.map((c) => (
@@ -90,9 +82,11 @@ export default function Success() {
         ))}
       </div>
 
-      <div className="success-card">
-        {/* Animated Mascot (Módulos Isométricos montando checkmark ✔️) */}
-        <div className="mascot-wrapper">
+      <div className="success-content-wrapper">
+
+        {/* Animated Mascot within rotating dashed ring */}
+        <div className="loader-icon-container success-mascot-container">
+          <div className="loader-glow-ring" />
           <svg
             className="mascot-svg isometric-canvas"
             viewBox="0 0 128 128"
@@ -170,26 +164,37 @@ export default function Success() {
           <div className="mascot-shadow isometric-shadow" />
         </div>
 
-        {/* Success Header */}
-        <div className="success-header">
-          <div className="success-badge-pill">✓ Envio Confirmado</div>
+        {/* Envio Confirmado Badge Pill outside the card, below the icon */}
+        <div className="success-badge-pill">✓ Envio Confirmado</div>
+
+        {/* Main Card */}
+        <div className="success-card">
           <h1 className="success-title">
             <span className="success-accent-yellow">Tudo pronto!</span> Seu projeto já está a caminho.
           </h1>
           <p className="success-desc">
             Enviamos a proposta e o orçamento detalhado. Por favor, verifique a sua caixa de entrada no e-mail e mensagens no WhatsApp.
           </p>
+
+          {/* Action buttons */}
+          <div className="success-actions">
+            <button onClick={handleGoHome} className="success-btn success-btn-primary">
+              <span>🏠</span> Voltar ao Início
+            </button>
+            <button onClick={handleGoBack} className="success-btn success-btn-secondary">
+              <span>✏️</span> Voltar ao Editor
+            </button>
+          </div>
         </div>
 
-        {/* Actions buttons */}
-        <div className="success-actions">
-          <button onClick={handleGoHome} className="btn btn-primary success-btn-aligned">
-            <span>🏠</span> Voltar ao Início
-          </button>
-          <button onClick={handleGoBack} className="btn btn-secondary success-btn-aligned">
-            <span>✏️</span> Voltar ao Editor
-          </button>
+        {/* Secondary Info Card */}
+        <div className="loader-tip-card success-tip-card">
+          <span className="loader-tip-tag">💡 DICA PROJEFARMA</span>
+          <p className="loader-tip-text">
+            Você receberá uma cópia do link 3D interativo e o arquivo PDF com a planta baixa diretamente em seu WhatsApp e e-mail. Se não encontrar, verifique a pasta de spam.
+          </p>
         </div>
+
       </div>
     </div>
   )
