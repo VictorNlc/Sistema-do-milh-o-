@@ -6,6 +6,7 @@ import { supabase } from './services/supabase'
 import Home from './pages/Home'
 import Editor from './pages/Editor'
 import SharedLayout from './pages/SharedLayout'
+import Success from './pages/Success'
 
 import ClientIntakeForm from './pages/ClientIntakeForm'
 import './App.css'
@@ -37,6 +38,7 @@ function App() {
         <Route path="/editor" element={<Editor />} />
         <Route path="/editor/:id" element={<Editor />} />
         <Route path="/layout/:token" element={<SharedLayout />} />
+        <Route path="/sucesso" element={<Success />} />
 
         <Route path="/novo-layout" element={<ClientIntakeForm />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -637,6 +637,15 @@ export default function Editor() {
         console.warn('[Webhook] Erro ao preparar payload:', webhookErr)
       }
 
+      // Redireciona o usuário para a página de sucesso
+      navigate('/sucesso', {
+        state: {
+          name: recipientName,
+          email: recipientEmail,
+          phone: recipientPhone
+        }
+      })
+
     } catch (err: any) {
       console.error('Erro ao enviar e-mail de proposta:', err)
       toast.error(`Erro ao enviar e-mail: ${err.message || 'Falha de comunicação'}`)
