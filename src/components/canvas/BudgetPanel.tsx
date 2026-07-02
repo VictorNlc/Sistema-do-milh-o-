@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useCanvasStore } from '../../store/canvasStore'
 import { useShallow } from 'zustand/react/shallow'
 import { getFullLayoutDataUrl } from '../../utils/canvasExport'
 import { toast } from '../../store/toastStore'
 import { getFurnitureIcon } from '../../utils/furnitureIcons'
+import { getPharmacyCatalog } from '../../services/catalogService'
+import type { PharmacyItemTemplate } from '../../types'
 import './BudgetPanel.css'
 
 interface GroupedBudgetItem {
@@ -33,23 +35,42 @@ export default function BudgetPanel({ onRequestEmail }: BudgetPanelProps) {
     }))
   )
 
-  // Filter items that are commercial (have a price > 0 or a code) and not structural (pillars or doors)
+  const [catalog, setCatalog] = useState<PharmacyItemTemplate[]>([])
+
+  useEffect(() => {
+    getPharmacyCatalog().then(setCatalog)
+  }, [])
+
+  // Retorna o preço do catálogo atual (banco) com fallback para o preço gravado no item
+  const getCatalogPrice = (itemId: string, fallback: number | undefined): number => {
+    const template = catalog.find(t => t.id === itemId)
+    if (template?.price != null && template.price > 0) return template.price
+    return fallback ?? 0
+  }
+
+  // Filtra itens comerciais: usa preço do catálogo para decidir se exibe
   const commercialItems = useMemo(() => {
-    return items.filter(item => ((item.price && item.price > 0) || item.code) && !item.isPillar && !item.isDoor)
-  }, [items])
+    return items.filter(item => {
+      if (item.isPillar || item.isDoor) return false
+      const catalogPrice = catalog.find(t => t.id === item.itemId)?.price ?? 0
+      const effectivePrice = catalogPrice > 0 ? catalogPrice : (item.price ?? 0)
+      return effectivePrice > 0 || !!item.code
+    })
+  }, [items, catalog])
 
   const groupedItems = useMemo(() => {
     const groups: Record<string, GroupedBudgetItem> = {}
 
     commercialItems.forEach(item => {
       const key = `${item.itemId}-${item.name}`
+      const price = getCatalogPrice(item.itemId, item.price)
       if (!groups[key]) {
         groups[key] = {
           name: item.name,
           icon: item.icon || '📦',
           code: item.code || '',
           finish: item.finish || '',
-          price: item.price || 0,
+          price,
           qty: 0,
           total: 0,
         }
@@ -59,11 +80,11 @@ export default function BudgetPanel({ onRequestEmail }: BudgetPanelProps) {
     })
 
     return Object.values(groups).sort((a, b) => b.total - a.total)
-  }, [commercialItems])
+  }, [commercialItems, catalog])
 
   const totalPrice = useMemo(() => {
-    return commercialItems.reduce((sum, item) => sum + (item.price || 0), 0)
-  }, [commercialItems])
+    return commercialItems.reduce((sum, item) => sum + getCatalogPrice(item.itemId, item.price), 0)
+  }, [commercialItems, catalog])
 
   // PDF export removed in favor of Email Propose flow
 

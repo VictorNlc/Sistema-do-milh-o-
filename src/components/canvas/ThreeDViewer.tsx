@@ -499,6 +499,7 @@ const MODEL_KEY_FOR_ITEM: Record<string, string> = {
   'catalog-231': 'bomboniere060',
   'catalog-232': 'bomboniere100',
   'catalog-61': 'pdv060',
+  'catalog-63': 'caixa100',
   'catalog-101': 'controlado050',
   'catalog-102': 'controlado100',
   'catalog-91': 'dermo050',
@@ -3427,7 +3428,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
       // Helper function to clone and scale model to fit the item's dimensions.
       // useUniformScale=true: scales by Y (height) only, keeping X/Z proportional (no deformation).
       // correctionRotY: rotation applied before bbox calculation to fix GLB axis orientation.
-      const applyModelToSubGroup = (model: THREE.Group, useUniformScale = false, correctionRotY = 0) => {
+      const applyModelToSubGroup = (model: THREE.Group, useUniformScale = false, correctionRotY = 0, forceXtoItemW = false) => {
         const modelClone = model.clone()
 
         // Apply orientation correction BEFORE computing the bounding box so centering is correct
@@ -3442,9 +3443,11 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
 
         let scaleX: number, scaleY: number, scaleZ: number
         if (useUniformScale) {
-          // Scale by height (Y) and keep X/Z proportional — preserves GLB proportions exactly
+          // Scale by height (Y) and keep X/Z proportional — preserves GLB proportions exactly.
+          // For gondola models (NO_ROTATION_MODELS), also force X to match the declared item width
+          // so Cimed and regular gondolas always render at the same physical length.
           const uniform = size.y > 0 ? itemH / size.y : 1
-          scaleX = uniform
+          scaleX = (forceXtoItemW && size.x > 0) ? itemW / size.x : uniform
           scaleY = uniform
           scaleZ = uniform
         } else {
@@ -3625,7 +3628,7 @@ export default function ThreeDViewer({ onClose, showSimulation = false, initialC
             : FLIPPED_MODELS.has(matchedKey!)
               ? ((itemRotDeg === 90 || itemRotDeg === 270) ? -Math.PI / 2 : Math.PI / 2)
               : ((itemRotDeg === 90 || itemRotDeg === 270) ? Math.PI / 2 : -Math.PI / 2)
-          applyModelToSubGroup(matchedModel, true, rotCorrection)
+          applyModelToSubGroup(matchedModel, true, rotCorrection, NO_ROTATION_MODELS.has(matchedKey!))
         } catch (e) {
           console.error(`⚠️ [3D Viewer] Erro ao clonar/renderizar modelo 3D para ${item.name}:`, e)
         }

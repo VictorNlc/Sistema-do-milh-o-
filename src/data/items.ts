@@ -490,6 +490,27 @@ export const PHARMACY_ITEMS: PharmacyItemTemplate[] = [
     "height3d": 1.36
   },
   {
+    "id": "catalog-63",
+    "category": "BALCOES",
+    "name": "CX 100",
+    "icon": "💳",
+    "description": "Balcão de caixa com 1 prateleira 105x40x100cm | Cód: 63 | Preço: R$ 1.056.00",
+    "width": 1.0,
+    "height": 0.4,
+    "color": "#2563EB",
+    "fillColor": "#D1FAE5",
+    "strokeColor": "#047857",
+    "minWidth": 1.0,
+    "maxWidth": 1.0,
+    "minHeight": 0.4,
+    "maxHeight": 0.4,
+    "rotatable": true,
+    "price": 0,
+    "finish": "MDP 15mm branco TX - rodapé com altura de 7,5 cm, uma prateleira móvel para teclado e uma prateleira fixa. Rodape na cor e painel frontal canaletado",
+    "code": "63",
+    "height3d": 1.36
+  },
+  {
     "id": "catalog-71",
     "category": "GONDOLAS",
     "name": "CESTÃO",

@@ -367,7 +367,7 @@ export default function Editor() {
                   const density = useCanvasStore.getState().layoutDensity || 'normal'
                   const storeType = useCanvasStore.getState().storeType || 'premium'
 
-                  const result = await generateAILayout(w, h, storeType, currentItems, density)
+                  const result = await generateAILayout(w, h, storeType, currentItems, density, intake.employees)
                   if (result.valid || result.items.length > 0) {
                     const structural = currentItems.filter(i => 
                       i.isPillar || i.isObstacle || i.isDoor || i.isEmergency || i.isRoom || i.category === 'ESTRUTURA'
